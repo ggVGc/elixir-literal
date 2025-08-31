@@ -61,35 +61,47 @@ fetch_reader_macros(Module) ->
 
 %% Expand reader macros in source text
 expand_reader_macros(Source, nil, E) ->
-  io:format("expand_reader_macros: Module is nil, falling back to source extraction~n"),
   % When module is nil, fall back to extracting from source
   expand_reader_macros_from_source(Source, E);
 expand_reader_macros(Source, Module, E) ->
-  io:format("expand_reader_macros: Using module ~p~n", [Module]),
   ReaderMacros = fetch_reader_macros(Module) ++ get_imported_reader_macros(E),
   expand_source_with_macros(Source, ReaderMacros, E).
 
 %% Expand reader macros when module is not yet known (during initial parsing)
 expand_reader_macros_from_source(Source, E) ->
-  % For now, completely disable reader macro expansion until the system is stable
-  % TODO: Re-enable once the system is working and we can handle cross-module reader macros properly
   case should_process_reader_macros(E) of
     false -> 
       Source;
     true ->
-      io:format("Source needs reader macro processing~n"),
-      % Extract reader macros directly from source first
-      SourceReaderMacros = extract_reader_macros_from_source(Source),
-      io:format("Found ~p source reader macros~n", [length(SourceReaderMacros)]),
-      
-      % Get imported reader macros
-      ImportedReaderMacros = get_imported_reader_macros(E),
-      io:format("Found ~p imported reader macros~n", [length(ImportedReaderMacros)]),
-      
-      % Combine all reader macros and apply them
-      AllReaderMacros = SourceReaderMacros ++ ImportedReaderMacros,
-      expand_source_with_macros(Source, AllReaderMacros, E)
+      % Quick pre-check: does source contain "defreadermacro"?
+      case contains_reader_macro_keyword(Source) of
+        false ->
+          % No reader macros, skip expensive processing
+          Source;
+        true ->
+          % Extract reader macros directly from source first
+          SourceReaderMacros = extract_reader_macros_from_source(Source),
+          
+          % Get imported reader macros
+          ImportedReaderMacros = get_imported_reader_macros(E),
+          
+          % Only do expensive expansion if we actually have macros
+          case SourceReaderMacros ++ ImportedReaderMacros of
+            [] -> 
+              Source;
+            AllReaderMacros ->
+              expand_source_with_macros(Source, AllReaderMacros, E)
+          end
+      end
   end.
+
+%% Quick check for reader macro keyword to avoid expensive processing
+contains_reader_macro_keyword(Source) when is_binary(Source) ->
+  binary:match(Source, <<"defreadermacro">>) =/= nomatch;
+contains_reader_macro_keyword(Source) when is_list(Source) ->
+  string:str(Source, "defreadermacro") =/= 0;
+contains_reader_macro_keyword(_) ->
+  false.
 
 %% Determine if we should process reader macros for this environment
 should_process_reader_macros(E) ->
@@ -110,12 +122,15 @@ should_process_reader_macros(E) ->
 
 %% Check if this is likely a system/stdlib file
 is_system_file(File) when is_binary(File) ->
-  % Check for common system path patterns
-  binary:match(File, <<"lib/elixir/lib/">>) =/= nomatch orelse
-  binary:match(File, <<"lib/kernel">>) =/= nomatch orelse
-  binary:match(File, <<"lib/calendar">>) =/= nomatch orelse
-  binary:match(File, <<"lib/mix">>) =/= nomatch orelse
-  binary:match(File, <<"lib/iex">>) =/= nomatch;
+  % Check for all Elixir standard library and system paths
+  binary:match(File, <<"lib/elixir/">>) =/= nomatch orelse
+  binary:match(File, <<"lib/mix/">>) =/= nomatch orelse
+  binary:match(File, <<"lib/eex/">>) =/= nomatch orelse
+  binary:match(File, <<"lib/iex/">>) =/= nomatch orelse
+  binary:match(File, <<"lib/logger/">>) =/= nomatch orelse
+  binary:match(File, <<"lib/ex_unit/">>) =/= nomatch orelse
+  % Also exclude any lib/ path to be safe
+  binary:match(File, <<"lib/">>) =/= nomatch;
 is_system_file(_) ->
   false.
 
@@ -138,25 +153,60 @@ needs_reader_macro_processing(Source) when is_list(Source) ->
 
 %% Extract reader macro definitions directly from source text
 extract_reader_macros_from_source(Source) ->
-  io:format("Extracting reader macros from source: ~p~n", [Source]),
+  % Safety check: don't process very large files to avoid regex performance issues
+  SourceSize = case Source of
+    Bin when is_binary(Bin) -> byte_size(Bin);
+    List when is_list(List) -> length(List);
+    _ -> 0
+  end,
+  
+  % Skip files larger than 50KB to avoid regex performance issues
+  case SourceSize > 50000 of
+    true ->
+      case elixir_config:get(debug, false) of
+        true -> io:format("Skipping reader macro extraction: file too large (~p bytes)~n", [SourceSize]);
+        false -> ok
+      end,
+      [];
+    false ->
+      extract_reader_macros_safe(Source)
+  end.
+
+%% Safe reader macro extraction with error handling
+extract_reader_macros_safe(Source) ->
   % Pattern to match defreadermacro definitions with simple string patterns
   SimplePattern = "defreadermacro\\s+(\\w+)\\s*\\(\\s*\"([^\"]+)\"\\s*\\)\\s+do\\s+(.*?)\\s+end",
-  % Pattern to match defreadermacros definitions with string concatenation patterns
+  % Pattern to match defreadermacros definitions with string concatenation patterns  
   ConcatPattern = "defreadermacro\\s+(\\w+)\\s*\\(\\s*\"([^\"]+)\"\\s*<>\\s*(\\w+)\\s*\\)\\s+do\\s+(.*?)\\s+end",
-  io:format("Using simple pattern: ~p~n", [SimplePattern]),
-  io:format("Using concat pattern: ~p~n", [ConcatPattern]),
   
-  SimpleMatches = case re:run(Source, SimplePattern, [global, {capture, all_but_first, list}, dotall]) of
-    {match, SM} -> [build_reader_macro(Name, Pattern, Body) || [Name, Pattern, Body] <- SM];
-    nomatch -> []
-  end,
+  SimpleMatches = safe_regex_run(Source, SimplePattern, fun([Name, Pattern, Body]) ->
+    build_reader_macro(Name, Pattern, Body)
+  end),
   
-  ConcatMatches = case re:run(Source, ConcatPattern, [global, {capture, all_but_first, list}, dotall]) of
-    {match, CM} -> [build_concat_reader_macro(Name, Prefix, Var, Body) || [Name, Prefix, Var, Body] <- CM];
-    nomatch -> []
-  end,
+  ConcatMatches = safe_regex_run(Source, ConcatPattern, fun([Name, Prefix, Var, Body]) ->
+    build_concat_reader_macro(Name, Prefix, Var, Body)
+  end),
   
   SimpleMatches ++ ConcatMatches.
+
+%% Safe regex execution with error handling
+safe_regex_run(Source, Pattern, BuildFun) ->
+  try
+    case re:run(Source, Pattern, [global, {capture, all_but_first, list}, dotall]) of
+      {match, Matches} -> [BuildFun(Match) || Match <- Matches];
+      nomatch -> []
+    end
+  catch
+    error:Reason ->
+      % Only log errors in debug mode to avoid cluttering compilation
+      case elixir_config:get(debug, false) of
+        true -> io:format("Regex error in reader macro extraction: ~p~n", [Reason]);
+        false -> ok
+      end,
+      [];
+    _:_ ->
+      []
+  end.
 
 %% Build reader macro record from extracted components  
 build_reader_macro(Name, ExtractedPattern, Body) ->
@@ -236,38 +286,32 @@ expand_source_with_macros(Source, [ReaderMacro | Rest], E, MaxIterations) ->
 
 %% Apply a single reader macro to source text
 apply_reader_macro(Source, {Name, Pattern, Body, Meta, Module}, E) ->
-  io:format("Applying reader macro ~p with pattern ~p to source~n", [Name, Pattern]),
   case match_pattern(Source, Pattern) of
     {match, Before, Matched, After} ->
-      io:format("Pattern matched! Before: ~p, Matched: ~p, After: ~p~n", [Before, Matched, After]),
       try
         Expanded = expand_reader_macro_body(Body, Matched, Meta, Module, E),
-        io:format("Expanded to: ~p~n", [Expanded]),
         Result = Before ++ Expanded ++ apply_reader_macro(After, {Name, Pattern, Body, Meta, Module}, E),
-        io:format("Final result: ~p~n", [Result]),
         Result
       catch
         Type:Reason ->
-          io:format("Error expanding reader macro: ~p:~p~n", [Type, Reason]),
+          case elixir_config:get(debug, false) of
+            true -> io:format("Error expanding reader macro ~p: ~p:~p~n", [Name, Type, Reason]);
+            false -> ok
+          end,
           Source
       end;
     nomatch ->
-      io:format("Pattern did not match~n"),
       Source
   end;
 
 %% Handle new reader macro record format
 apply_reader_macro(Source, #reader_macro{name = Name, pattern = Pattern, replacement = Body}, E) ->
-  io:format("Applying record-format reader macro ~p with pattern ~p to source~n", [Name, Pattern]),
   case match_pattern(Source, Pattern) of
     {match, Before, Matched, After} ->
-      io:format("Pattern matched! Before: ~p, Matched: ~p, After: ~p~n", [Before, Matched, After]),
       % For simple text replacement, just use the replacement directly
       Result = Before ++ Body ++ apply_reader_macro(After, #reader_macro{name = Name, pattern = Pattern, replacement = Body}, E),
-      io:format("Simple replacement result: ~p~n", [Result]),
       Result;
     nomatch ->
-      io:format("Pattern did not match~n"),
       Source
   end.
 

@@ -143,12 +143,10 @@ tokenize(String, Line, Opts) ->
 
 %% Tokenize with reader macro expansion
 tokenize_with_reader_macros(String, Line, Column, Opts, #{module := Module} = E) ->
-  io:format("tokenize_with_reader_macros: Using module ~p~n", [Module]),
   ExpandedString = elixir_reader_macros:expand_reader_macros(String, Module, E),
   tokenize(ExpandedString, Line, Column, Opts);
 
 tokenize_with_reader_macros(String, Line, Column, Opts, E) ->
-  io:format("tokenize_with_reader_macros: No module in env, extracting from source~n"),
   % Module not in environment, try to extract from source
   ExpandedString = elixir_reader_macros:expand_reader_macros_from_source(String, E),
   tokenize(ExpandedString, Line, Column, Opts).

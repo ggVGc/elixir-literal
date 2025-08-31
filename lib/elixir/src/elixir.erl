@@ -431,19 +431,15 @@ string_to_tokens(String, StartLine, StartColumn, File, Opts) when is_integer(Sta
   string_to_tokens(String, StartLine, StartColumn, File, Opts, undefined).
 
 string_to_tokens(String, StartLine, StartColumn, File, Opts, Env) when is_integer(StartLine), is_binary(File) ->
-  io:format("string_to_tokens called with Env: ~p, bootstrap: ~p~n", [Env =/= undefined, elixir_config:is_bootstrap()]),
   TokenizeResult = case Env of
     undefined ->
-      io:format("Using standard tokenizer (no env)~n"),
       elixir_tokenizer:tokenize(String, StartLine, StartColumn, Opts);
     _ ->
       case elixir_config:is_bootstrap() of
         true ->
-          io:format("Using standard tokenizer (bootstrap)~n"),
           % During bootstrap, don't process reader macros
           elixir_tokenizer:tokenize(String, StartLine, StartColumn, Opts);
         false ->
-          io:format("Using reader macro tokenizer~n"),
           elixir_tokenizer:tokenize_with_reader_macros(String, StartLine, StartColumn, Opts, Env)
       end
   end,
