@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: 2021 The Elixir Team
 # SPDX-FileCopyrightText: 2012 Plataformatec
 
+.claude
 /doc/
 /lib/*/ebin/
 /lib/*/_build/
