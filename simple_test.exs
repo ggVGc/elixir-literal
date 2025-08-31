@@ -1,5 +1,5 @@
 defmodule SimpleTest do
-  defreadermacro math("simple") do
+  defreadermacro math("+ 10 5") do
     "42"
   end
 

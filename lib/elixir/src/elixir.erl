@@ -9,7 +9,7 @@
 -export([start_cli/0, start/0]).
 -export([start/2, stop/1, config_change/3]).
 -export([
-  string_to_tokens/5, string_to_tokens/6, tokens_to_quoted/3, 'string_to_quoted!'/5, 'string_to_quoted!'/6,
+  string_to_tokens/5, tokens_to_quoted/3, 'string_to_quoted!'/5, 'string_to_quoted!'/6,
   env_for_eval/1, quoted_to_erl/2, eval_forms/3, eval_quoted/3,
   eval_quoted/4, eval_local_handler/2, eval_external_handler/3,
   format_token_error/1
@@ -428,31 +428,7 @@ quoted_to_erl(Quoted, ErlS, ExS, Env) ->
 %% Converts a given string (charlist) into quote expression
 
 string_to_tokens(String, StartLine, StartColumn, File, Opts) when is_integer(StartLine), is_binary(File) ->
-  % Create a minimal environment for reader macro processing
-  MinimalEnv = #{file => File, line => StartLine, column => StartColumn},
-  string_to_tokens(String, StartLine, StartColumn, File, Opts, MinimalEnv).
-
-string_to_tokens(String, StartLine, StartColumn, File, Opts, Env) when is_integer(StartLine), is_binary(File) ->
-  TokenizeResult = case Env of
-    undefined ->
-      elixir_tokenizer:tokenize(String, StartLine, StartColumn, Opts);
-    _ ->
-      case elixir_config:is_bootstrap() of
-        true ->
-          % During bootstrap, don't process reader macros
-          elixir_tokenizer:tokenize(String, StartLine, StartColumn, Opts);
-        false ->
-          % Use reader macro-aware tokenization
-          try
-            elixir_tokenizer:tokenize_with_reader_macros(String, StartLine, StartColumn, Opts, Env)
-          catch
-            Type:Reason:Stacktrace ->
-              % Fall back to regular tokenize on any error
-              io:format("DEBUG: Reader macro tokenizer failed: ~p:~p~nStacktrace: ~p~n", [Type, Reason, Stacktrace]),
-              elixir_tokenizer:tokenize(String, StartLine, StartColumn, Opts)
-          end
-      end
-  end,
+  TokenizeResult = elixir_tokenizer:tokenize(String, StartLine, StartColumn, Opts),
   
   case TokenizeResult of
     {ok, _Line, _Column, [], Tokens, []} ->
@@ -505,7 +481,7 @@ parser_location(Meta) ->
   'string_to_quoted!'(String, StartLine, StartColumn, File, Opts, undefined).
 
 'string_to_quoted!'(String, StartLine, StartColumn, File, Opts, Env) ->
-  case string_to_tokens(String, StartLine, StartColumn, File, Opts, Env) of
+  case string_to_tokens(String, StartLine, StartColumn, File, Opts) of
     {ok, Tokens} ->
       case tokens_to_quoted(Tokens, File, Opts) of
         {ok, Forms} ->

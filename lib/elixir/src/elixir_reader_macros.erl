@@ -261,20 +261,12 @@ safe_regex_run(Source, Pattern, BuildFun) ->
 
 %% Build reader macro record from extracted components  
 build_reader_macro(Name, ExtractedPattern, Body) ->
-  % Clean up the body by removing extra whitespace and quotes
+  % Clean up the body by removing extra whitespace but preserve quotes
   CleanBody = string:strip(Body),
-  FinalBody = case CleanBody of
-    [$" | Rest] ->
-      case lists:reverse(Rest) of
-        [$" | RevBody] -> lists:reverse(RevBody);
-        _ -> CleanBody
-      end;
-    _ -> CleanBody
-  end,
   #reader_macro{
     name = list_to_atom(Name),
     pattern = ExtractedPattern, 
-    replacement = FinalBody
+    replacement = CleanBody
   }.
 
 %% Build concat reader macro - for patterns like "prefix" <> rest  
@@ -422,9 +414,10 @@ apply_reader_macro(Source, {Name, Pattern, Body, Meta, Module}, E) ->
 
 %% Handle new reader macro record format
 apply_reader_macro(Source, #reader_macro{name = Name, pattern = Pattern, replacement = Body}, E) ->
-  case match_pattern(Source, Pattern) of
+  % Look for reader macro invocations: Name!(content)
+  case match_reader_macro_invocation(Source, Name, Pattern) of
     {match, Before, Matched, After} ->
-      % For simple text replacement, just use the replacement directly
+      % Replace the entire invocation with the replacement body
       Result = Before ++ Body ++ apply_reader_macro(After, #reader_macro{name = Name, pattern = Pattern, replacement = Body}, E),
       Result;
     nomatch ->
@@ -467,6 +460,68 @@ match_pattern(Source, {regex, RegexStr}) ->
   match_regex_pattern(Source, RegexStr);
 match_pattern(_Source, _Pattern) ->
   nomatch.
+
+%% Match reader macro invocations like name!(content) where content matches pattern
+match_reader_macro_invocation(Source, Name, Pattern) when is_binary(Source) ->
+  % Create regex to find Name!(content) invocations
+  NameStr = atom_to_list(Name),
+  InvocationRegex = NameStr ++ "!\\(([^)]+)\\)",
+  case re:run(Source, InvocationRegex, [{capture, all_but_first, binary}]) of
+    {match, [Content]} ->
+      % Check if the content matches our pattern
+      case match_content_with_pattern(Content, Pattern) of
+        true ->
+          % Find the full match with position
+          case re:run(Source, InvocationRegex, [{capture, [0], binary}]) of
+            {match, [FullMatch]} ->
+              % Split the source around the match
+              case binary:split(Source, FullMatch) of
+                [Before, After] ->
+                  {match, binary_to_list(Before), binary_to_list(FullMatch), binary_to_list(After)};
+                _ ->
+                  nomatch
+              end;
+            _ ->
+              nomatch
+          end;
+        false ->
+          nomatch
+      end;
+    nomatch ->
+      nomatch
+  end;
+match_reader_macro_invocation(Source, Name, Pattern) when is_list(Source) ->
+  % Convert to binary and back for easier regex handling
+  case match_reader_macro_invocation(list_to_binary(Source), Name, Pattern) of
+    {match, Before, Matched, After} ->
+      {match, Before, Matched, After};
+    nomatch ->
+      nomatch
+  end.
+
+%% Check if content matches the reader macro pattern
+match_content_with_pattern(Content, Pattern) when is_binary(Content), is_list(Pattern) ->
+  match_content_with_pattern(Content, list_to_binary(Pattern));
+match_content_with_pattern(Content, Pattern) when is_binary(Content), is_binary(Pattern) ->
+  % For now, simple pattern matching - content should contain the pattern
+  % This handles cases like defreadermacro math("simple") matching math!(simple arg)
+  case binary:match(Content, Pattern) of
+    nomatch -> false;
+    _ -> true
+  end;
+match_content_with_pattern(Content, Pattern) ->
+  % Convert to binary and retry
+  BinaryContent = case Content of
+    C when is_list(C) -> list_to_binary(C);
+    C when is_binary(C) -> C;
+    _ -> <<>>
+  end,
+  BinaryPattern = case Pattern of
+    P when is_list(P) -> list_to_binary(P);
+    P when is_binary(P) -> P;
+    _ -> <<>>
+  end,
+  match_content_with_pattern(BinaryContent, BinaryPattern).
 
 match_binary_pattern(Source, Pattern) ->
   case binary:match(Source, Pattern) of
