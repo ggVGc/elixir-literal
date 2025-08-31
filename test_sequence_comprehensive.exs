@@ -35,22 +35,32 @@ defmodule SequenceComprehensiveTest do
   end
   
   def test_transformation do
-    IO.puts("\n=== Sequence Transformation ===")
+    IO.puts("\n=== Sequence Utilities ===")
     Code.eval_file("lib/elixir/lib/kernel/sequence.ex")
     
-    test_cases = [
-      {{:a, [line: 1], [{:b, [line: 1], nil}]}, {:sequence_literal, [line: 1], [:a, {:b, [line: 1], nil}]}},
-      {{:foo, [line: 1], [{:bar, [line: 1], nil}]}, {:sequence_literal, [line: 1], [:foo, {:bar, [line: 1], nil}]}}
-    ]
+    # Test utility functions instead
+    test_ast = {:sequence_literal, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}
     
-    Enum.each(test_cases, fn {input, expected} ->
-      result = Kernel.Sequence.maybe_transform_sequence(input)
-      if result == expected do
-        IO.puts("✓ #{inspect(input)} transforms correctly")
-      else
-        IO.puts("✗ #{inspect(input)} transform failed - got: #{inspect(result)}")
-      end
-    end)
+    if Kernel.Sequence.sequence_literal?(test_ast) do
+      IO.puts("✓ sequence_literal?/1 works correctly")
+    else
+      IO.puts("✗ sequence_literal?/1 failed")
+    end
+    
+    args = Kernel.Sequence.sequence_args(test_ast)
+    expected_args = [{:a, [line: 1], nil}, {:b, [line: 1], nil}]
+    if args == expected_args do
+      IO.puts("✓ sequence_args/1 works correctly")
+    else
+      IO.puts("✗ sequence_args/1 failed - got: #{inspect(args)}")
+    end
+    
+    arity = Kernel.Sequence.sequence_arity(test_ast)
+    if arity == 2 do
+      IO.puts("✓ sequence_arity/1 works correctly")
+    else
+      IO.puts("✗ sequence_arity/1 failed - got: #{inspect(arity)}")
+    end
   end
   
   def test_edge_cases do

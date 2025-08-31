@@ -1493,34 +1493,64 @@ defmodule Kernel.ParserTest do
 
   describe "sequence literals with ~~(...) syntax" do
     test "basic two-argument sequence" do
-      assert parse!("~~(a b)") == {:sequence_literal, [line: 1],
-        [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}
+      assert parse!("~~(a b)") ==
+               {:sequence_literal, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}
     end
 
     test "longer sequences" do
-      assert parse!("~~(a b c d e)") == {:sequence_literal, [line: 1],
-        [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil},
-         {:d, [line: 1], nil}, {:e, [line: 1], nil}]}
+      assert parse!("~~(a b c d e)") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:a, [line: 1], nil},
+                  {:b, [line: 1], nil},
+                  {:c, [line: 1], nil},
+                  {:d, [line: 1], nil},
+                  {:e, [line: 1], nil}
+                ]}
     end
 
     test "single argument sequence" do
-      assert parse!("~~(foo)") == {:sequence_literal, [line: 1],
-        [{:foo, [line: 1], nil}]}
+      assert parse!("~~(foo)") == {:sequence_literal, [line: 1], [{:foo, [line: 1], nil}]}
     end
 
     test "sequences with different identifier patterns" do
-      assert parse!("~~(hello_world foo_bar)") == {:sequence_literal, [line: 1],
-        [{:hello_world, [line: 1], nil}, {:foo_bar, [line: 1], nil}]}
+      assert parse!("~~(hello_world foo_bar)") ==
+               {:sequence_literal, [line: 1],
+                [{:hello_world, [line: 1], nil}, {:foo_bar, [line: 1], nil}]}
 
       # Currently only lowercase identifiers are supported - CamelCase aliases are not
       assert_syntax_error(["syntax error before: ", "'CamelCase'"], "~~(CamelCase snake_case)")
     end
 
-    test "complex expressions currently not supported" do
-      assert_syntax_error(["syntax error before: ", "'('"], "~~(a (b c) d)")
-      assert_syntax_error(["syntax error before: ", "123"], "~~(foo 123)")
-      assert_syntax_error(["syntax error before: ", ":"], "~~(foo :atom)")
-      assert_syntax_error(["syntax error before: ", "string"], "~~(foo \"string\")")
+    test "complex expressions and mixed types supported" do
+      # Nested expressions are now supported
+      assert parse!("~~(a (b c) d)") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:a, [line: 1], nil},
+                  {:b, [line: 1], [{:c, [line: 1], nil}]},
+                  {:d, [line: 1], nil}
+                ]}
+
+      # Mixed data types are supported
+      assert parse!("~~(foo 123)") ==
+               {:sequence_literal, [line: 1], [{:foo, [line: 1], nil}, 123]}
+
+      assert parse!("~~(foo :atom)") ==
+               {:sequence_literal, [line: 1], [{:foo, [line: 1], nil}, :atom]}
+
+      assert parse!("~~(foo \"string\")") ==
+               {:sequence_literal, [line: 1], [{:foo, [line: 1], nil}, "string"]}
+
+      # Complex combinations
+      assert parse!("~~(test 123 :atom \"string\" true false nil)") ==
+               {:sequence_literal, [line: 1],
+                [{:test, [line: 1], nil}, 123, :atom, "string", true, false, nil]}
+
+      # Nested mathematical expressions  
+      assert parse!("~~(calc (1 + 2) result)") ==
+               {:sequence_literal, [line: 1],
+                [{:calc, [line: 1], nil}, {:+, [line: 1], [1, 2]}, {:result, [line: 1], nil}]}
     end
 
     test "empty sequence not supported" do
