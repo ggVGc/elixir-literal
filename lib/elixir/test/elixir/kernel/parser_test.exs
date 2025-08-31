@@ -1491,6 +1491,70 @@ defmodule Kernel.ParserTest do
     end
   end
 
+  describe "sequence literals with ~~(...) syntax" do
+    test "basic two-argument sequence" do
+      assert parse!("~~(a b)") == {:sequence_literal, [line: 1],
+        [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}
+    end
+
+    test "longer sequences" do
+      assert parse!("~~(a b c d e)") == {:sequence_literal, [line: 1],
+        [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil},
+         {:d, [line: 1], nil}, {:e, [line: 1], nil}]}
+    end
+
+    test "single argument sequence" do
+      assert parse!("~~(foo)") == {:sequence_literal, [line: 1],
+        [{:foo, [line: 1], nil}]}
+    end
+
+    test "sequences with different identifier patterns" do
+      assert parse!("~~(hello_world foo_bar)") == {:sequence_literal, [line: 1],
+        [{:hello_world, [line: 1], nil}, {:foo_bar, [line: 1], nil}]}
+
+      # Currently only lowercase identifiers are supported - CamelCase aliases are not
+      assert_syntax_error(["syntax error before: ", "'CamelCase'"], "~~(CamelCase snake_case)")
+    end
+
+    test "complex expressions currently not supported" do
+      assert_syntax_error(["syntax error before: ", "'('"], "~~(a (b c) d)")
+      assert_syntax_error(["syntax error before: ", "123"], "~~(foo 123)")
+      assert_syntax_error(["syntax error before: ", ":"], "~~(foo :atom)")
+      assert_syntax_error(["syntax error before: ", "string"], "~~(foo \"string\")")
+    end
+
+    test "empty sequence not supported" do
+      assert_syntax_error(["syntax error before: ", "')'"], "~~()")
+    end
+
+    test "sequence operator requires parentheses" do
+      assert_syntax_error(["syntax error before: ", "foo"], "~~foo bar")
+      assert_syntax_error(["syntax error before: ", "a"], "~~ a b c")
+    end
+
+    test "backward compatibility - regular parentheses unaffected" do
+      # Regular parenthesized expressions should still parse as before
+      assert parse!("(1 + 2)") == {:+, [line: 1], [1, 2]}
+      assert parse!("(x)") == {:x, [line: 1], nil}
+
+      # Space-separated identifiers in regular parens parse as nested function calls
+      assert parse!("(a b)") == {:a, [line: 1], [{:b, [line: 1], nil}]}
+      assert parse!("(a b c)") == {:a, [line: 1], [{:b, [line: 1], [{:c, [line: 1], nil}]}]}
+    end
+
+    test "regular function calls unaffected" do
+      assert parse!("foo()") == {:foo, [line: 1], []}
+      assert parse!("foo(1, 2)") == {:foo, [line: 1], [1, 2]}
+      assert parse!("foo bar") == {:foo, [line: 1], [{:bar, [line: 1], nil}]}
+    end
+
+    test "sequence literals in larger expressions" do
+      # Sequence literals are currently not supported in most contexts due to grammar limitations
+      assert_syntax_error(["syntax error before: ", "'~~'"], "x = ~~(foo bar)")
+      assert_syntax_error(["syntax error before: ", "'~~'"], "func(~~(a b))")
+    end
+  end
+
   defp parse!(string), do: Code.string_to_quoted!(string)
 
   defp assert_syntax_error(given_messages, source) do

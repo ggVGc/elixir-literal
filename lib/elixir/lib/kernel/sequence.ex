@@ -14,6 +14,18 @@ defmodule Kernel.Sequence do
       {:ok, {:sequence_literal, [line: 1], 
        [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}, {:baz, [line: 1], nil}]}}
 
+  ## Current Limitations
+  
+  The sequence syntax currently has the following limitations:
+  
+  - Only simple identifiers are supported (no numbers, strings, or complex expressions)
+  - Only lowercase identifiers work (CamelCase aliases are not supported)
+  - Sequences can only be used at the top-level expression context
+  - Sequences cannot be used inside function calls or assignments
+  - Empty sequences `~~()` are not supported
+  
+  These limitations may be addressed in future versions.
+
   """
 
   @doc """
