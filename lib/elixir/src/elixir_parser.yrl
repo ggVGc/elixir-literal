@@ -274,6 +274,7 @@ access_expr -> bracket_at_expr : '$1'.
 access_expr -> bracket_expr : '$1'.
 access_expr -> capture_int int : build_unary_op('$1', number_value('$2')).
 access_expr -> fn_eoe stab_eoe 'end' : build_fn('$1', '$2', '$3').
+access_expr -> open_paren identifier identifier close_paren : build_simple_sequence('$1', '$2', '$3', '$4').
 access_expr -> open_paren stab_eoe ')' : build_paren_stab('$1', '$2', '$3').
 access_expr -> open_paren ';' stab_eoe ')' : build_paren_stab('$1', '$3', '$4').
 access_expr -> open_paren ';' close_paren : build_paren_stab('$1', [], '$3').
@@ -951,6 +952,12 @@ build_call({op_identifier, Location, Identifier}, [Arg]) ->
 
 build_call({_, Location, Identifier}, Args) ->
   {Identifier, meta_from_location(Location), Args}.
+
+build_simple_sequence(Open, Identifier1, Identifier2, Close) ->
+  Meta = newlines_pair(Open, Close) ++ meta_from_token(Open),
+  Arg1 = {?exprs(Identifier1), meta_from_location(?location(Identifier1)), nil},
+  Arg2 = {?exprs(Identifier2), meta_from_location(?location(Identifier2)), nil},
+  {sequence_literal, Meta, [Arg1, Arg2]}.
 
 %% Fn
 
