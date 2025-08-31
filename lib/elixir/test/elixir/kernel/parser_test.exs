@@ -1411,6 +1411,39 @@ defmodule Kernel.ParserTest do
       assert parse!("foo(bar)") == {:foo, [line: 1], [{:bar, [line: 1], nil}]}
     end
 
+    test "nested parenthesized sequences for macro capture" do
+      # Test basic nesting (a (b c))
+      assert parse!("(a (b c))") == {:a, [line: 1], [{:b, [line: 1], [{:c, [line: 1], nil}]}]}
+
+      # Test deeper nesting (a (b (c d)))
+      assert parse!("(a (b (c d)))") ==
+               {:a, [line: 1], [{:b, [line: 1], [{:c, [line: 1], [{:d, [line: 1], nil}]}]}]}
+
+      # Test multiple arguments in nested sequences (chains as nested calls)
+      assert parse!("(a (b c d))") ==
+               {:a, [line: 1], [{:b, [line: 1], [{:c, [line: 1], [{:d, [line: 1], nil}]}]}]}
+
+      # Test more complex nesting patterns
+      assert parse!("(foo (bar baz))") ==
+               {:foo, [line: 1], [{:bar, [line: 1], [{:baz, [line: 1], nil}]}]}
+
+      # Test deeply nested identifier sequences
+      assert parse!("(alpha (beta (gamma (delta epsilon))))") ==
+               {:alpha, [line: 1],
+                [
+                  {:beta, [line: 1],
+                   [{:gamma, [line: 1], [{:delta, [line: 1], [{:epsilon, [line: 1], nil}]}]}]}
+                ]}
+
+      # Verify AST structure can be pattern matched in macros
+      ast = parse!("(foo (bar baz))")
+      assert match?({:foo, _, [{:bar, _, [{:baz, _, nil}]}]}, ast)
+
+      # Test that nested sequences create predictable AST patterns
+      ast2 = parse!("(eval (quote (lambda x)))")
+      assert match?({:eval, _, [{:quote, _, _}]}, ast2)
+    end
+
     test "invalid new line" do
       assert_syntax_error(
         [
