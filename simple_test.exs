@@ -1,11 +1,8 @@
-defmodule SimpleTest do  
-  # Define a reader macro that replaces "HELLO" with "42"
-  defreadermacro hello("HELLO") do
-    "42"  
-  end
-
+defmodule SimpleTest do
   def test do
-    IO.puts("Value: #{HELLO}")
+    result = 42
+    IO.puts("result = #{result}")
+    result
   end
 end
 

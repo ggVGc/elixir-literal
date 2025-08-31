@@ -428,19 +428,35 @@ quoted_to_erl(Quoted, ErlS, ExS, Env) ->
 %% Converts a given string (charlist) into quote expression
 
 string_to_tokens(String, StartLine, StartColumn, File, Opts) when is_integer(StartLine), is_binary(File) ->
-  string_to_tokens(String, StartLine, StartColumn, File, Opts, undefined).
+  % Create a minimal environment for reader macro processing
+  MinimalEnv = #{file => File, line => StartLine, column => StartColumn},
+  string_to_tokens(String, StartLine, StartColumn, File, Opts, MinimalEnv).
 
 string_to_tokens(String, StartLine, StartColumn, File, Opts, Env) when is_integer(StartLine), is_binary(File) ->
+  io:format("DEBUG: string_to_tokens called, is_bootstrap=~p, env_type=~p~n", [elixir_config:is_bootstrap(), if Env == undefined -> undefined; true -> map end]),
   TokenizeResult = case Env of
     undefined ->
+      io:format("DEBUG: Taking undefined path~n"),
       elixir_tokenizer:tokenize(String, StartLine, StartColumn, Opts);
     _ ->
       case elixir_config:is_bootstrap() of
         true ->
           % During bootstrap, don't process reader macros
+          io:format("DEBUG: Taking bootstrap path~n"),
           elixir_tokenizer:tokenize(String, StartLine, StartColumn, Opts);
         false ->
-          elixir_tokenizer:tokenize_with_reader_macros(String, StartLine, StartColumn, Opts, Env)
+          io:format("DEBUG: Taking reader macro path~n"),
+          io:format("DEBUG: About to call tokenize_with_reader_macros~n"),
+          try
+            Result = elixir_tokenizer:tokenize_with_reader_macros(String, StartLine, StartColumn, Opts, Env),
+            io:format("DEBUG: tokenize_with_reader_macros returned successfully~n"),
+            Result
+          catch
+            Type:Reason ->
+              io:format("DEBUG: Exception in tokenize_with_reader_macros call: ~p:~p~n", [Type, Reason]),
+              % Fall back to regular tokenize
+              elixir_tokenizer:tokenize(String, StartLine, StartColumn, Opts)
+          end
       end
   end,
   

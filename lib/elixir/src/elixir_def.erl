@@ -441,8 +441,13 @@ assert_valid_name(_Meta, _Kind, _Name, _Args, _S) ->
 %% Reader macro storage
 
 store_reader_macro_definition(Meta, Name, Args, Body, E) ->
+  io:format("DEBUG store_reader_macro_definition: Name=~p, Args=~p, Body=~p~n", [Name, Args, Body]),
   case parse_reader_macro_args(Args, Body) of
+    {ok, {concat, Prefix, Var, MacroBody}} ->
+      io:format("DEBUG: Extracted Concat - Prefix=~p, Var=~p, MacroBody=~p~n", [Prefix, Var, MacroBody]),
+      elixir_reader_macros:store_concat_reader_macro(Meta, Name, Prefix, Var, MacroBody, E);
     {ok, Pattern, MacroBody} ->
+      io:format("DEBUG: Extracted Pattern=~p, MacroBody=~p~n", [Pattern, MacroBody]),
       elixir_reader_macros:store_reader_macro(Meta, Name, Pattern, MacroBody, E);
     {error, Reason} ->
       elixir_errors:file_error(Meta, E, ?MODULE, {invalid_reader_macro, Reason})
@@ -450,8 +455,15 @@ store_reader_macro_definition(Meta, Name, Args, Body, E) ->
 
 parse_reader_macro_args([Pattern], Body) ->
   case extract_pattern(Pattern) of
+    {ok, {concat, Prefix, Var}} ->
+      % Handle concatenation pattern
+      ActualBody = case Body of
+        [{'do', Content}] -> Content;
+        Content -> Content
+      end,
+      {ok, {concat, Prefix, Var, ActualBody}};
     {ok, ExtractedPattern} ->
-      % Extract the actual body content from the do block
+      % Handle simple pattern
       ActualBody = case Body of
         [{'do', Content}] -> Content;
         Content -> Content
@@ -468,11 +480,17 @@ extract_pattern({Pattern, _, _}) when is_binary(Pattern) ->
   {ok, Pattern};
 extract_pattern(Pattern) when is_binary(Pattern) ->
   {ok, Pattern};
-extract_pattern({Op, _, [Left, _Right]}) when Op =:= '<>' ->
+extract_pattern({Op, _, [Left, Right]}) when Op =:= '<>' ->
   %% Handle binary concatenation patterns like "@@" <> rest
   case extract_pattern(Left) of
     {ok, LeftPattern} when is_binary(LeftPattern) ->
-      {ok, LeftPattern};
+      % Extract variable name from Right
+      case Right of
+        {VarName, _, nil} when is_atom(VarName) ->
+          {ok, {concat, LeftPattern, VarName}};
+        _ ->
+          {error, "unsupported pattern in binary concatenation"}
+      end;
     _ ->
       {error, "unsupported pattern in binary concatenation"}
   end;
