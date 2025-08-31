@@ -200,7 +200,8 @@ defmodule Kernel.ParallelCompilerTest do
                        [
                          %{file: ^fixture, position: {3, 5}, message: msg},
                          %{file: ^fixture, position: 0, message: compile_msg}
-                       ], @no_warnings} =
+                       ],
+                       @no_warnings} =
                         compile([fixture])
 
                assert msg =~ expected_msg
@@ -295,7 +296,8 @@ defmodule Kernel.ParallelCompilerTest do
                        [
                          %{file: ^fixture, position: {7, 3}, message: msg},
                          %{file: ^fixture, position: 0, message: compile_msg}
-                       ], @no_warnings} =
+                       ],
+                       @no_warnings} =
                         compile([fixture])
 
                assert msg =~ expected_msg
@@ -328,7 +330,8 @@ defmodule Kernel.ParallelCompilerTest do
                        [
                          %{file: ^missing_struct, position: {2, 3}, message: msg},
                          %{file: ^missing_struct, position: 0, message: compile_msg}
-                       ], @no_warnings} =
+                       ],
+                       @no_warnings} =
                         compile([missing_struct, depends_on])
 
                assert msg =~ expected_msg
@@ -359,7 +362,8 @@ defmodule Kernel.ParallelCompilerTest do
                        [
                          %{file: ^missing_import, position: {2, 3}, message: msg},
                          %{file: ^missing_import, position: 0, message: compile_msg}
-                       ], @no_warnings} =
+                       ],
+                       @no_warnings} =
                         compile([missing_import, depends_on])
 
                assert msg =~ expected_msg
@@ -617,7 +621,8 @@ defmodule Kernel.ParallelCompilerTest do
                        [
                          %{file: ^fixture, position: {3, 5}, message: msg},
                          %{file: ^fixture, position: 0, message: compile_msg}
-                       ], @no_warnings} =
+                       ],
+                       @no_warnings} =
                         Kernel.ParallelCompiler.require([fixture], return_diagnostics: true)
 
                assert msg =~ expected_msg
@@ -649,7 +654,8 @@ defmodule Kernel.ParallelCompilerTest do
                        [
                          %{file: ^fixture, position: {7, 3}, message: msg},
                          %{file: ^fixture, position: 0, message: compile_msg}
-                       ], @no_warnings} =
+                       ],
+                       @no_warnings} =
                         Kernel.ParallelCompiler.require([fixture], return_diagnostics: true)
 
                assert msg =~ expected_msg

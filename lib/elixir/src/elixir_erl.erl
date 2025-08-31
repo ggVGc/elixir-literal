@@ -231,6 +231,13 @@ split_definition(Tuple, defmacrop, Meta, Clauses, T, Unreachable, Line,
                  Def, Defmacro, Macros, Exports, Functions) ->
   Entry = translate_definition(defmacro, Line, Meta, Tuple, Clauses),
   split_definition(T, Unreachable, Line, Def, Defmacro, [Tuple | Macros], Exports,
+                   add_definition(Meta, Entry, Functions));
+
+split_definition(Tuple, defreadermacro, Meta, Clauses, T, Unreachable, Line,
+                 Def, Defmacro, Macros, Exports, Functions) ->
+  %% Reader macros are treated like regular macros for compilation purposes
+  Entry = translate_definition(defmacro, Line, Meta, Tuple, Clauses),
+  split_definition(T, Unreachable, Line, Def, Defmacro, [Tuple | Macros], Exports,
                    add_definition(Meta, Entry, Functions)).
 
 add_definition(Meta, Body, {Head, Tail}) ->

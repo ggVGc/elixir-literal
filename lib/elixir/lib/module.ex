@@ -1906,6 +1906,7 @@ defmodule Module do
 
   defp doc_key(:def), do: :function
   defp doc_key(:defmacro), do: :macro
+  defp doc_key(:defreadermacro), do: :macro
 
   defp compile_doc_meta(set, bag, name, arity, defaults) do
     doc_meta = compile_deprecated(%{}, set, bag, name, arity, defaults)

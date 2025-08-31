@@ -144,10 +144,10 @@ tokenize(String, Line, Opts) ->
 %% Tokenize with reader macro expansion
 tokenize_with_reader_macros(String, Line, Column, #{module := Module} = E) ->
   ExpandedString = elixir_reader_macros:expand_reader_macros(String, Module, E),
-  tokenize(ExpandedString, Line, Column, []);
+  tokenize(ExpandedString, Line, Column);
 
 tokenize_with_reader_macros(String, Line, Column, _E) ->
-  tokenize(String, Line, Column, []).
+  tokenize(String, Line, Column).
 
 tokenize([], Line, Column, #elixir_tokenizer{cursor_completion=Cursor} = Scope, Tokens) when Cursor /= false ->
   #elixir_tokenizer{ascii_identifiers_only=Ascii, terminators=Terminators, warnings=Warnings} = Scope,

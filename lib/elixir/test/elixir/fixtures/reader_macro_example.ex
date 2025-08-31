@@ -4,7 +4,7 @@
 defmodule ReaderMacroExample do
   @doc """
   Example usage of reader macros in Elixir.
-  
+
   This module demonstrates how to define and use reader macros
   that work on raw source code during tokenization.
   """
@@ -30,7 +30,7 @@ defmodule ReaderMacroExample do
     # @@HOME -> System.get_env("HOME")
     # r/\d+/ -> ~r/\d+/
     # SQL:SELECT * FROM users -> MyApp.Database.query("SELECT * FROM users")
-    
+
     IO.puts("Reader macro examples would be expanded here")
   end
 end

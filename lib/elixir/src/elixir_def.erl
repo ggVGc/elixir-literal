@@ -282,6 +282,7 @@ run_on_definition_callbacks(Meta, Kind, Module, Name, Args, Guards, Body, E) ->
   % Handle reader macro definitions
   case Kind of
     defreadermacro ->
+      io:format("Storing reader macro: ~p~n", [Name]),
       store_reader_macro_definition(Meta, Name, Args, Body, E);
     _ ->
       ok
@@ -447,14 +448,33 @@ store_reader_macro_definition(Meta, Name, Args, Body, E) ->
       elixir_errors:file_error(Meta, E, ?MODULE, {invalid_reader_macro, Reason})
   end.
 
-parse_reader_macro_args([{Pattern, _, _}], Body) when is_binary(Pattern) ->
-  {ok, Pattern, {ast, Body}};
-parse_reader_macro_args([{:regex, _, [RegexPattern]}], Body) when is_binary(RegexPattern) ->
-  {ok, {regex, RegexPattern}, {ast, Body}};
-parse_reader_macro_args([Pattern], Body) when is_binary(Pattern) ->
-  {ok, Pattern, {ast, Body}};
+parse_reader_macro_args([Pattern], Body) ->
+  case extract_pattern(Pattern) of
+    {ok, ExtractedPattern} ->
+      {ok, ExtractedPattern, {ast, Body}};
+    {error, Reason} ->
+      {error, Reason}
+  end;
 parse_reader_macro_args(_, _) ->
   {error, "reader macro must have a single pattern argument"}.
+
+%% Extract pattern from various AST forms
+extract_pattern({Pattern, _, _}) when is_binary(Pattern) ->
+  {ok, Pattern};
+extract_pattern(Pattern) when is_binary(Pattern) ->
+  {ok, Pattern};
+extract_pattern({Op, _, [Left, _Right]}) when Op =:= '<>' ->
+  %% Handle binary concatenation patterns like "@@" <> rest
+  case extract_pattern(Left) of
+    {ok, LeftPattern} when is_binary(LeftPattern) ->
+      {ok, LeftPattern};
+    _ ->
+      {error, "unsupported pattern in binary concatenation"}
+  end;
+extract_pattern({'regex', _, [RegexPattern]}) when is_binary(RegexPattern) ->
+  {ok, {regex, RegexPattern}};
+extract_pattern(_) ->
+  {error, "unsupported pattern type"}.
 
 %% Format errors
 
