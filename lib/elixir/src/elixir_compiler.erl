@@ -8,7 +8,9 @@
 -include("elixir.hrl").
 
 string(Contents, File, Callback) ->
-  Forms = elixir:'string_to_quoted!'(Contents, 1, 1, File, elixir_config:get(parser_options)),
+  % Create a basic environment for reader macro processing
+  BasicEnv = (elixir_env:new())#{line := 1, file := File, tracers := elixir_config:get(tracers)},
+  Forms = elixir:'string_to_quoted!'(Contents, 1, 1, File, elixir_config:get(parser_options), BasicEnv),
   quoted(Forms, File, Callback).
 
 quoted(Forms, File, Callback) ->

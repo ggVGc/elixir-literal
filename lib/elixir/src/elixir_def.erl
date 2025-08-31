@@ -6,7 +6,7 @@
 -module(elixir_def).
 -export([setup/1, reset_last/1, local_for/5, external_for/5,
   take_definition/2, store_definition/3, store_definition/9,
-  fetch_definitions/2, format_error/1]).
+  fetch_definitions/2, extract_pattern/1, format_error/1]).
 -include("elixir.hrl").
 -define(last_def, {elixir, last_def}).
 
@@ -451,7 +451,12 @@ store_reader_macro_definition(Meta, Name, Args, Body, E) ->
 parse_reader_macro_args([Pattern], Body) ->
   case extract_pattern(Pattern) of
     {ok, ExtractedPattern} ->
-      {ok, ExtractedPattern, {ast, Body}};
+      % Extract the actual body content from the do block
+      ActualBody = case Body of
+        [{'do', Content}] -> Content;
+        Content -> Content
+      end,
+      {ok, ExtractedPattern, ActualBody};
     {error, Reason} ->
       {error, Reason}
   end;

@@ -5,7 +5,7 @@
 -module(elixir_tokenizer).
 -include("elixir.hrl").
 -include("elixir_tokenizer.hrl").
--export([tokenize/1, tokenize/3, tokenize/4, tokenize_with_reader_macros/4, invalid_do_error/1, terminator/1]).
+-export([tokenize/1, tokenize/3, tokenize/4, tokenize_with_reader_macros/5, invalid_do_error/1, terminator/1]).
 
 -define(at_op(T),
   T =:= $@).
@@ -142,12 +142,16 @@ tokenize(String, Line, Opts) ->
   tokenize(String, Line, 1, Opts).
 
 %% Tokenize with reader macro expansion
-tokenize_with_reader_macros(String, Line, Column, #{module := Module} = E) ->
+tokenize_with_reader_macros(String, Line, Column, Opts, #{module := Module} = E) ->
+  io:format("tokenize_with_reader_macros: Using module ~p~n", [Module]),
   ExpandedString = elixir_reader_macros:expand_reader_macros(String, Module, E),
-  tokenize(ExpandedString, Line, Column);
+  tokenize(ExpandedString, Line, Column, Opts);
 
-tokenize_with_reader_macros(String, Line, Column, _E) ->
-  tokenize(String, Line, Column).
+tokenize_with_reader_macros(String, Line, Column, Opts, E) ->
+  io:format("tokenize_with_reader_macros: No module in env, extracting from source~n"),
+  % Module not in environment, try to extract from source
+  ExpandedString = elixir_reader_macros:expand_reader_macros_from_source(String, E),
+  tokenize(ExpandedString, Line, Column, Opts).
 
 tokenize([], Line, Column, #elixir_tokenizer{cursor_completion=Cursor} = Scope, Tokens) when Cursor /= false ->
   #elixir_tokenizer{ascii_identifiers_only=Ascii, terminators=Terminators, warnings=Warnings} = Scope,
