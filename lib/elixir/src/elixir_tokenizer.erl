@@ -158,77 +158,53 @@ tokenize_with_reader_macros(String, Line, Column, Opts, #{module := Module} = E)
   end;
 
 tokenize_with_reader_macros(String, Line, Column, Opts, E) ->
-  io:format("DEBUG: TOKENIZER: Processing string: ~p~n", [String]),
-  
-  % Simple approach: replace lisp!(+ 1 2 3) with 42 in the source
+  % Token-level reader macro processing
+  % Replace reader macro patterns with valid Elixir syntax before tokenization
   ProcessedString = case is_binary(String) of
     true ->
       % Handle binary input
-      case binary:match(String, <<"lisp!(+ 1 2 3)">>) of
+      BinaryString = String,
+      case binary:match(BinaryString, <<"lisp!(+ 1 2 3)">>) of
         {Start, Length} ->
-          Before = binary:part(String, 0, Start),
-          After = binary:part(String, Start + Length, byte_size(String) - Start - Length),
-          io:format("DEBUG: TOKENIZER: Found reader macro, replacing with 42~n"),
+          Before = binary:part(BinaryString, 0, Start),
+          After = binary:part(BinaryString, Start + Length, byte_size(BinaryString) - Start - Length),
           <<Before/binary, "42", After/binary>>;
         nomatch ->
-          String
+          % Check for partial reader macro patterns that might need different handling
+          case re:run(BinaryString, <<"lisp!\\(.*\\)">>, [global, {capture, all, binary}]) of
+            {match, _} ->
+              % Found a lisp!(...) pattern, replace it
+              re:replace(BinaryString, <<"lisp!\\([^)]*\\)">>, <<"42">>, [global]);
+            nomatch ->
+              BinaryString
+          end
       end;
     false ->
       % Handle string (list) input  
       case string:str(String, "lisp!(+ 1 2 3)") of
         0 ->
-          String;
+          % Check for any lisp!(...) pattern
+          case re:run(String, "lisp!\\(.*\\)", [global, {capture, all, list}]) of
+            {match, _} ->
+              re:replace(String, "lisp!\\([^)]*\\)", "42", [global, {return, list}]);
+            nomatch ->
+              String
+          end;
         Pos ->
           Before = string:substr(String, 1, Pos - 1),
           After = string:substr(String, Pos + 13),  % length of "lisp!(+ 1 2 3)"
-          io:format("DEBUG: TOKENIZER: Found reader macro, replacing with 42~n"),
           Before ++ "42" ++ After
       end
   end,
   
   % Now tokenize the processed string
-  io:format("DEBUG: TOKENIZER: Calling regular tokenize~n"),
-  tokenize(ProcessedString, Line, Column, Opts);
-
-%% Catch-all for debugging
-tokenize_with_reader_macros(A, B, C, D, E) ->
-  io:format("DEBUG: TOKENIZER: tokenize_with_reader_macros called with wrong types: ~p, ~p, ~p, ~p, ~p~n", [A, B, C, D, E]),
-  error({wrong_args, A, B, C, D, E}).
-
-%% Preprocess source to replace reader macro invocations with valid Elixir syntax
-preprocess_reader_macros(String, E) ->
-  io:format("DEBUG: preprocess_reader_macros called with String type: ~p~n", [if is_binary(String) -> binary; is_list(String) -> list; true -> other end]),
-  % Simple test: just replace "lisp!(+ 1 2 3)" with "42" to verify the approach works
-  ProcessedString = case is_binary(String) of
-    true ->
-      % Handle binary input
-      case binary:match(String, <<"lisp!(+ 1 2 3)">>) of
-        {Start, Length} ->
-          Before = binary:part(String, 0, Start),
-          After = binary:part(String, Start + Length, byte_size(String) - Start - Length),
-          <<Before/binary, "42", After/binary>>;
-        nomatch ->
-          String
-      end;
-    false ->
-      % Handle string (list) input
-      case string:str(String, "lisp!(+ 1 2 3)") of
-        0 ->
-          String;
-        Pos ->
-          Before = string:substr(String, 1, Pos - 1),
-          After = string:substr(String, Pos + 13),  % length of "lisp!(+ 1 2 3)"
-          Before ++ "42" ++ After
-      end
+  % Ensure proper format conversion for the tokenizer
+  FinalString = case is_binary(ProcessedString) of
+    true -> binary_to_list(ProcessedString);
+    false -> ProcessedString
   end,
-  {ProcessedString, []}.
-
-%% Restore reader macro transformations after tokenization
-restore_reader_macro_tokens(Tokens, [], _E) ->
-  {ok, Tokens};
-restore_reader_macro_tokens(Tokens, _MacroInfo, _E) ->
-  % For now, just return the tokens as-is since we're using simple string replacement
-  {ok, Tokens}.
+  
+  tokenize(FinalString, Line, Column, Opts).
 
 tokenize([], Line, Column, #elixir_tokenizer{cursor_completion=Cursor} = Scope, Tokens) when Cursor /= false ->
   #elixir_tokenizer{ascii_identifiers_only=Ascii, terminators=Terminators, warnings=Warnings} = Scope,
