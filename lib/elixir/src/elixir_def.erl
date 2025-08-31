@@ -229,7 +229,7 @@ store_definition(Meta, Kind, CheckClauses, Name, Arity, DefaultsArgs, Guards, Bo
   run_on_definition_callbacks(Meta, Kind, Module, Name, DefaultsArgs, Guards, Body, E),
   Tuple.
 
-env_for_expansion(Kind, Tuple, E) when Kind =:= defmacro; Kind =:= defmacrop ->
+env_for_expansion(Kind, Tuple, E) when Kind =:= defmacro; Kind =:= defmacrop; Kind =:= defreadermacro ->
   S = elixir_env:env_to_ex(E),
   {S#elixir_ex{caller=true}, E#{function := Tuple}};
 env_for_expansion(_Kind, Tuple, E) ->
@@ -278,6 +278,14 @@ run_on_definition_callbacks(Meta, Kind, Module, Name, Args, Guards, Body, E) ->
     elixir_env:trace({remote_function, Meta, Mod, Fun, 6}, E),
     Mod:Fun(E, Kind, Name, Args, Guards, Body)
   end || {Mod, Fun} <- lists:reverse(Callbacks)],
+  
+  % Handle reader macro definitions
+  case Kind of
+    defreadermacro ->
+      store_reader_macro_definition(Meta, Name, Args, Body, E);
+    _ ->
+      ok
+  end,
   ok.
 
 store_definition(CheckClauses, Kind, Meta, Name, Arity, File, Module, Defaults, Clauses)
@@ -429,6 +437,25 @@ assert_valid_name(Meta, Kind, is_record, [_, _], #{file := File}) when Kind == d
 assert_valid_name(_Meta, _Kind, _Name, _Args, _S) ->
   ok.
 
+%% Reader macro storage
+
+store_reader_macro_definition(Meta, Name, Args, Body, E) ->
+  case parse_reader_macro_args(Args, Body) of
+    {ok, Pattern, MacroBody} ->
+      elixir_reader_macros:store_reader_macro(Meta, Name, Pattern, MacroBody, E);
+    {error, Reason} ->
+      elixir_errors:file_error(Meta, E, ?MODULE, {invalid_reader_macro, Reason})
+  end.
+
+parse_reader_macro_args([{Pattern, _, _}], Body) when is_binary(Pattern) ->
+  {ok, Pattern, {ast, Body}};
+parse_reader_macro_args([{:regex, _, [RegexPattern]}], Body) when is_binary(RegexPattern) ->
+  {ok, {regex, RegexPattern}, {ast, Body}};
+parse_reader_macro_args([Pattern], Body) when is_binary(Pattern) ->
+  {ok, Pattern, {ast, Body}};
+parse_reader_macro_args(_, _) ->
+  {error, "reader macro must have a single pattern argument"}.
+
 %% Format errors
 
 format_error({function_head, Kind, {Name, Arity}}) ->
@@ -524,4 +551,7 @@ format_error({module_info, Kind, Arity}) ->
 
 format_error({is_record, Kind}) ->
   io_lib:format("cannot define ~ts is_record/2 due to compatibility "
-                "with the Erlang compiler (it is a known limitation)", [Kind]).
+                "with the Erlang compiler (it is a known limitation)", [Kind]);
+
+format_error({invalid_reader_macro, Reason}) ->
+  io_lib:format("invalid reader macro: ~s", [Reason]).

@@ -5453,6 +5453,27 @@ defmodule Kernel do
     define(:defmacrop, call, expr, __CALLER__)
   end
 
+  @doc """
+  Defines a reader macro.
+
+  Reader macros operate on raw source code during tokenization,
+  before the source is parsed into an AST. They take a pattern 
+  that matches raw text and transform it into replacement text.
+
+  ## Examples
+
+      defreadermacro my_syntax("@@" <> rest) do
+        "System.get_env(\"#{rest}\")"
+      end
+
+      # Usage: @@HOME becomes System.get_env("HOME")
+
+  """
+  defmacro defreadermacro(call, expr \\ nil) do
+    assert_no_match_or_guard_scope(__CALLER__.context, "defreadermacro/2")
+    define(:defreadermacro, call, expr, __CALLER__)
+  end
+
   defp define(kind, call, expr, env) do
     module = assert_module_scope(env, kind, 2)
     assert_no_function_scope(env, kind, 2)
