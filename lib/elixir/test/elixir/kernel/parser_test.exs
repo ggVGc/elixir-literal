@@ -1397,6 +1397,20 @@ defmodule Kernel.ParserTest do
       assert_syntax_error(["nofile:1:8:", "syntax error before: ';'"], ~c"max(1, ;2)")
     end
 
+    test "parenthesized sequences" do
+      # Test the new (a b) syntax produces the expected function call pattern
+      assert parse!("(a b)") == {:a, [line: 1], [{:b, [line: 1], nil}]}
+      assert parse!("(foo bar)") == {:foo, [line: 1], [{:bar, [line: 1], nil}]}
+      assert parse!("(hello world)") == {:hello, [line: 1], [{:world, [line: 1], nil}]}
+
+      # Test backward compatibility - regular parentheses still work
+      assert parse!("(1 + 2)") == {:+, [line: 1], [1, 2]}
+      assert parse!("(x)") == {:x, [line: 1], nil}
+
+      # Test function calls still work
+      assert parse!("foo(bar)") == {:foo, [line: 1], [{:bar, [line: 1], nil}]}
+    end
+
     test "invalid new line" do
       assert_syntax_error(
         [
