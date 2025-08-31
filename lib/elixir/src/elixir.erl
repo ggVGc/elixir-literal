@@ -446,8 +446,9 @@ string_to_tokens(String, StartLine, StartColumn, File, Opts, Env) when is_intege
           try
             elixir_tokenizer:tokenize_with_reader_macros(String, StartLine, StartColumn, Opts, Env)
           catch
-            Type:Reason ->
+            Type:Reason:Stacktrace ->
               % Fall back to regular tokenize on any error
+              io:format("DEBUG: Reader macro tokenizer failed: ~p:~p~nStacktrace: ~p~n", [Type, Reason, Stacktrace]),
               elixir_tokenizer:tokenize(String, StartLine, StartColumn, Opts)
           end
       end

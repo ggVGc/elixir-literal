@@ -1,8 +1,12 @@
 defmodule SimpleTest do
+  defreadermacro math("simple") do
+    "42"
+  end
+
   def test do
-    result = 42
-    IO.puts("result = #{result}")
-    result
+    IO.puts("Testing simple reader macro")
+    result = math!(+ 10 5)
+    IO.puts("Result: #{result}")
   end
 end
 

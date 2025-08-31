@@ -145,14 +145,22 @@ store_definition(Kind, Key, Pos) ->
   store_definition(Kind, true, Call, Body, E).
 
 store_definition(Kind, HasNoUnquote, Call, Body, #{line := Line} = E) ->
-  {NameAndArgs, Guards} = elixir_utils:extract_guards(Call),
+  % Handle reader macros differently from regular functions/macros
+  case Kind of
+    defreadermacro ->
+      store_reader_macro_definition(Call, Body, E);
+    _ ->
+      {NameAndArgs, Guards} = elixir_utils:extract_guards(Call),
 
-  {Name, Meta, Args} = case NameAndArgs of
-    {N, M, A} when is_atom(N), is_atom(A) -> {N, M, []};
-    {N, M, A} when is_atom(N), is_list(A) -> {N, M, A};
-    _ -> elixir_errors:file_error([{line, Line}], E, ?MODULE, {invalid_def, Kind, NameAndArgs})
-  end,
+      {Name, Meta, Args} = case NameAndArgs of
+        {N, M, A} when is_atom(N), is_atom(A) -> {N, M, []};
+        {N, M, A} when is_atom(N), is_list(A) -> {N, M, A};
+        _ -> elixir_errors:file_error([{line, Line}], E, ?MODULE, {invalid_def, Kind, NameAndArgs})
+      end,
+      store_regular_definition(Kind, HasNoUnquote, Name, Meta, Args, Guards, Body, E)
+  end.
 
+store_regular_definition(Kind, HasNoUnquote, Name, Meta, Args, Guards, Body, #{line := Line} = E) ->
   Context = case lists:keyfind(context, 1, Meta) of
     {context, _} = ContextPair -> [ContextPair];
     _ -> []
@@ -586,6 +594,9 @@ format_error(invalid_args_for_function_head) ->
   "      a + b\n"
   "    end\n";
 
+format_error({invalid_reader_macro, Reason}) ->
+  io_lib:format("invalid reader macro: ~s", [Reason]);
+
 format_error({'__info__', Kind}) ->
   io_lib:format("cannot define ~ts __info__/1 as it is automatically defined by Elixir", [Kind]);
 
@@ -594,7 +605,17 @@ format_error({module_info, Kind, Arity}) ->
 
 format_error({is_record, Kind}) ->
   io_lib:format("cannot define ~ts is_record/2 due to compatibility "
-                "with the Erlang compiler (it is a known limitation)", [Kind]);
+                "with the Erlang compiler (it is a known limitation)", [Kind]).
 
-format_error({invalid_reader_macro, Reason}) ->
-  io_lib:format("invalid reader macro: ~s", [Reason]).
+%% Reader macro storage function
+store_reader_macro_definition(Call, Body, #{line := Line} = E) ->
+  % Extract reader macro name and pattern from the call
+  case Call of
+    {Name, Meta, [Pattern]} when is_atom(Name) ->
+      % Store the reader macro using the existing reader macro infrastructure
+      elixir_reader_macros:store_reader_macro(Meta, Name, Pattern, Body, E),
+      {Name, 1};  % Return tuple similar to regular definitions
+    _ ->
+      elixir_errors:file_error([{line, Line}], E, ?MODULE, 
+                              {invalid_reader_macro, "reader macro must have name and pattern"})
+  end.
