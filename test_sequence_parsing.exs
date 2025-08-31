@@ -4,10 +4,10 @@
 defmodule SequenceParseTest do
   @moduledoc """
   Tests for ~~(...) sequence syntax parsing.
-  This module contains tests to verify that sequence expressions 
+  This module contains tests to verify that sequence expressions
   like `~~(a b c)` are parsed correctly into the new AST node format.
   """
-  
+
   def test_basic_sequence_parsing do
     # Test case 1: Basic two-argument sequence with ~~
     case Code.string_to_quoted("~~(foo bar)") do
@@ -19,7 +19,7 @@ defmodule SequenceParseTest do
         IO.puts("✗ Basic sequence parsing failed with error: #{inspect(reason)}")
     end
   end
-  
+
   def test_three_argument_sequence do
     # Test case 2: Three-argument sequence with ~~
     case Code.string_to_quoted("~~(test hello world)") do
@@ -31,7 +31,7 @@ defmodule SequenceParseTest do
         IO.puts("✗ Three-argument sequence parsing failed with error: #{inspect(reason)}")
     end
   end
-  
+
   def test_long_sequence do
     # Test case 3: Longer sequence with ~~
     case Code.string_to_quoted("~~(a b c d e)") do
@@ -43,7 +43,7 @@ defmodule SequenceParseTest do
         IO.puts("✗ Long sequence parsing failed with error: #{inspect(reason)}")
     end
   end
-  
+
   def test_regular_call_still_works do
     # Test case 4: Ensure regular function calls still work
     case Code.string_to_quoted("foo(123, 567)") do
@@ -55,7 +55,7 @@ defmodule SequenceParseTest do
         IO.puts("✗ Regular function call failed with error: #{inspect(reason)}")
     end
   end
-  
+
   def test_single_argument_still_works do
     # Test case 5: Single argument no-parens call should still work as before
     case Code.string_to_quoted("foo 123") do
@@ -67,7 +67,7 @@ defmodule SequenceParseTest do
         IO.puts("✗ Single argument no-parens call failed with error: #{inspect(reason)}")
     end
   end
-  
+
   def test_parenthesized_expression_still_works do
     # Test case 6: Regular parenthesized expressions should still work
     case Code.string_to_quoted("(1 + 2)") do
@@ -79,20 +79,22 @@ defmodule SequenceParseTest do
         IO.puts("✗ Regular parenthesized expressions failed with error: #{inspect(reason)}")
     end
   end
-  
+
   def run_all_tests do
     IO.puts("Running ~~(...) sequence syntax parsing tests...")
     IO.puts("")
-    
+
     test_basic_sequence_parsing()
     test_three_argument_sequence()
     test_long_sequence()
     test_regular_call_still_works()
     test_single_argument_still_works()
     test_parenthesized_expression_still_works()
-    
+
     IO.puts("")
     IO.puts("Test run complete.")
+    Code.string_to_quoted("~~(fn yeo )")
+    |> IO.inspect(label: "yeo")
   end
 end
 

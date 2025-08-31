@@ -34,7 +34,7 @@ Nonterminals
   dot_op dot_alias dot_bracket_identifier dot_call_identifier
   dot_identifier dot_op_identifier dot_do_identifier dot_paren_identifier
   do_block fn_eoe do_eoe block_eoe block_item block_list
-  sequence_expr sequence_args sequence_arg_list
+  sequence_expr sequence_args sequence_token_list sequence_token
   .
 
 Terminals
@@ -309,10 +309,22 @@ parens_call -> dot_call_identifier call_args_parens call_args_parens : build_nes
 %% Sequence expressions
 sequence_expr -> sequence_op '(' sequence_args ')' : build_sequence('$1', '$3', '$4').
 
-sequence_args -> sequence_arg_list : '$1'.
+sequence_args -> sequence_token_list : '$1'.
 
-sequence_arg_list -> identifier : [build_identifier('$1')].
-sequence_arg_list -> sequence_arg_list identifier : '$1' ++ [build_identifier('$2')].
+sequence_token_list -> sequence_token : ['$1'].
+sequence_token_list -> sequence_token_list sequence_token : '$1' ++ ['$2'].
+
+% Accept various token types inside sequences
+sequence_token -> identifier : build_identifier('$1').
+sequence_token -> int : handle_number(number_value('$1'), '$1', ?exprs('$1')).
+sequence_token -> flt : handle_number(number_value('$1'), '$1', ?exprs('$1')).
+sequence_token -> atom : handle_literal(?exprs('$1'), '$1').
+sequence_token -> bin_string : build_bin_string('$1', delimiter(<<$">>)).
+sequence_token -> list_string : build_list_string('$1', delimiter(<<$'>>)).
+sequence_token -> 'true' : handle_literal(?id('$1'), '$1').
+sequence_token -> 'false' : handle_literal(?id('$1'), '$1').
+sequence_token -> 'nil' : handle_literal(?id('$1'), '$1').
+sequence_token -> '(' expr ')' : '$2'.
 
 bracket_arg -> open_bracket kw_data close_bracket : build_access_arg('$1', '$2', '$3').
 bracket_arg -> open_bracket container_expr close_bracket : build_access_arg('$1', '$2', '$3').

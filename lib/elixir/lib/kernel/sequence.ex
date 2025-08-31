@@ -14,17 +14,24 @@ defmodule Kernel.Sequence do
       {:ok, {:sequence_literal, [line: 1], 
        [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}, {:baz, [line: 1], nil}]}}
 
+  ## Supported Features
+
+  Sequence literals support a wide variety of content:
+
+  - **Identifiers**: `~~(foo bar baz)` 
+  - **Numbers**: `~~(item 123 45.67)`
+  - **Atoms**: `~~(config :debug :verbose)`
+  - **Strings**: `~~(message "hello world")`  
+  - **Booleans and nil**: `~~(flags true false nil)`
+  - **Nested expressions**: `~~(calc (1 + 2) (foo bar))`
+  - **Mixed types**: `~~(data 123 :atom "string" true)`
+
   ## Current Limitations
-  
-  The sequence syntax currently has the following limitations:
-  
-  - Only simple identifiers are supported (no numbers, strings, or complex expressions)
-  - Only lowercase identifiers work (CamelCase aliases are not supported)
-  - Sequences can only be used at the top-level expression context
+
+  - CamelCase aliases are not supported (use lowercase identifiers)
+  - Sequences can only be used at the top-level expression context  
   - Sequences cannot be used inside function calls or assignments
   - Empty sequences `~~()` are not supported
-  
-  These limitations may be addressed in future versions.
 
   """
 
