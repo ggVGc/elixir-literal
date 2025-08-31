@@ -1,18 +1,18 @@
-# Test file for simplified parenthesized sequence syntax parsing
-# This tests the parsing of sequence expressions in parentheses
+# Test file for ~~(...) sequence syntax parsing
+# This tests the parsing of sequence expressions with ~~ prefix
 
 defmodule SequenceParseTest do
   @moduledoc """
-  Tests for parenthesized sequence syntax parsing.
+  Tests for ~~(...) sequence syntax parsing.
   This module contains tests to verify that sequence expressions 
-  like `(a b c)` are parsed correctly into the new AST node format.
+  like `~~(a b c)` are parsed correctly into the new AST node format.
   """
   
   def test_basic_sequence_parsing do
-    # Test case 1: Basic two-argument sequence in parentheses
-    case Code.string_to_quoted("(foo 123)") do
-      {:ok, {:sequence_literal, _meta, [:foo, 123]}} ->
-        IO.puts("✓ Basic sequence parsing works: (foo 123)")
+    # Test case 1: Basic two-argument sequence with ~~
+    case Code.string_to_quoted("~~(foo bar)") do
+      {:ok, {:sequence_literal, _meta, [{:foo, _, nil}, {:bar, _, nil}]}} ->
+        IO.puts("✓ Basic sequence parsing works: ~~(foo bar)")
       {:ok, other_ast} ->
         IO.puts("✗ Basic sequence parsing failed. Got AST: #{inspect(other_ast)}")
       {:error, reason} ->
@@ -21,10 +21,10 @@ defmodule SequenceParseTest do
   end
   
   def test_three_argument_sequence do
-    # Test case 2: Three-argument sequence in parentheses
-    case Code.string_to_quoted("(test 1 2)") do
-      {:ok, {:sequence_literal, _meta, [:test, 1, 2]}} ->
-        IO.puts("✓ Three-argument sequence parsing works: (test 1 2)")
+    # Test case 2: Three-argument sequence with ~~
+    case Code.string_to_quoted("~~(test hello world)") do
+      {:ok, {:sequence_literal, _meta, [{:test, _, nil}, {:hello, _, nil}, {:world, _, nil}]}} ->
+        IO.puts("✓ Three-argument sequence parsing works: ~~(test hello world)")
       {:ok, other_ast} ->
         IO.puts("✗ Three-argument sequence parsing failed. Got AST: #{inspect(other_ast)}")
       {:error, reason} ->
@@ -32,15 +32,15 @@ defmodule SequenceParseTest do
     end
   end
   
-  def test_sequence_with_different_types do
-    # Test case 3: Mixed argument types in parentheses
-    case Code.string_to_quoted("(process :atom \"string\")") do
-      {:ok, {:sequence_literal, _meta, [:process, :atom, "string"]}} ->
-        IO.puts("✓ Mixed-type sequence parsing works: (process :atom \"string\")")
+  def test_long_sequence do
+    # Test case 3: Longer sequence with ~~
+    case Code.string_to_quoted("~~(a b c d e)") do
+      {:ok, {:sequence_literal, _meta, [{:a, _, nil}, {:b, _, nil}, {:c, _, nil}, {:d, _, nil}, {:e, _, nil}]}} ->
+        IO.puts("✓ Long sequence parsing works: ~~(a b c d e)")
       {:ok, other_ast} ->
-        IO.puts("✗ Mixed-type sequence parsing failed. Got AST: #{inspect(other_ast)}")
+        IO.puts("✗ Long sequence parsing failed. Got AST: #{inspect(other_ast)}")
       {:error, reason} ->
-        IO.puts("✗ Mixed-type sequence parsing failed with error: #{inspect(reason)}")
+        IO.puts("✗ Long sequence parsing failed with error: #{inspect(reason)}")
     end
   end
   
@@ -81,12 +81,12 @@ defmodule SequenceParseTest do
   end
   
   def run_all_tests do
-    IO.puts("Running parenthesized sequence syntax parsing tests...")
+    IO.puts("Running ~~(...) sequence syntax parsing tests...")
     IO.puts("")
     
     test_basic_sequence_parsing()
     test_three_argument_sequence()
-    test_sequence_with_different_types()
+    test_long_sequence()
     test_regular_call_still_works()
     test_single_argument_still_works()
     test_parenthesized_expression_still_works()

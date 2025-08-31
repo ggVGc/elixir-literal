@@ -1,59 +1,54 @@
 # Sequence syntax support for Elixir
-# This provides a simple macro-based implementation of sequence syntax
+# This provides utilities for working with sequence literals
 
 defmodule Kernel.Sequence do
   @moduledoc """
-  Provides sequence syntax support for Elixir.
+  Provides utilities for working with sequence literals in Elixir.
 
-  This module implements parenthesized sequence syntax like `(a b c)` 
-  as a compile-time transformation.
+  Sequence literals are created using the `~~(...)` syntax and are represented
+  as `{:sequence_literal, metadata, arguments}` AST nodes.
+
+  ## Examples
+
+      iex> Code.string_to_quoted("~~(foo bar baz)")
+      {:ok, {:sequence_literal, [line: 1], 
+       [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}, {:baz, [line: 1], nil}]}}
+
   """
 
   @doc """
-  Transforms parenthesized sequences into sequence_literal AST nodes.
+  Checks if the given AST represents a sequence literal.
 
-  This is meant to be called during macro expansion to detect and
-  transform sequences.
+  ## Examples
+
+      iex> Kernel.Sequence.sequence_literal?({:sequence_literal, [], [:foo, :bar]})
+      true
+      
+      iex> Kernel.Sequence.sequence_literal?({:foo, [], [:bar]})
+      false
   """
-  def maybe_transform_sequence({:__block__, meta, [expr]}) do
-    # Single expression in parentheses - check if it looks like a sequence
-    maybe_transform_sequence_expr(expr)
-  end
+  def sequence_literal?({:sequence_literal, _, _}), do: true
+  def sequence_literal?(_), do: false
 
-  def maybe_transform_sequence({func, func_meta, args})
-      when is_atom(func) and is_list(args) and length(args) >= 1 do
-    # Direct function call pattern - check if all args are simple literals (sequence pattern)
-    if all_simple_literals?(args) do
-      {:sequence_literal, func_meta, [func | args]}
-    else
-      {func, func_meta, args}
-    end
-  end
+  @doc """
+  Extracts the arguments from a sequence literal.
 
-  defp maybe_transform_sequence_expr({func, func_meta, args})
-       when is_atom(func) and is_list(args) and length(args) >= 1 do
-    # This looks like a function call - check if all args are simple literals
-    if all_simple_literals?(args) do
-      {:sequence_literal, func_meta, [func | args]}
-    else
-      {func, func_meta, args}
-    end
-  end
+  ## Examples
 
-  defp maybe_transform_sequence_expr(expr), do: expr
+      iex> ast = {:sequence_literal, [line: 1], [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}]}
+      iex> Kernel.Sequence.sequence_args(ast)
+      [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}]
+  """
+  def sequence_args({:sequence_literal, _, args}), do: args
 
-  def maybe_transform_sequence(expr), do: expr
+  @doc """
+  Returns the number of arguments in a sequence literal.
 
-  defp all_simple_literals?([]), do: true
+  ## Examples
 
-  defp all_simple_literals?([arg | rest]) do
-    simple_literal?(arg) and all_simple_literals?(rest)
-  end
-
-  defp simple_literal?(arg) when is_atom(arg), do: true
-  defp simple_literal?(arg) when is_integer(arg), do: true
-  defp simple_literal?(arg) when is_float(arg), do: true
-  defp simple_literal?(arg) when is_binary(arg), do: true
-  defp simple_literal?({name, _meta, nil}) when is_atom(name), do: true
-  defp simple_literal?(_), do: false
+      iex> ast = {:sequence_literal, [line: 1], [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}]}
+      iex> Kernel.Sequence.sequence_arity(ast)
+      2
+  """
+  def sequence_arity({:sequence_literal, _, args}), do: length(args)
 end
