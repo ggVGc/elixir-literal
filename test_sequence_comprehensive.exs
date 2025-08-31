@@ -1,8 +1,8 @@
-# Comprehensive test suite for parenthesized sequence syntax
+# Comprehensive test suite for ~~(...) sequence syntax
 
 defmodule SequenceComprehensiveTest do
   def run_all_tests do
-    IO.puts("Running comprehensive sequence syntax tests...\n")
+    IO.puts("Running comprehensive ~~(...) sequence syntax tests...\n")
     
     test_basic_sequences()
     test_transformation()
@@ -17,9 +17,9 @@ defmodule SequenceComprehensiveTest do
     IO.puts("=== Basic Sequence Parsing ===")
     
     test_cases = [
-      {"(a b)", {:a, [line: 1], [{:b, [line: 1], nil}]}},
-      {"(foo bar)", {:foo, [line: 1], [{:bar, [line: 1], nil}]}},
-      {"(hello world)", {:hello, [line: 1], [{:world, [line: 1], nil}]}}
+      {"~~(a b)", {:sequence_literal, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}},
+      {"~~(foo bar)", {:sequence_literal, [line: 1], [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}]}},
+      {"~~(hello world)", {:sequence_literal, [line: 1], [{:hello, [line: 1], nil}, {:world, [line: 1], nil}]}}
     ]
     
     Enum.each(test_cases, fn {input, expected} ->
@@ -100,12 +100,12 @@ defmodule SequenceComprehensiveTest do
   end
   
   def test_error_cases do
-    IO.puts("\n=== Error Cases (should still error) ===")
+    IO.puts("\n=== Error Cases ===")
     
     test_cases = [
-      "(a b c)",  # More than 2 identifiers - not currently supported
-      "(foo bar 123)",  # Mixed types
-      "()"  # Empty parens
+      "~~()",  # Empty sequence should error
+      "(a b c)",  # Old syntax should not work anymore
+      "foo bar baz"  # Space-separated without ~~ should not work
     ]
     
     Enum.each(test_cases, fn input ->

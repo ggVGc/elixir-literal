@@ -102,6 +102,9 @@
 -define(ellipsis_op3(T1, T2, T3),
   T1 =:= $., T2 =:= $., T3 =:= $.).
 
+-define(sequence_op(T1, T2),
+  T1 =:= $~, T2 =:= $~).
+
 %% Deprecated operators
 
 -define(unary_op3(T1, T2, T3),
@@ -411,6 +414,10 @@ tokenize([T | Rest], Line, Column, Scope, Tokens) when T =:= $); T =:= $}; T =:=
 tokenize([T1, T2 | Rest], Line, Column, Scope, Tokens) when ?ternary_op(T1, T2) ->
   Op = list_to_atom([T1, T2]),
   Token = {ternary_op, {Line, Column, previous_was_eol(Tokens)}, Op},
+  tokenize(Rest, Line, Column + 2, Scope, add_token_with_eol(Token, Tokens));
+
+tokenize([T1, T2 | Rest], Line, Column, Scope, Tokens) when ?sequence_op(T1, T2) ->
+  Token = {sequence_op, {Line, Column, previous_was_eol(Tokens)}, '~~'},
   tokenize(Rest, Line, Column + 2, Scope, add_token_with_eol(Token, Tokens));
 
 tokenize([T1, T2 | Rest], Line, Column, Scope, Tokens) when ?power_op(T1, T2) ->

@@ -34,6 +34,7 @@ Nonterminals
   dot_op dot_alias dot_bracket_identifier dot_call_identifier
   dot_identifier dot_op_identifier dot_do_identifier dot_paren_identifier
   do_block fn_eoe do_eoe block_eoe block_item block_list
+  sequence_expr sequence_args sequence_arg_list
   .
 
 Terminals
@@ -44,7 +45,7 @@ Terminals
   bin_heredoc list_heredoc
   comp_op at_op unary_op and_op or_op arrow_op match_op in_op in_match_op ellipsis_op
   type_op dual_op mult_op power_op concat_op range_op xor_op pipe_op stab_op when_op
-  capture_int capture_op assoc_op rel_op ternary_op dot_call_op
+  capture_int capture_op assoc_op rel_op ternary_op dot_call_op sequence_op
   'true' 'false' 'nil' 'do' eol ';' ',' '.'
   '(' ')' '[' ']' '{' '}' '<<' '>>' '%{}' '%'
   int flt char
@@ -112,6 +113,7 @@ expr_list -> expr_list eoe expr : ['$3' | annotate_eoe('$2', '$1')].
 expr -> matched_expr : '$1'.
 expr -> no_parens_expr : '$1'.
 expr -> unmatched_expr : '$1'.
+expr -> sequence_expr : '$1'.
 
 %% In Elixir we have three main call syntaxes: with parentheses,
 %% without parentheses and with do blocks. They are represented
@@ -274,7 +276,6 @@ access_expr -> bracket_at_expr : '$1'.
 access_expr -> bracket_expr : '$1'.
 access_expr -> capture_int int : build_unary_op('$1', number_value('$2')).
 access_expr -> fn_eoe stab_eoe 'end' : build_fn('$1', '$2', '$3').
-access_expr -> open_paren identifier identifier close_paren : build_simple_sequence('$1', '$2', '$3', '$4').
 access_expr -> open_paren stab_eoe ')' : build_paren_stab('$1', '$2', '$3').
 access_expr -> open_paren ';' stab_eoe ')' : build_paren_stab('$1', '$3', '$4').
 access_expr -> open_paren ';' close_paren : build_paren_stab('$1', [], '$3').
@@ -304,6 +305,14 @@ access_expr -> parens_call : '$1'.
 %% Also used by maps and structs
 parens_call -> dot_call_identifier call_args_parens : build_parens('$1', '$2', {[], []}).
 parens_call -> dot_call_identifier call_args_parens call_args_parens : build_nested_parens('$1', '$2', '$3', {[], []}).
+
+%% Sequence expressions
+sequence_expr -> sequence_op '(' sequence_args ')' : build_sequence('$1', '$3', '$4').
+
+sequence_args -> sequence_arg_list : '$1'.
+
+sequence_arg_list -> identifier : [build_identifier('$1')].
+sequence_arg_list -> sequence_arg_list identifier : '$1' ++ [build_identifier('$2')].
 
 bracket_arg -> open_bracket kw_data close_bracket : build_access_arg('$1', '$2', '$3').
 bracket_arg -> open_bracket container_expr close_bracket : build_access_arg('$1', '$2', '$3').
@@ -953,11 +962,10 @@ build_call({op_identifier, Location, Identifier}, [Arg]) ->
 build_call({_, Location, Identifier}, Args) ->
   {Identifier, meta_from_location(Location), Args}.
 
-build_simple_sequence(Open, Identifier1, Identifier2, Close) ->
-  Meta = newlines_pair(Open, Close) ++ meta_from_token(Open),
-  Arg1 = {?exprs(Identifier1), meta_from_location(?location(Identifier1)), nil},
-  Arg2 = {?exprs(Identifier2), meta_from_location(?location(Identifier2)), nil},
-  {sequence_literal, Meta, [Arg1, Arg2]}.
+build_sequence({sequence_op, Location, _}, Args, CloseParen) ->
+  Meta = newlines_pair({sequence_op, Location}, CloseParen) ++ meta_from_location(Location),
+  {sequence_literal, Meta, Args}.
+
 
 %% Fn
 
