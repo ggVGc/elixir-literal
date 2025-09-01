@@ -1387,10 +1387,10 @@ transform_sequence_args([]) ->
 transform_sequence_args([{Op, Meta, nil} | Rest]) when is_atom(Op) ->
   case {is_operator_symbol(Op), Rest} of
     {true, []} ->
-      [{sequence_prefix, {Op, Meta, nil}, []}];
+      [{sequence_prefix, Meta, [Op]}];
     {true, _} ->
       TransformedRest = lists:map(fun transform_sequence_node/1, Rest),
-      [{sequence_prefix, {Op, Meta, nil}, TransformedRest}];
+      [{sequence_prefix, Meta, [Op | TransformedRest]}];
     {false, _} ->
       [{Op, Meta, nil} | transform_sequence_args(Rest)]
   end;
