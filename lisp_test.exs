@@ -16,28 +16,28 @@ defmodule LispTest do
   import Lisp
   
   # Basic arithmetic function
-  deflisp quote do ~~((defun add_two (x) (+ x 2))) end
+  deflisp ~~((defun add_two (x) (+ x 2)))
   
   # More complex arithmetic with multiple operations
-  deflisp quote do ~~((defun quadratic (a b c x) (+ (* a (* x x)) (* b x) c))) end
+  deflisp ~~((defun quadratic (a b c x) (+ (* a (* x x)) (* b x) c)))
   
   # Recursive factorial function with negative number guard
-  deflisp quote do ~~((defun factorial (n) (if (< n 0) 0 (if (= n 0) 1 (* n (factorial (- n 1))))))) end
+  deflisp ~~((defun factorial (n) (if (< n 0) 0 (if (= n 0) 1 (* n (factorial (- n 1)))))))
   
   # Fibonacci with recursion
-  deflisp quote do ~~((defun fibonacci (n) (if (<= n 1) n (+ (fibonacci (- n 1)) (fibonacci (- n 2)))))) end
+  deflisp ~~((defun fibonacci (n) (if (<= n 1) n (+ (fibonacci (- n 1)) (fibonacci (- n 2))))))
   
   # Function using comparisons and logic
-  deflisp quote do ~~((defun classify_number (n) (if (and (>= n 0) (< n 10)) :single_digit (if (and (>= n 10) (< n 100)) :double_digit :large)))) end
+  deflisp ~~((defun classify_number (n) (if (and (>= n 0) (< n 10)) :single_digit (if (and (>= n 10) (< n 100)) :double_digit :large))))
   
   # Function with let bindings
-  deflisp quote do ~~((defun circle_area (radius) (let ((pi 3.14159) (r_squared (* radius radius))) (* pi r_squared)))) end
+  deflisp ~~((defun circle_area (radius) (let ((pi 3.14159) (r_squared (* radius radius))) (* pi r_squared))))
   
   # List processing function
-  deflisp quote do ~~((defun sum_list (lst) (if (= lst nil) 0 (+ (first lst) (sum_list (rest lst)))))) end
+  deflisp ~~((defun sum_list (lst) (if (= lst nil) 0 (+ (first lst) (sum_list (rest lst))))))
   
   # Function that creates and manipulates lists
-  deflisp quote do ~~((defun make_range (n) (if (= n 0) (list) (cons n (make_range (- n 1)))))) end
+  deflisp ~~((defun make_range (n) (if (= n 0) (list) (cons n (make_range (- n 1))))))
   
   def run_tests do
     IO.puts("=== Lisp Implementation Test Suite ===\n")
@@ -63,7 +63,7 @@ defmodule LispTest do
     IO.puts("quadratic(1, -5, 6, 2) = #{result2}")  # Should be 0
     
     # Test direct expression evaluation
-    direct_result = deflisp quote do ~~((+ 1 2 (* 3 4))) end
+    direct_result = deflisp ~~((+ 1 2 (* 3 4)))
     IO.puts("Direct expression (+ 1 2 (* 3 4)) = #{direct_result}")  # Should be 15
     
     IO.puts("")
@@ -94,7 +94,7 @@ defmodule LispTest do
     IO.puts("classify_number(150) = #{class3}")  # Should be :large
     
     # Test direct logical expressions
-    logic_result = deflisp quote do ~~((and (> 5 3) (< 10 20))) end
+    logic_result = deflisp ~~((and (> 5 3) (< 10 20)))
     IO.puts("(and (> 5 3) (< 10 20)) = #{logic_result}")  # Should be true
     
     IO.puts("")
@@ -107,7 +107,7 @@ defmodule LispTest do
     IO.puts("circle_area(5) = #{area}")  # Should be ~78.54
     
     # Test direct let expression
-    let_result = deflisp quote do ~~((let ((x 10) (y 20)) (+ x y (* x y)))) end
+    let_result = deflisp ~~((let ((x 10) (y 20)) (+ x y (* x y))))
     IO.puts("let expression result = #{let_result}")  # Should be 230
     
     IO.puts("")
@@ -126,10 +126,10 @@ defmodule LispTest do
     IO.puts("make_range(5) = #{inspect(range_result)}")  # Should be [5, 4, 3, 2, 1]
     
     # Test direct list operations
-    list_result = deflisp quote do ~~((list 1 2 3 (+ 2 2) 5)) end
+    list_result = deflisp ~~((list 1 2 3 (+ 2 2) 5))
     IO.puts("(list 1 2 3 (+ 2 2) 5) = #{inspect(list_result)}")  # Should be [1, 2, 3, 4, 5]
     
-    first_result = deflisp quote do ~~((first (list 10 20 30))) end
+    first_result = deflisp ~~((first (list 10 20 30)))
     IO.puts("(first (list 10 20 30)) = #{first_result}")  # Should be 10
     
     IO.puts("")
@@ -139,11 +139,11 @@ defmodule LispTest do
     IO.puts("--- Complex Expression Tests ---")
     
     # Nested conditional with arithmetic
-    complex_result = deflisp quote do ~~((if (> (+ 2 3) 4) (factorial 4) (fibonacci 6))) end
+    complex_result = deflisp ~~((if (> (+ 2 3) 4) (factorial 4) (fibonacci 6)))
     IO.puts("Complex conditional result = #{complex_result}")  # Should be 24
     
     # Let with function calls
-    let_with_calls = deflisp quote do ~~((let ((fact_5 (factorial 5)) (fib_7 (fibonacci 7))) (+ fact_5 fib_7))) end
+    let_with_calls = deflisp ~~((let ((fact_5 (factorial 5)) (fib_7 (fibonacci 7))) (+ fact_5 fib_7)))
     IO.puts("Let with function calls = #{let_with_calls}")  # Should be 120 + 13 = 133
     
     IO.puts("")

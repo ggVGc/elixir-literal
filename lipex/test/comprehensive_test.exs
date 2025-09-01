@@ -34,27 +34,27 @@ defmodule LipexComprehensiveTest do
     
     # Basic arithmetic
     IO.puts("Basic arithmetic:")
-    IO.puts("  (+ 1 2 3 4 5) = #{deflipex quote do ~~((+ 1 2 3 4 5)) end}")
-    IO.puts("  (* 2 3 4) = #{deflipex quote do ~~((* 2 3 4)) end}")
-    IO.puts("  (- 100 25 10) = #{deflipex quote do ~~((- 100 25 10)) end}")
-    IO.puts("  (/ 100 5 2) = #{deflipex quote do ~~((/ 100 5 2)) end}")
-    IO.puts("  (- 42) = #{deflipex quote do ~~((- 42)) end}")  # Unary negation
+    IO.puts("  (+ 1 2 3 4 5) = #{deflipex ~~((+ 1 2 3 4 5))}")
+    IO.puts("  (* 2 3 4) = #{deflipex ~~((* 2 3 4))}")
+    IO.puts("  (- 100 25 10) = #{deflipex ~~((- 100 25 10))}")
+    IO.puts("  (/ 100 5 2) = #{deflipex ~~((/ 100 5 2))}")
+    IO.puts("  (- 42) = #{deflipex ~~((- 42))}")  # Unary negation
     
     # Comparisons
     IO.puts("\nComparisons:")
-    IO.puts("  (< 1 5) = #{deflipex quote do ~~((< 1 5)) end}")
-    IO.puts("  (> 10 5) = #{deflipex quote do ~~((> 10 5)) end}")
-    IO.puts("  (<= 5 5) = #{deflipex quote do ~~((<= 5 5)) end}")
-    IO.puts("  (>= 7 3) = #{deflipex quote do ~~((>= 7 3)) end}")
-    IO.puts("  (== :hello :hello) = #{deflipex quote do ~~((== :hello :hello)) end}")
-    IO.puts("  (!= :foo :bar) = #{deflipex quote do ~~((!= :foo :bar)) end}")
+    IO.puts("  (< 1 5) = #{deflipex ~~((< 1 5))}")
+    IO.puts("  (> 10 5) = #{deflipex ~~((> 10 5))}")
+    IO.puts("  (<= 5 5) = #{deflipex ~~((<= 5 5))}")
+    IO.puts("  (>= 7 3) = #{deflipex ~~((>= 7 3))}")
+    IO.puts("  (== :hello :hello) = #{deflipex ~~((== :hello :hello))}")
+    IO.puts("  (!= :foo :bar) = #{deflipex ~~((!= :foo :bar))}")
     
     # Mathematical functions
     IO.puts("\nMath functions:")
-    IO.puts("  (abs (- 42)) = #{deflipex quote do ~~((abs (- 42))) end}")
-    IO.puts("  (min 5 2 8 1) = #{deflipex quote do ~~((min 5 2 8 1)) end}")
-    IO.puts("  (max 5 2 8 1) = #{deflipex quote do ~~((max 5 2 8 1)) end}")
-    IO.puts("  (rem 17 5) = #{deflipex quote do ~~((rem 17 5)) end}")
+    IO.puts("  (abs (- 42)) = #{deflipex ~~((abs (- 42)))}")
+    IO.puts("  (min 5 2 8 1) = #{deflipex ~~((min 5 2 8 1))}")
+    IO.puts("  (max 5 2 8 1) = #{deflipex ~~((max 5 2 8 1))}")
+    IO.puts("  (rem 17 5) = #{deflipex ~~((rem 17 5))}")
     
     IO.puts("")
   end
@@ -64,27 +64,27 @@ defmodule LipexComprehensiveTest do
     
     # Maps
     IO.puts("Maps using (% ...) syntax:")
-    simple_map = deflipex quote do ~~((% :name "Alice" :age 30)) end
+    simple_map = deflipex ~~((% :name "Alice" :age 30))
     IO.puts("  (% :name \"Alice\" :age 30) = #{inspect(simple_map)}")
     
-    complex_map = deflipex quote do ~~((% "key1" :value1 :key2 42 :nested (% :x 10 :y 20))) end
+    complex_map = deflipex ~~((% "key1" :value1 :key2 42 :nested (% :x 10 :y 20)))
     IO.puts("  Complex map = #{inspect(complex_map)}")
     
     # Tuples
     IO.puts("\nTuples:")
-    IO.puts("  (tuple :ok :success) = #{inspect(deflipex quote do ~~((tuple :ok :success)) end)}")
-    IO.puts("  (tuple 1 2 3 4) = #{inspect(deflipex quote do ~~((tuple 1 2 3 4)) end)}")
-    IO.puts("  (tuple) = #{inspect(deflipex quote do ~~((tuple)) end)}")
+    IO.puts("  (tuple :ok :success) = #{inspect(deflipex ~~((tuple :ok :success)))}")
+    IO.puts("  (tuple 1 2 3 4) = #{inspect(deflipex ~~((tuple 1 2 3 4)))}")
+    IO.puts("  (tuple) = #{inspect(deflipex ~~((tuple)))}")
     
     # Lists  
     IO.puts("\nLists:")
-    IO.puts("  (list 1 2 3 4 5) = #{inspect(deflipex quote do ~~((list 1 2 3 4 5)) end)}")
-    IO.puts("  (list :a :b :c) = #{inspect(deflipex quote do ~~((list :a :b :c)) end)}")
-    IO.puts("  (list) = #{inspect(deflipex quote do ~~((list)) end)}")
+    IO.puts("  (list 1 2 3 4 5) = #{inspect(deflipex ~~((list 1 2 3 4 5)))}")
+    IO.puts("  (list :a :b :c) = #{inspect(deflipex ~~((list :a :b :c)))}")
+    IO.puts("  (list) = #{inspect(deflipex ~~((list)))}")
     
     # Keyword lists
     IO.puts("\nKeyword Lists:")
-    kwlist = deflipex quote do ~~((kwlist :timeout 5000 :retries 3 :mode :sync)) end
+    kwlist = deflipex ~~((kwlist :timeout 5000 :retries 3 :mode :sync))
     IO.puts("  (kwlist :timeout 5000 :retries 3 :mode :sync) = #{inspect(kwlist)}")
     
     IO.puts("")
@@ -95,28 +95,28 @@ defmodule LipexComprehensiveTest do
     
     # Boolean logic
     IO.puts("Boolean operations:")
-    IO.puts("  (and true true true) = #{deflipex quote do ~~((and true true true)) end}")
-    IO.puts("  (and true false true) = #{deflipex quote do ~~((and true false true)) end}")
-    IO.puts("  (or false false true) = #{deflipex quote do ~~((or false false true)) end}")
-    IO.puts("  (or false false false) = #{deflipex quote do ~~((or false false false)) end}")
-    IO.puts("  (not true) = #{deflipex quote do ~~((not true)) end}")
-    IO.puts("  (not false) = #{deflipex quote do ~~((not false)) end}")
+    IO.puts("  (and true true true) = #{deflipex ~~((and true true true))}")
+    IO.puts("  (and true false true) = #{deflipex ~~((and true false true))}")
+    IO.puts("  (or false false true) = #{deflipex ~~((or false false true))}")
+    IO.puts("  (or false false false) = #{deflipex ~~((or false false false))}")
+    IO.puts("  (not true) = #{deflipex ~~((not true))}")
+    IO.puts("  (not false) = #{deflipex ~~((not false))}")
     
     # Type checking
     IO.puts("\nType checking:")
-    IO.puts("  (atom? :hello) = #{deflipex quote do ~~((atom? :hello)) end}")
-    IO.puts("  (number? 42) = #{deflipex quote do ~~((number? 42)) end}")
-    IO.puts("  (string? \"hello\") = #{deflipex quote do ~~((string? "hello")) end}")
-    IO.puts("  (list? (list 1 2 3)) = #{deflipex quote do ~~((list? (list 1 2 3))) end}")
-    IO.puts("  (tuple? (tuple :ok :value)) = #{deflipex quote do ~~((tuple? (tuple :ok :value))) end}")
+    IO.puts("  (atom? :hello) = #{deflipex ~~((atom? :hello))}")
+    IO.puts("  (number? 42) = #{deflipex ~~((number? 42))}")
+    IO.puts("  (string? \"hello\") = #{deflipex ~~((string? "hello"))}")
+    IO.puts("  (list? (list 1 2 3)) = #{deflipex ~~((list? (list 1 2 3)))}")
+    IO.puts("  (tuple? (tuple :ok :value)) = #{deflipex ~~((tuple? (tuple :ok :value)))}")
     
     # Truthiness
     IO.puts("\nTruthiness:")
-    IO.puts("  (truthy? 42) = #{deflipex quote do ~~((truthy? 42)) end}")
-    IO.puts("  (truthy? nil) = #{deflipex quote do ~~((truthy? nil)) end}")
-    IO.puts("  (falsy? false) = #{deflipex quote do ~~((falsy? false)) end}")
-    IO.puts("  (nil? nil) = #{deflipex quote do ~~((nil? nil)) end}")
-    IO.puts("  (some? 42) = #{deflipex quote do ~~((some? 42)) end}")
+    IO.puts("  (truthy? 42) = #{deflipex ~~((truthy? 42))}")
+    IO.puts("  (truthy? nil) = #{deflipex ~~((truthy? nil))}")
+    IO.puts("  (falsy? false) = #{deflipex ~~((falsy? false))}")
+    IO.puts("  (nil? nil) = #{deflipex ~~((nil? nil))}")
+    IO.puts("  (some? 42) = #{deflipex ~~((some? 42))}")
     
     IO.puts("")
   end
@@ -126,13 +126,13 @@ defmodule LipexComprehensiveTest do
     
     # If expressions
     IO.puts("If expressions:")
-    IO.puts("  (if true :yes :no) = #{deflipex quote do ~~((if true :yes :no)) end}")
-    IO.puts("  (if false :yes :no) = #{deflipex quote do ~~((if false :yes :no)) end}")
-    IO.puts("  (if (> 5 3) :bigger :smaller) = #{deflipex quote do ~~((if (> 5 3) :bigger :smaller)) end}")
+    IO.puts("  (if true :yes :no) = #{deflipex ~~((if true :yes :no))}")
+    IO.puts("  (if false :yes :no) = #{deflipex ~~((if false :yes :no))}")
+    IO.puts("  (if (> 5 3) :bigger :smaller) = #{deflipex ~~((if (> 5 3) :bigger :smaller))}")
     
     # Conditional with only then branch
-    IO.puts("  (if true :success) = #{deflipex quote do ~~((if true :success)) end}")
-    IO.puts("  (if false :success) = #{inspect(deflipex quote do ~~((if false :success)) end)}")
+    IO.puts("  (if true :success) = #{deflipex ~~((if true :success))}")
+    IO.puts("  (if false :success) = #{inspect(deflipex ~~((if false :success)))}")
     
     IO.puts("")
   end
@@ -141,20 +141,20 @@ defmodule LipexComprehensiveTest do
     IO.puts("🏢 --- NESTED EXPRESSIONS ---")
     
     # Nested arithmetic
-    nested_math = deflipex quote do ~~((+ (* 2 3) (- 10 5) (/ 20 4))) end
+    nested_math = deflipex ~~((+ (* 2 3) (- 10 5) (/ 20 4)))
     IO.puts("Complex math: (+ (* 2 3) (- 10 5) (/ 20 4)) = #{nested_math}")
     
     # Nested comparisons and logic  
-    nested_logic = deflipex quote do ~~((and (> 5 3) (< 2 10) (== :foo :foo))) end
+    nested_logic = deflipex ~~((and (> 5 3) (< 2 10) (== :foo :foo)))
     IO.puts("Complex logic: (and (> 5 3) (< 2 10) (== :foo :foo)) = #{nested_logic}")
     
     # Nested data structures
-    nested_data = deflipex quote do ~~((% :user (% :name "Bob" :age (+ 20 10)) :scores (list 95 87 92))) end
+    nested_data = deflipex ~~((% :user (% :name "Bob" :age (+ 20 10)) :scores (list 95 87 92)))
     IO.puts("Nested structures:")
     IO.puts("  #{inspect(nested_data)}")
     
     # Complex conditionals
-    complex_if = deflipex quote do ~~((if (and (> 10 5) (< 3 7)) (+ 1 2 3) (* 2 2 2))) end
+    complex_if = deflipex ~~((if (and (> 10 5) (< 3 7)) (+ 1 2 3) (* 2 2 2)))
     IO.puts("Complex if: #{complex_if}")
     
     IO.puts("")
@@ -165,31 +165,31 @@ defmodule LipexComprehensiveTest do
     
     # Mathematical expression
     IO.puts("Mathematical expressions:")
-    quadratic = deflipex quote do ~~((+ (* 2 (* 3 3)) (* (- 5) 3) 6)) end
+    quadratic = deflipex ~~((+ (* 2 (* 3 3)) (* (- 5) 3) 6))
     IO.puts("  Quadratic 2x² - 5x + 6 at x=3: #{quadratic}")
     
     # Data processing simulation
     IO.puts("\nData processing:")
-    scores = deflipex quote do ~~((list 85 92 78 96 88)) end
-    max_score = deflipex quote do ~~((max 85 92 78 96 88)) end
-    min_score = deflipex quote do ~~((min 85 92 78 96 88)) end
+    scores = deflipex ~~((list 85 92 78 96 88))
+    max_score = deflipex ~~((max 85 92 78 96 88))
+    min_score = deflipex ~~((min 85 92 78 96 88))
     IO.puts("  Scores: #{inspect(scores)}")
     IO.puts("  Max score: #{max_score}")
     IO.puts("  Min score: #{min_score}")
     
     # Configuration-like data
     IO.puts("\nConfiguration data:")
-    config = deflipex quote do ~~((% :database (% :host "localhost" :port 5432) :cache (kwlist :ttl 300 :size 1000) :features (list :auth :logging :metrics))) end
+    config = deflipex ~~((% :database (% :host "localhost" :port 5432) :cache (kwlist :ttl 300 :size 1000) :features (list :auth :logging :metrics)))
     IO.puts("  #{inspect(config, pretty: true)}")
     
     # Complex boolean logic
     IO.puts("\nComplex boolean expressions:")
-    _access_check = deflipex quote do ~~((and (or (== :role :admin) (== :role :moderator)) (not (== :status :banned)) (> :score 50))) end
+    _access_check = deflipex ~~((and (or (== :role :admin) (== :role :moderator)) (not (== :status :banned)) (> :score 50)))
     IO.puts("  Access check structure created successfully")
     
     # Nested conditionals
     IO.puts("\nNested conditionals:")
-    grade = deflipex quote do ~~((if (>= 95 90) :A (if (>= 95 80) :B (if (>= 95 70) :C :F)))) end
+    grade = deflipex ~~((if (>= 95 90) :A (if (>= 95 80) :B (if (>= 95 70) :C :F))))
     IO.puts("  Grade for 95: #{grade}")
     
     IO.puts("")

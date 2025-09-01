@@ -52,13 +52,13 @@ defmodule Lisp do
       # Evaluate an expression  
       result = deflisp ~~((+ 1 2 3))
   """
-  # Handle quoted sequence literals: deflisp quote do ~~(...) end
-  defmacro deflisp({:quote, _, nil}, [do: {:sequence_literal, _meta, [expr]}]) do
+  # Handle direct sequence literals
+  defmacro deflisp({:sequence_literal, _meta, [expr]}) do
     eval_lisp_expr(expr)
   end
   
-  # Handle direct sequence literals (for backwards compatibility)
-  defmacro deflisp({:sequence_literal, _meta, [expr]}) do
+  # Handle quoted sequence literals (for backwards compatibility)
+  defmacro deflisp({:quote, _, nil}, [do: {:sequence_literal, _meta, [expr]}]) do
     eval_lisp_expr(expr)
   end
   

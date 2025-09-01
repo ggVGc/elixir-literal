@@ -17,56 +17,56 @@ defmodule LipexDemo do
     
     # Arithmetic
     IO.puts("🔢 ARITHMETIC:")
-    IO.puts("  (+ 1 2 3 4 5) = #{deflipex quote do ~~((+ 1 2 3 4 5)) end}")
-    IO.puts("  (* 2 3 4) = #{deflipex quote do ~~((* 2 3 4)) end}")
-    IO.puts("  (- 100 30) = #{deflipex quote do ~~((- 100 30)) end}")
-    IO.puts("  (/ 20 4) = #{deflipex quote do ~~((/ 20 4)) end}")
-    IO.puts("  (< 5 10) = #{deflipex quote do ~~((< 5 10)) end}")
-    IO.puts("  (>= 7 7) = #{deflipex quote do ~~((>= 7 7)) end}")
+    IO.puts("  (+ 1 2 3 4 5) = #{deflipex ~~((+ 1 2 3 4 5))}")
+    IO.puts("  (* 2 3 4) = #{deflipex ~~((* 2 3 4))}")
+    IO.puts("  (- 100 30) = #{deflipex ~~((- 100 30))}")
+    IO.puts("  (/ 20 4) = #{deflipex ~~((/ 20 4))}")
+    IO.puts("  (< 5 10) = #{deflipex ~~((< 5 10))}")
+    IO.puts("  (>= 7 7) = #{deflipex ~~((>= 7 7))}")
     IO.puts("")
     
     # Data Structures
     IO.puts("🏗️ DATA STRUCTURES:")
-    user_map = deflipex quote do ~~((% :name "Alice" :age 28 :city "Portland")) end
+    user_map = deflipex ~~(% :name "Alice" :age 28 :city "Portland")
     IO.puts("  Map: #{inspect(user_map)}")
     
-    coordinates = deflipex quote do ~~((tuple 45.5152 -122.6784)) end
+    coordinates = deflipex ~~((tuple 45.5152 -122.6784))
     IO.puts("  Tuple: #{inspect(coordinates)}")
     
-    shopping_list = deflipex quote do ~~((list :apples :bananas :coffee :tea)) end
+    shopping_list = deflipex ~~((list :apples :bananas :coffee :tea))
     IO.puts("  List: #{inspect(shopping_list)}")
     
-    settings = deflipex quote do ~~((kwlist :timeout 3000 :retries 5)) end
+    settings = deflipex ~~((kwlist :timeout 3000 :retries 5))
     IO.puts("  Keyword list: #{inspect(settings)}")
     IO.puts("")
     
     # Logic
     IO.puts("🧠 LOGIC:")
-    IO.puts("  (and true true false) = #{deflipex quote do ~~((and true true false)) end}")
-    IO.puts("  (or false true false) = #{deflipex quote do ~~((or false true false)) end}")
-    IO.puts("  (not false) = #{deflipex quote do ~~((not false)) end}")
-    IO.puts("  (atom? :hello) = #{deflipex quote do ~~((atom? :hello)) end}")
-    IO.puts("  (number? 42) = #{deflipex quote do ~~((number? 42)) end}")
-    IO.puts("  (string? \"world\") = #{deflipex quote do ~~((string? "world")) end}")
+    IO.puts("  (and true true false) = #{deflipex ~~((and true true false))}")
+    IO.puts("  (or false true false) = #{deflipex ~~((or false true false))}")
+    IO.puts("  (not false) = #{deflipex ~~((not false))}")
+    IO.puts("  (atom? :hello) = #{deflipex ~~((atom? :hello))}")
+    IO.puts("  (number? 42) = #{deflipex ~~((number? 42))}")
+    IO.puts("  (string? \"world\") = #{deflipex ~~((string? "world"))}")
     IO.puts("")
     
     # Control Flow
     IO.puts("🚦 CONTROL FLOW:")
-    IO.puts("  (if true :success :failure) = #{deflipex quote do ~~((if true :success :failure)) end}")
-    IO.puts("  (if false :success :failure) = #{deflipex quote do ~~((if false :success :failure)) end}")
-    condition_result = deflipex quote do ~~((if (> 10 5) :bigger :smaller)) end
+    IO.puts("  (if true :success :failure) = #{deflipex ~~((if true :success :failure))}")
+    IO.puts("  (if false :success :failure) = #{deflipex ~~((if false :success :failure))}")
+    condition_result = deflipex ~~((if (> 10 5) :bigger :smaller))
     IO.puts("  (if (> 10 5) :bigger :smaller) = #{condition_result}")
     IO.puts("")
     
     # Complex Nested Expressions
     IO.puts("🏢 NESTED EXPRESSIONS:")
-    complex_math = deflipex quote do ~~((+ (* 2 5) (- 20 8) (/ 24 6))) end
+    complex_math = deflipex ~~((+ (* 2 5) (- 20 8) (/ 24 6)))
     IO.puts("  Complex math: (+ (* 2 5) (- 20 8) (/ 24 6)) = #{complex_math}")
     
-    nested_logic = deflipex quote do ~~((and (> 10 5) (< 3 7) (number? 42))) end
+    nested_logic = deflipex ~~((and (> 10 5) (< 3 7) (number? 42)))
     IO.puts("  Nested logic: (and (> 10 5) (< 3 7) (number? 42)) = #{nested_logic}")
     
-    nested_data = deflipex quote do ~~((% :user (% :name "Bob" :score (+ 85 10)) :active true)) end
+    nested_data = deflipex ~~((% :user (% :name "Bob" :score (+ 85 10)) :active true))
     IO.puts("  Nested data:")
     IO.puts("    #{inspect(nested_data, pretty: true)}")
     IO.puts("")
@@ -75,15 +75,15 @@ defmodule LipexDemo do
     IO.puts("🌍 REAL-WORLD EXAMPLES:")
     
     # Configuration-like structure
-    server_config = deflipex quote do ~~((% :host "api.example.com" :port 443 :ssl true)) end
-    features = deflipex quote do ~~((list :auth :logging :caching)) end
-    timeout_calc = deflipex quote do ~~((+ 5000 (* 2 1000))) end
+    server_config = deflipex ~~((% :host "api.example.com" :port 443 :ssl true))
+    features = deflipex ~~((list :auth :logging :caching))
+    timeout_calc = deflipex ~~((+ 5000 (* 2 1000)))
     IO.puts("  Server config: #{inspect(server_config)}")
     IO.puts("  Features: #{inspect(features)}")
     IO.puts("  Calculated timeout: #{timeout_calc}ms")
     
     # Mathematical formula
-    formula_result = deflipex quote do ~~((+ (* 3 (* 4 4)) (* (- 2) 4) 7)) end
+    formula_result = deflipex ~~((+ (* 3 (* 4 4)) (* (- 2) 4) 7))
     IO.puts("  Formula 3x² - 2x + 7 at x=4: #{formula_result}")
     
     IO.puts("")
