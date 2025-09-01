@@ -21,8 +21,8 @@ defmodule LispTest do
   # More complex arithmetic with multiple operations
   deflisp quote do ~~((defun quadratic (a b c x) (+ (* a (* x x)) (* b x) c))) end
   
-  # Recursive factorial function
-  deflisp quote do ~~((defun factorial (n) (if (= n 0) 1 (* n (factorial (- n 1)))))) end
+  # Recursive factorial function with negative number guard
+  deflisp quote do ~~((defun factorial (n) (if (< n 0) 0 (if (= n 0) 1 (* n (factorial (- n 1))))))) end
   
   # Fibonacci with recursion
   deflisp quote do ~~((defun fibonacci (n) (if (<= n 1) n (+ (fibonacci (- n 1)) (fibonacci (- n 2)))))) end
