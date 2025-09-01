@@ -83,16 +83,15 @@ lipex/
 
 ### Current Syntax (Working)
 ```elixir
-# Using quote do ... end wrapper
-deflisp quote do ~~((+ 1 2 3)) end
-
-# Defining functions
-deflisp quote do ~~((defun add (x y) (+ x y))) end
-
-# Complex expressions with Lipex
-deflipex quote do ~~((|> [1 2 3 4]
+# Direct usage (NEW - after parser modification)
+deflisp ~~((+ 1 2 3))
+deflisp ~~((defun add (x y) (+ x y)))
+deflipex ~~((|> [1 2 3 4]
   (map (fn (x) (* x 2)))
-  (filter (fn (x) (> x 4))))) end
+  (filter (fn (x) (> x 4)))))
+
+# Using quote do ... end wrapper (still supported for compatibility)
+deflisp quote do ~~((+ 1 2 3)) end
 ```
 
 ### Design Goals (From Documentation)
@@ -125,9 +124,10 @@ Based on commit history:
 3. **Operator support** - Extended support for various operators (`%`, `&`, etc.)
 4. **Lipex implementation** - Built comprehensive Elixir-like Lisp on top of sequence literals
 5. **Demo fixes** - Recent work on fixing the Lipex demo implementation
+6. **Parser enhancement** - Modified parser to allow sequence literals as matched expressions, enabling direct `~~()` usage without `quote do ... end` wrapper
 
 ## Current Status
 
-The sequence literal support is functional and allows writing Lisp-style code within Elixir. The implementation uses the `quote do ~~(...) end` pattern as the primary syntax due to Elixir parser constraints. The Lipex library demonstrates the potential for creating sophisticated DSLs using this foundation.
+The sequence literal support is fully functional and allows writing Lisp-style code within Elixir. After the recent parser modification, sequence literals can now be used directly with macros like `deflisp ~~((+ 1 2))` without needing the `quote do ... end` wrapper. The Lipex library demonstrates the potential for creating sophisticated DSLs using this foundation.
 
 The project extends the `extend-tokenization` branch and successfully integrates s-expression parsing into Elixir's compilation pipeline, enabling new metaprogramming capabilities while maintaining backward compatibility with existing Elixir code.
