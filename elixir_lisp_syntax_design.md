@@ -26,8 +26,7 @@ A lisp-like syntax for Elixir that closely resembles standard Elixir functionali
 
 ### 3. Elixir-Style Data Structures
 ```lisp
-(%{} :name "John" :age 30)         ; Maps using Elixir's map syntax
-(dict :name "John" :age 30)        ; Alternative: "dict" for maps
+(% :name "John" :age 30)           ; Maps using simplified syntax
 (struct User :name "John")         ; Structs
 (list 1 2 3) or [1 2 3]           ; Lists
 (tuple :ok value) or {:ok value}   ; Tuples
@@ -94,7 +93,7 @@ A lisp-like syntax for Elixir that closely resembles standard Elixir functionali
 ## Implementation Plan
 
 ### Phase 1: Extend Core Data Structure Support
-1. Add `%{}` or `dict` for map construction
+1. Add `%` for map construction using `(% key value ...)` syntax
 2. Implement `struct` for struct creation  
 3. Support `tuple` and tuple literal syntax
 4. Add `kwlist` for keyword lists
@@ -174,7 +173,7 @@ Supports Elixir's key features like pattern matching, pipes, and process communi
 
 ## Notes
 
-- The syntax avoids using `map` as a constructor name to prevent confusion with the `map` function
+- The syntax uses `%` for maps to keep it concise while avoiding confusion with the `map` function
 - Pattern matching syntax follows Elixir's conventions closely
 - Guard clauses use `:when` to maintain readability
 - The pipe operator `|>` works as expected in Elixir
