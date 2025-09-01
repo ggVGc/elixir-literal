@@ -1583,6 +1583,40 @@ defmodule Kernel.ParserTest do
       assert_syntax_error(["syntax error before: ", "'~~'"], "x = ~~(foo bar)")
       assert_syntax_error(["syntax error before: ", "'~~'"], "func(~~(a b))")
     end
+
+    test "operators in sequences - current limitation" do
+      # These tests demonstrate that operators are not currently supported
+      # in sequence literals. They should be parsed as individual tokens.
+      
+      # Arithmetic operators should be preserved as atoms
+      assert_syntax_error(["syntax error before: ", ""], "~~(a + b)")
+      assert_syntax_error(["syntax error before: ", ""], "~~(x - y)")
+      assert_syntax_error(["syntax error before: ", ""], "~~(foo * bar)")
+      assert_syntax_error(["syntax error before: ", ""], "~~(m / n)")
+      
+      # Comparison operators should be preserved as atoms  
+      assert_syntax_error(["syntax error before: ", ""], "~~(a < b)")
+      assert_syntax_error(["syntax error before: ", ""], "~~(x > y)")
+      assert_syntax_error(["syntax error before: ", ""], "~~(foo == bar)")
+      assert_syntax_error(["syntax error before: ", ""], "~~(a != b)")
+      
+      # Logical operators should be preserved as atoms
+      assert_syntax_error(["syntax error before: ", ""], "~~(a && b)")
+      assert_syntax_error(["syntax error before: ", ""], "~~(x || y)")
+      
+      # Pipe operator should be preserved as atom
+      assert_syntax_error(["syntax error before: ", ""], "~~(foo |> bar)")
+      
+      # Other operators should be preserved as atoms
+      assert_syntax_error(["syntax error before: ", ""], "~~(a <> b)")
+      # assert_syntax_error(["syntax error before: ", ""], "~~(start .. end)")
+      assert_syntax_error(["syntax error before: ", ""], "~~(x = y)")
+      assert_syntax_error(["syntax error before: ", ""], "~~(key => value)")
+      
+      # Mixed operators and identifiers
+      assert_syntax_error(["syntax error before: ", ""], "~~(a + b * c)")
+      assert_syntax_error(["syntax error before: ", ""], "~~(foo |> bar |> baz)")
+    end
   end
 
   defp parse!(string), do: Code.string_to_quoted!(string)
