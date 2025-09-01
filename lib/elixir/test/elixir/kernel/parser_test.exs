@@ -1528,7 +1528,7 @@ defmodule Kernel.ParserTest do
                {:sequence_literal, [line: 1],
                 [
                   {:a, [line: 1], nil},
-                  {:b, [line: 1], [{:c, [line: 1], nil}]},
+                  {:sequence_paren, [line: 1], [{:b, [line: 1], nil}, {:c, [line: 1], nil}]},
                   {:d, [line: 1], nil}
                 ]}
 
@@ -1758,7 +1758,7 @@ defmodule Kernel.ParserTest do
     test "regular Elixir syntax remains unchanged" do
       # Regular tuples outside sequence literals should parse normally
       assert parse!("{:ok, 123}") == {:ok, 123}
-      assert parse!("{a, b, c}") == {:a, {:b, {:c, [line: 1], nil}, [line: 1], nil}, [line: 1], nil}
+      assert parse!("{a, b, c}") == {:{}, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil}]}
 
       # Regular lists outside sequence literals should parse normally  
       assert parse!("[1, 2, 3]") == [1, 2, 3]
