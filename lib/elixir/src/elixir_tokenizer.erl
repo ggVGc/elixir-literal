@@ -403,12 +403,26 @@ tokenize([${ | Rest], Line, Column, Scope, [{'%', _} | _] = Tokens) ->
   error({?LOC(Line, Column), Message, [${]}, Rest, Scope, Tokens);
 
 tokenize([T | Rest], Line, Column, Scope, Tokens) when T =:= $(; T =:= ${; T =:= $[ ->
+  % Check if we're entering a sequence literal
+  NewScope = case T == $( andalso Tokens /= [] andalso element(1, hd(Tokens)) == sequence_op of
+    true ->
+      Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1};
+    false ->
+      Scope
+  end,
   Token = {list_to_atom([T]), {Line, Column, nil}},
-  handle_terminator(Rest, Line, Column + 1, Scope, Token, Tokens);
+  handle_terminator(Rest, Line, Column + 1, NewScope, Token, Tokens);
 
 tokenize([T | Rest], Line, Column, Scope, Tokens) when T =:= $); T =:= $}; T =:= $] ->
+  % Check if we're exiting a sequence literal
+  NewScope = case T == $) andalso Scope#elixir_tokenizer.sequence_depth > 0 of
+    true ->
+      Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth - 1};
+    false ->
+      Scope
+  end,
   Token = {list_to_atom([T]), {Line, Column, previous_was_eol(Tokens)}},
-  handle_terminator(Rest, Line, Column + 1, Scope, Token, Tokens);
+  handle_terminator(Rest, Line, Column + 1, NewScope, Token, Tokens);
 
 % ## Two Token Operators
 tokenize([T1, T2 | Rest], Line, Column, Scope, Tokens) when ?ternary_op(T1, T2) ->
@@ -902,7 +916,12 @@ handle_op(Rest, Line, Column, Kind, Length, Op, Scope, Tokens) ->
             Scope
         end,
 
-      Token = {Kind, {Line, Column, previous_was_eol(Tokens)}, Op},
+      % Convert operators to sequence_atom when inside sequence literals
+      TokenKind = case NewScope#elixir_tokenizer.sequence_depth > 0 of
+        true -> sequence_atom;
+        false -> Kind
+      end,
+      Token = {TokenKind, {Line, Column, previous_was_eol(Tokens)}, Op},
       tokenize(Remaining, Line, Column + Length + Extra, NewScope, add_token_with_eol(Token, Tokens))
   end.
 
