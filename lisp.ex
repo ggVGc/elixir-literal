@@ -126,7 +126,14 @@ defmodule Lisp do
       {:sequence_paren, _meta, [{:=, _, nil}, left, right]} ->
         elixir_left = eval_lisp_expr(left)
         elixir_right = eval_lisp_expr(right)
-        quote do: unquote(elixir_left) == unquote(elixir_right)
+        quote do
+          # Handle Lisp-style list comparison where nil and empty list are equivalent
+          case {unquote(elixir_left), unquote(elixir_right)} do
+            {[], nil} -> true
+            {nil, []} -> true
+            {a, b} -> a == b
+          end
+        end
         
       {:sequence_paren, _meta, [{:<, _, nil}, left, right]} ->
         elixir_left = eval_lisp_expr(left)
