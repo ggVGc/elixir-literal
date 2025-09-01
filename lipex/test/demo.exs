@@ -47,6 +47,7 @@ defmodule LipexDemo do
     IO.puts("  (not false) = #{deflipex quote do ~~((not false)) end}")
     IO.puts("  (atom? :hello) = #{deflipex quote do ~~((atom? :hello)) end}")
     IO.puts("  (number? 42) = #{deflipex quote do ~~((number? 42)) end}")
+    IO.puts("  (string? \"world\") = #{deflipex quote do ~~((string? "world")) end}")
     IO.puts("")
     
     # Control Flow
@@ -74,9 +75,12 @@ defmodule LipexDemo do
     IO.puts("🌍 REAL-WORLD EXAMPLES:")
     
     # Configuration-like structure
-    config = deflipex quote do ~~((% :server (% :host "api.example.com" :port 443 :ssl true) :database (% :name "myapp_prod" :pool_size 10) :features (list :auth :logging :caching) :timeout (+ 5000 (* 2 1000)))) end
-    IO.puts("  Application config:")
-    IO.puts("    #{inspect(config, pretty: true)}")
+    server_config = deflipex quote do ~~((% :host "api.example.com" :port 443 :ssl true)) end
+    features = deflipex quote do ~~((list :auth :logging :caching)) end
+    timeout_calc = deflipex quote do ~~((+ 5000 (* 2 1000))) end
+    IO.puts("  Server config: #{inspect(server_config)}")
+    IO.puts("  Features: #{inspect(features)}")
+    IO.puts("  Calculated timeout: #{timeout_calc}ms")
     
     # Mathematical formula
     formula_result = deflipex quote do ~~((+ (* 3 (* 4 4)) (* (- 2) 4) 7)) end

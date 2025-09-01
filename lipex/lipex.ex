@@ -114,7 +114,7 @@ defmodule Lipex do
         Arithmetic.eval_arithmetic(expr)
       
       # Logical Operations (sequence_prefix format)  
-      {:sequence_prefix, _meta, [op | _args]} when op in [:and, :or, :not] ->
+      {:sequence_prefix, _meta, [op | _args]} when op in [:and, :or, :not, :truthy?, :falsy?, :nil?, :some?, :atom?, :number?, :integer?, :float?, :string?, :list?, :tuple?, :map?, :function?, :pid?] ->
         Logic.eval_logic(expr)
       
       # Control Flow
@@ -188,6 +188,11 @@ defmodule Lipex do
       # List Operations (basic ones - delegate to data structures)
       {:sequence_paren, _meta, [{:list, _, nil} | _args]} ->
         DataStructures.eval_list(expr)
+        
+      # Type checking functions (sequence_paren format)
+      {:sequence_paren, _meta, [{op, _, nil} | args]} when op in [:atom?, :number?, :integer?, :float?, :string?, :list?, :tuple?, :map?, :function?, :pid?, :truthy?, :falsy?, :nil?, :some?] ->
+        # Convert to sequence_prefix format for Logic module
+        Logic.eval_logic({:sequence_prefix, [], [op | args]})
       
       # Function Calls - delegate to calls module
       {:sequence_prefix, _meta, [function | _args]} when is_atom(function) ->
