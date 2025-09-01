@@ -1658,38 +1658,66 @@ keyword_or_unsafe_to_atom(_, Part, Line, Column, Scope) ->
   unsafe_to_atom(Part, Line, Column, Scope).
 
 tokenize_keyword(terminator, Rest, Line, Column, Atom, Length, Scope, Tokens) ->
-  case tokenize_keyword_terminator(Line, Column, Atom, Tokens) of
-    {ok, [Check | T]} ->
-      handle_terminator(Rest, Line, Column + Length, Scope, Check, T);
-    {error, Message, Token} ->
-      error({?LOC(Line, Column), Message, Token}, Token ++ Rest, Scope, Tokens)
+  % Convert keywords to sequence_atom when inside sequence literals
+  case Scope#elixir_tokenizer.sequence_depth > 0 of
+    true ->
+      Token = {sequence_atom, {Line, Column, nil}, Atom},
+      tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
+    false ->
+      case tokenize_keyword_terminator(Line, Column, Atom, Tokens) of
+        {ok, [Check | T]} ->
+          handle_terminator(Rest, Line, Column + Length, Scope, Check, T);
+        {error, Message, Token} ->
+          error({?LOC(Line, Column), Message, Token}, Token ++ Rest, Scope, Tokens)
+      end
   end;
 
 tokenize_keyword(token, Rest, Line, Column, Atom, Length, Scope, Tokens) ->
-  Token = {Atom, {Line, Column, nil}},
-  tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
+  % Convert keywords to sequence_atom when inside sequence literals
+  case Scope#elixir_tokenizer.sequence_depth > 0 of
+    true ->
+      Token = {sequence_atom, {Line, Column, nil}, Atom},
+      tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
+    false ->
+      Token = {Atom, {Line, Column, nil}},
+      tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens])
+  end;
 
 tokenize_keyword(block, Rest, Line, Column, Atom, Length, Scope, Tokens) ->
-  Token = {block_identifier, {Line, Column, nil}, Atom},
-  tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
+  % Convert keywords to sequence_atom when inside sequence literals
+  case Scope#elixir_tokenizer.sequence_depth > 0 of
+    true ->
+      Token = {sequence_atom, {Line, Column, nil}, Atom},
+      tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
+    false ->
+      Token = {block_identifier, {Line, Column, nil}, Atom},
+      tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens])
+  end;
 
 tokenize_keyword(Kind, Rest, Line, Column, Atom, Length, Scope, Tokens) ->
-  NewTokens =
-    case strip_horizontal_space(Rest, 0) of
-      {[$/ | _], _} ->
-        [{identifier, {Line, Column, nil}, Atom} | Tokens];
+  % Convert keywords to sequence_atom when inside sequence literals
+  case Scope#elixir_tokenizer.sequence_depth > 0 of
+    true ->
+      Token = {sequence_atom, {Line, Column, nil}, Atom},
+      tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
+    false ->
+      NewTokens =
+        case strip_horizontal_space(Rest, 0) of
+          {[$/ | _], _} ->
+            [{identifier, {Line, Column, nil}, Atom} | Tokens];
 
-      _ ->
-        case {Kind, Tokens} of
-          {in_op, [{unary_op, NotInfo, 'not'} | T]} ->
-            add_token_with_eol({in_op, NotInfo, 'not in'}, T);
+          _ ->
+            case {Kind, Tokens} of
+              {in_op, [{unary_op, NotInfo, 'not'} | T]} ->
+                add_token_with_eol({in_op, NotInfo, 'not in'}, T);
 
-          {_, _} ->
-            add_token_with_eol({Kind, {Line, Column, previous_was_eol(Tokens)}, Atom}, Tokens)
-        end
-    end,
+              {_, _} ->
+                add_token_with_eol({Kind, {Line, Column, previous_was_eol(Tokens)}, Atom}, Tokens)
+            end
+        end,
 
-  tokenize(Rest, Line, Column + Length, Scope, NewTokens).
+      tokenize(Rest, Line, Column + Length, Scope, NewTokens)
+  end.
 
 tokenize_sigil([$~ | T], Line, Column, Scope, Tokens) ->
   case tokenize_sigil_name(T, [], Line, Column + 1, Scope, Tokens) of

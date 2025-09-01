@@ -1545,7 +1545,15 @@ defmodule Kernel.ParserTest do
       # Complex combinations
       assert parse!("~~(test 123 :atom \"string\" true false nil)") ==
                {:sequence_literal, [line: 1],
-                [{:test, [line: 1], nil}, 123, :atom, "string", true, false, nil]}
+                [
+                  {:test, [line: 1], nil},
+                  123,
+                  :atom,
+                  "string",
+                  {true, [line: 1], nil},
+                  {false, [line: 1], nil},
+                  {nil, [line: 1], nil}
+                ]}
 
       # Nested mathematical expressions  
       assert parse!("~~(calc (1 + 2) result)") ==
