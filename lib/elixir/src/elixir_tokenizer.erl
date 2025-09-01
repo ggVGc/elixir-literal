@@ -409,10 +409,10 @@ tokenize([T | Rest], Line, Column, Scope, Tokens) when T =:= $(; T =:= ${; T =:=
       % Entering sequence literal - set depth to 1
       Scope#elixir_tokenizer{sequence_depth = 1};
     false ->
-      % Check if we're already inside a sequence literal and this is a nested opening paren
-      case T == $( andalso Scope#elixir_tokenizer.sequence_depth > 0 of
+      % Check if we're already inside a sequence literal and this is a nested opening bracket
+      case Scope#elixir_tokenizer.sequence_depth > 0 of
         true ->
-          % Increment depth for nested parentheses within sequence literal
+          % Increment depth for nested brackets within sequence literal
           Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1};
         false ->
           Scope
@@ -422,8 +422,8 @@ tokenize([T | Rest], Line, Column, Scope, Tokens) when T =:= $(; T =:= ${; T =:=
   handle_terminator(Rest, Line, Column + 1, NewScope, Token, Tokens);
 
 tokenize([T | Rest], Line, Column, Scope, Tokens) when T =:= $); T =:= $}; T =:= $] ->
-  % Handle closing parentheses - decrement sequence_depth if inside sequence literal
-  NewScope = case T == $) andalso Scope#elixir_tokenizer.sequence_depth > 0 of
+  % Handle closing brackets - decrement sequence_depth if inside sequence literal
+  NewScope = case Scope#elixir_tokenizer.sequence_depth > 0 of
     true ->
       NewDepth = Scope#elixir_tokenizer.sequence_depth - 1,
       % Reset to 0 when exiting the outermost sequence literal
