@@ -45,7 +45,7 @@ Terminals
   bin_heredoc list_heredoc
   comp_op at_op unary_op and_op or_op arrow_op match_op in_op in_match_op ellipsis_op
   type_op dual_op mult_op power_op concat_op range_op xor_op pipe_op stab_op when_op
-  capture_int capture_op assoc_op rel_op ternary_op dot_call_op sequence_op
+  capture_int capture_op assoc_op rel_op ternary_op dot_call_op sequence_op sequence_atom
   'true' 'false' 'nil' 'do' eol ';' ',' '.'
   '(' ')' '[' ']' '{' '}' '<<' '>>' '%{}' '%'
   int flt char
@@ -326,6 +326,7 @@ sequence_token -> 'false' : handle_literal(?id('$1'), '$1').
 sequence_token -> 'nil' : handle_literal(?id('$1'), '$1').
 sequence_token -> '(' expr ')' : '$2'.
 sequence_token -> dual_op : build_sequence_op('$1').
+sequence_token -> sequence_atom : build_sequence_op('$1').
 
 bracket_arg -> open_bracket kw_data close_bracket : build_access_arg('$1', '$2', '$3').
 bracket_arg -> open_bracket container_expr close_bracket : build_access_arg('$1', '$2', '$3').
