@@ -983,7 +983,8 @@ build_call({_, Location, Identifier}, Args) ->
 
 build_sequence({sequence_op, Location, _}, Args, CloseParen) ->
   Meta = newlines_pair({sequence_op, Location}, CloseParen) ++ meta_from_location(Location),
-  {sequence_literal, Meta, Args}.
+  TransformedArgs = transform_sequence_args(Args),
+  {sequence_literal, Meta, TransformedArgs}.
 
 
 %% Fn
@@ -1385,3 +1386,41 @@ warn(LineColumn, Message) ->
     nil -> ok;
     File -> elixir_errors:erl_warn(LineColumn, File, Message)
   end.
+
+%% Transform sequence arguments to detect operator-led patterns
+transform_sequence_args([]) ->
+  [];
+transform_sequence_args([{Op, Meta, nil} | Rest]) when is_atom(Op) ->
+  case {is_operator_symbol(Op), Rest} of
+    {true, []} ->
+      [{sequence_prefix, {Op, Meta, nil}, []}];
+    {true, _} ->
+      TransformedRest = lists:map(fun transform_sequence_node/1, Rest),
+      [{sequence_prefix, {Op, Meta, nil}, TransformedRest}];
+    {false, _} ->
+      [{Op, Meta, nil} | transform_sequence_args(Rest)]
+  end;
+transform_sequence_args([First | Rest]) ->
+  [transform_sequence_node(First) | transform_sequence_args(Rest)].
+
+%% Transform individual sequence nodes recursively
+transform_sequence_node({sequence_paren, Meta, Args}) ->
+  {sequence_paren, Meta, transform_sequence_args(Args)};
+transform_sequence_node({sequence_brace, Meta, Args}) ->
+  {sequence_brace, Meta, transform_sequence_args(Args)};  
+transform_sequence_node({sequence_bracket, Meta, Args}) ->
+  {sequence_bracket, Meta, transform_sequence_args(Args)};
+transform_sequence_node(Other) ->
+  Other.
+
+%% Check if an atom represents an operator symbol
+is_operator_symbol(Op) ->
+  lists:member(Op, [
+    '+', '-', '*', '/', '%', '^',
+    '=', '<', '>', '<=', '>=', '==', '!=', '===', '!==',
+    'and', 'or', 'not',
+    '&', '@', '!', '~', '|>',
+    'def', 'defp', 'defmacro', 'defmodule', 'defstruct', 'defprotocol',
+    'if', 'else', 'cond', 'case', 'with', 'try', 'rescue', 'catch', 'throw',
+    'do', 'end', 'fn', 'when'
+  ]).

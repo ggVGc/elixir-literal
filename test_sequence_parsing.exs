@@ -93,7 +93,7 @@ defmodule SequenceParseTest do
 
     IO.puts("")
     IO.puts("Test run complete.")
-    quote do ~~(& (&1 + &2)) end
+    quote do ~~((& (+ a b))) end
     |> IO.inspect(label: "yeo")
   end
 end
