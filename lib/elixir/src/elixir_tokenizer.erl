@@ -883,7 +883,12 @@ handle_unary_op(Rest, Line, Column, Kind, Length, Op, Scope, Tokens) ->
       Token = {identifier, {Line, Column, nil}, Op},
       tokenize(Remaining, Line, Column + Length + Extra, Scope, [Token | Tokens]);
     {Remaining, Extra} ->
-      Token = {Kind, {Line, Column, nil}, Op},
+      % Convert operators to sequence_atom when inside sequence literals
+      TokenKind = case Scope#elixir_tokenizer.sequence_depth > 0 of
+        true -> sequence_atom;
+        false -> Kind
+      end,
+      Token = {TokenKind, {Line, Column, nil}, Op},
       tokenize(Remaining, Line, Column + Length + Extra, Scope, [Token | Tokens])
   end.
 

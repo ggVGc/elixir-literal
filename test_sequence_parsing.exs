@@ -93,7 +93,7 @@ defmodule SequenceParseTest do
 
     IO.puts("")
     IO.puts("Test run complete.")
-    x = quote do ~~(> fnn (a b)   c e (f 123)) end
+    quote do ~~(fn diddle = ("asd" y z) (+x y z)) end
     |> IO.inspect(label: "yeo")
   end
 end
