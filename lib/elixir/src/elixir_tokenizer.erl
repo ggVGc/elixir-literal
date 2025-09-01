@@ -883,13 +883,8 @@ handle_unary_op(Rest, Line, Column, Kind, Length, Op, Scope, Tokens) ->
       Token = {identifier, {Line, Column, nil}, Op},
       tokenize(Remaining, Line, Column + Length + Extra, Scope, [Token | Tokens]);
     {Remaining, Extra} ->
-      % Convert operators to sequence_atom when inside sequence literals
-      TokenKind = case Scope#elixir_tokenizer.sequence_depth > 0 of
-        true -> sequence_atom;
-        false -> Kind
-      end,
-      Token = {TokenKind, {Line, Column, nil}, Op},
-      tokenize(Remaining, Line, Column + Length + Extra, Scope, [Token | Tokens])
+      create_token_and_continue(Kind, {Line, Column, nil}, Op, 
+                               Remaining, Line, Column + Length + Extra, Scope, Tokens)
   end.
 
 handle_op([$: | Rest], Line, Column, _Kind, Length, Op, Scope, Tokens) when ?is_space(hd(Rest)) ->
@@ -921,13 +916,8 @@ handle_op(Rest, Line, Column, Kind, Length, Op, Scope, Tokens) ->
             Scope
         end,
 
-      % Convert operators to sequence_atom when inside sequence literals
-      TokenKind = case NewScope#elixir_tokenizer.sequence_depth > 0 of
-        true -> sequence_atom;
-        false -> Kind
-      end,
-      Token = {TokenKind, {Line, Column, previous_was_eol(Tokens)}, Op},
-      tokenize(Remaining, Line, Column + Length + Extra, NewScope, add_token_with_eol(Token, Tokens))
+      create_token_and_continue_with_eol(Kind, {Line, Column, previous_was_eol(Tokens)}, Op,
+                                        Remaining, Line, Column + Length + Extra, NewScope, Tokens)
   end.
 
 % ## Three Token Operators
@@ -1488,6 +1478,39 @@ previous_was_eol([{';', {_, _, Count}} | _]) when Count > 0 -> Count;
 previous_was_eol([{eol, {_, _, Count}} | _]) when Count > 0 -> Count;
 previous_was_eol(_) -> nil.
 
+%% Centralized token creation with sequence_atom conversion
+create_token(Kind, Meta, Value, Scope) ->
+  FinalKind = case should_convert_to_sequence_atom(Kind, Scope) of
+    true -> sequence_atom;
+    false -> Kind
+  end,
+  {FinalKind, Meta, Value}.
+
+should_convert_to_sequence_atom(Kind, Scope) ->
+  Scope#elixir_tokenizer.sequence_depth > 0 andalso
+  is_convertible_token_type(Kind).
+
+is_convertible_token_type(Kind) ->
+  lists:member(Kind, [
+    dual_op, mult_op, comp_op, rel_op, and_op, or_op, match_op,
+    unary_op, at_op, capture_op, power_op, concat_op, range_op, xor_op, 
+    pipe_op, stab_op, when_op, arrow_op, in_match_op, type_op,
+    ellipsis_op, ternary_op, in_op, assoc_op,
+    % Keywords that should become sequence_atom in sequence literals
+    'and', 'or', 'not', 'if', 'else', 'then', 'elsif', 'when', 'end',
+    'do', 'def', 'defp', 'defmacro', 'defstruct', 'defmodule', 'defprotocol',
+    'true', 'false', 'nil', block_identifier
+  ]) orelse 
+  is_atom(Kind).  % All atom-based keywords should be convertible
+
+create_token_and_continue(Kind, Meta, Value, Rest, NewLine, NewColumn, NewScope, Tokens) ->
+  Token = create_token(Kind, Meta, Value, NewScope),
+  tokenize(Rest, NewLine, NewColumn, NewScope, [Token | Tokens]).
+
+create_token_and_continue_with_eol(Kind, Meta, Value, Rest, NewLine, NewColumn, NewScope, Tokens) ->
+  Token = create_token(Kind, Meta, Value, NewScope),
+  tokenize(Rest, NewLine, NewColumn, NewScope, add_token_with_eol(Token, Tokens)).
+
 %% Error handling
 
 interpolation_error(Reason, Rest, Scope, Tokens, Extension, Args, Line, Column, Opening, Closing) ->
@@ -1663,11 +1686,10 @@ keyword_or_unsafe_to_atom(_, Part, Line, Column, Scope) ->
   unsafe_to_atom(Part, Line, Column, Scope).
 
 tokenize_keyword(terminator, Rest, Line, Column, Atom, Length, Scope, Tokens) ->
-  % Convert keywords to sequence_atom when inside sequence literals
-  case Scope#elixir_tokenizer.sequence_depth > 0 of
+  case should_convert_to_sequence_atom(Atom, Scope) of
     true ->
-      Token = {sequence_atom, {Line, Column, nil}, Atom},
-      tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
+      create_token_and_continue(sequence_atom, {Line, Column, nil}, Atom,
+                               Rest, Line, Column + Length, Scope, Tokens);
     false ->
       case tokenize_keyword_terminator(Line, Column, Atom, Tokens) of
         {ok, [Check | T]} ->
@@ -1678,33 +1700,18 @@ tokenize_keyword(terminator, Rest, Line, Column, Atom, Length, Scope, Tokens) ->
   end;
 
 tokenize_keyword(token, Rest, Line, Column, Atom, Length, Scope, Tokens) ->
-  % Convert keywords to sequence_atom when inside sequence literals
-  case Scope#elixir_tokenizer.sequence_depth > 0 of
-    true ->
-      Token = {sequence_atom, {Line, Column, nil}, Atom},
-      tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
-    false ->
-      Token = {Atom, {Line, Column, nil}},
-      tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens])
-  end;
+  create_token_and_continue(Atom, {Line, Column, nil}, Atom,
+                           Rest, Line, Column + Length, Scope, Tokens);
 
 tokenize_keyword(block, Rest, Line, Column, Atom, Length, Scope, Tokens) ->
-  % Convert keywords to sequence_atom when inside sequence literals
-  case Scope#elixir_tokenizer.sequence_depth > 0 of
-    true ->
-      Token = {sequence_atom, {Line, Column, nil}, Atom},
-      tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
-    false ->
-      Token = {block_identifier, {Line, Column, nil}, Atom},
-      tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens])
-  end;
+  create_token_and_continue(block_identifier, {Line, Column, nil}, Atom,
+                           Rest, Line, Column + Length, Scope, Tokens);
 
 tokenize_keyword(Kind, Rest, Line, Column, Atom, Length, Scope, Tokens) ->
-  % Convert keywords to sequence_atom when inside sequence literals
-  case Scope#elixir_tokenizer.sequence_depth > 0 of
+  case should_convert_to_sequence_atom(Kind, Scope) of
     true ->
-      Token = {sequence_atom, {Line, Column, nil}, Atom},
-      tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
+      create_token_and_continue(sequence_atom, {Line, Column, nil}, Atom,
+                               Rest, Line, Column + Length, Scope, Tokens);
     false ->
       NewTokens =
         case strip_horizontal_space(Rest, 0) of
@@ -1717,7 +1724,8 @@ tokenize_keyword(Kind, Rest, Line, Column, Atom, Length, Scope, Tokens) ->
                 add_token_with_eol({in_op, NotInfo, 'not in'}, T);
 
               {_, _} ->
-                add_token_with_eol({Kind, {Line, Column, previous_was_eol(Tokens)}, Atom}, Tokens)
+                Token = create_token(Kind, {Line, Column, previous_was_eol(Tokens)}, Atom, Scope),
+                add_token_with_eol(Token, Tokens)
             end
         end,
 
