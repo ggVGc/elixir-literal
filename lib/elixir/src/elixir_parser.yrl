@@ -113,7 +113,6 @@ expr_list -> expr_list eoe expr : ['$3' | annotate_eoe('$2', '$1')].
 expr -> matched_expr : '$1'.
 expr -> no_parens_expr : '$1'.
 expr -> unmatched_expr : '$1'.
-expr -> sequence_expr : '$1'.
 
 %% In Elixir we have three main call syntaxes: with parentheses,
 %% without parentheses and with do blocks. They are represented
@@ -161,6 +160,7 @@ matched_expr -> capture_op_eol matched_expr : build_unary_op('$1', '$2').
 matched_expr -> ellipsis_op matched_expr : build_unary_op('$1', '$2').
 matched_expr -> no_parens_one_expr : '$1'.
 matched_expr -> sub_matched_expr : '$1'.
+matched_expr -> sequence_expr : '$1'.
 
 unmatched_expr -> matched_expr unmatched_op_expr : build_op('$1', '$2').
 unmatched_expr -> unmatched_expr matched_op_expr : build_op('$1', '$2').
