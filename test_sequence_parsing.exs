@@ -97,7 +97,7 @@ defmodule SequenceParseTest do
     # Test quote functionality 
     IO.puts("\nTesting quote functionality:")
     try do
-      result = quote do ~~((def (+ a b))) end
+      result = quote do ~~((def (+ a b)))
       IO.puts("✓ Quote functionality works!")
       IO.inspect(result, label: "Quoted AST")
     rescue

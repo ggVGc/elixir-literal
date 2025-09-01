@@ -14,19 +14,19 @@ defmodule Lipex do
         import Lipex
         
         # Define a module in Lipex syntax
-        deflipex quote do ~~((defmodule MyMath
+        deflipex ~~((defmodule MyMath
           (def add (x y) (+ x y))
           (def multiply (x y) (* x y))
-          (defp validate (x) (> x 0)))) end
+          (defp validate (x) (> x 0))))
           
         # Create maps using % syntax
-        user_map = deflipex quote do ~~((% :name "John" :age 30)) end
+        user_map = deflipex ~~((% :name "John" :age 30))
         
         # Use pipes for data transformation
-        result = deflipex quote do ~~((|> [1 2 3 4]
+        result = deflipex ~~((|> [1 2 3 4]
           (map (fn (x) (* x 2)))
           (filter (fn (x) (> x 4)))
-          (reduce +))) end
+          (reduce +)))
       end
   
   ## Supported Features
@@ -64,20 +64,20 @@ defmodule Lipex do
   ## Examples
   
       # Define a function with pattern matching
-      deflipex quote do ~~((def factorial (0) 1)) end
-      deflipex quote do ~~((def factorial (n) :when (> n 0) (* n (factorial (- n 1))))) end
+      deflipex ~~((def factorial (0) 1))
+      deflipex ~~((def factorial (n) :when (> n 0) (* n (factorial (- n 1)))))
       
       # Evaluate expressions with maps and pipes
-      result = deflipex quote do ~~((|> (% :x 10 :y 20) 
+      result = deflipex ~~((|> (% :x 10 :y 20) 
                                      (Map.values)
-                                     (Enum.sum))) end
+                                     (Enum.sum)))
   """
-  # Handle quoted sequence literals: deflipex quote do ~~(...) end
+  # Handle direct sequence literals
   defmacro deflipex({:quote, _, nil}, [do: {:sequence_literal, _meta, [expr]}]) do
     eval_lipex_expr(expr)
   end
   
-  # Handle direct sequence literals (for backwards compatibility)
+  # Handle quoted sequence literals (for backwards compatibility)
   defmacro deflipex({:sequence_literal, _meta, [expr]}) do
     eval_lipex_expr(expr)
   end
