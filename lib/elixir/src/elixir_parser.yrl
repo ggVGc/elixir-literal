@@ -325,6 +325,7 @@ sequence_token -> 'true' : handle_literal(?id('$1'), '$1').
 sequence_token -> 'false' : handle_literal(?id('$1'), '$1').
 sequence_token -> 'nil' : handle_literal(?id('$1'), '$1').
 sequence_token -> '(' expr ')' : '$2'.
+sequence_token -> dual_op : build_sequence_op('$1').
 
 bracket_arg -> open_bracket kw_data close_bracket : build_access_arg('$1', '$2', '$3').
 bracket_arg -> open_bracket container_expr close_bracket : build_access_arg('$1', '$2', '$3').
@@ -961,6 +962,9 @@ build_identifier({'.', Meta, _} = Dot) ->
 
 build_identifier({_, Location, Identifier}) ->
   {Identifier, meta_from_location(Location), nil}.
+
+build_sequence_op({_, Location, Op}) ->
+  {Op, meta_from_location(Location), nil}.
 
 build_call({'.', Meta, IdentifierMeta, DotArgs}, Args) ->
   {{'.', Meta, DotArgs}, IdentifierMeta, Args};
