@@ -67,6 +67,10 @@ defmodule Lisp do
   """
   def eval_lisp_expr(expr) do
     case expr do
+      # Handle sequence_paren wrapping a single sequence_prefix (unwrap it)
+      {:sequence_paren, _meta, [{:sequence_prefix, prefix_meta, args}]} ->
+        eval_lisp_expr({:sequence_prefix, prefix_meta, args})
+        
       # Function definition - creates an Elixir function
       {:sequence_paren, _meta, [{:defun, _, nil}, name, {:sequence_paren, _, args}, body]} ->
         elixir_name = case name do
@@ -86,44 +90,44 @@ defmodule Lisp do
         end
       
       # Arithmetic operations
-      {:sequence_paren, _meta, [{:+, _, nil} | args]} ->
+      {:sequence_prefix, _meta, [:+ | args]} ->
         elixir_args = Enum.map(args, &eval_lisp_expr/1)
         quote do: Enum.reduce(unquote(elixir_args), 0, &+/2)
         
-      {:sequence_paren, _meta, [{:-, _, nil}, arg]} ->
+      {:sequence_prefix, _meta, [:-, arg]} ->
         elixir_arg = eval_lisp_expr(arg)
         quote do: -unquote(elixir_arg)
         
-      {:sequence_paren, _meta, [{:-, _, nil}, first, second]} ->
+      {:sequence_prefix, _meta, [:-, first, second]} ->
         # Binary subtraction: (- a b) -> a - b
         elixir_first = eval_lisp_expr(first)
         elixir_second = eval_lisp_expr(second)
         quote do: unquote(elixir_first) - unquote(elixir_second)
         
-      {:sequence_paren, _meta, [{:-, _, nil}, first | rest]} ->
+      {:sequence_prefix, _meta, [:-, first | rest]} ->
         # Multi-argument subtraction: (- a b c d) -> a - b - c - d
         elixir_first = eval_lisp_expr(first)
         elixir_rest = Enum.map(rest, &eval_lisp_expr/1)
         quote do: Enum.reduce(unquote(elixir_rest), unquote(elixir_first), fn b, a -> a - b end)
         
-      {:sequence_paren, _meta, [{:*, _, nil}, first, second]} ->
+      {:sequence_prefix, _meta, [:*, first, second]} ->
         # Binary multiplication: (* a b) -> a * b
         elixir_first = eval_lisp_expr(first)
         elixir_second = eval_lisp_expr(second)
         quote do: unquote(elixir_first) * unquote(elixir_second)
         
-      {:sequence_paren, _meta, [{:*, _, nil} | args]} ->
+      {:sequence_prefix, _meta, [:* | args]} ->
         # Multi-argument multiplication: (* a b c d) -> a * b * c * d
         elixir_args = Enum.map(args, &eval_lisp_expr/1)
         quote do: Enum.reduce(unquote(elixir_args), 1, &*/2)
         
-      {:sequence_paren, _meta, [{:/, _, nil}, dividend, divisor]} ->
+      {:sequence_prefix, _meta, [:/, dividend, divisor]} ->
         elixir_dividend = eval_lisp_expr(dividend)
         elixir_divisor = eval_lisp_expr(divisor)
         quote do: unquote(elixir_dividend) / unquote(elixir_divisor)
       
       # Comparison operations
-      {:sequence_paren, _meta, [{:=, _, nil}, left, right]} ->
+      {:sequence_prefix, _meta, [:=, left, right]} ->
         elixir_left = eval_lisp_expr(left)
         elixir_right = eval_lisp_expr(right)
         quote do
@@ -135,45 +139,45 @@ defmodule Lisp do
           end
         end
         
-      {:sequence_paren, _meta, [{:<, _, nil}, left, right]} ->
+      {:sequence_prefix, _meta, [:<, left, right]} ->
         elixir_left = eval_lisp_expr(left)
         elixir_right = eval_lisp_expr(right)
         quote do: unquote(elixir_left) < unquote(elixir_right)
         
-      {:sequence_paren, _meta, [{:>, _, nil}, left, right]} ->
+      {:sequence_prefix, _meta, [:>, left, right]} ->
         elixir_left = eval_lisp_expr(left)
         elixir_right = eval_lisp_expr(right)
         quote do: unquote(elixir_left) > unquote(elixir_right)
         
-      {:sequence_paren, _meta, [{:<=, _, nil}, left, right]} ->
+      {:sequence_prefix, _meta, [:<=, left, right]} ->
         elixir_left = eval_lisp_expr(left)
         elixir_right = eval_lisp_expr(right)
         quote do: unquote(elixir_left) <= unquote(elixir_right)
         
-      {:sequence_paren, _meta, [{:>=, _, nil}, left, right]} ->
+      {:sequence_prefix, _meta, [:>=, left, right]} ->
         elixir_left = eval_lisp_expr(left)
         elixir_right = eval_lisp_expr(right)
         quote do: unquote(elixir_left) >= unquote(elixir_right)
       
       # Logical operations
-      {:sequence_paren, _meta, [{:and, _, nil} | args]} ->
+      {:sequence_prefix, _meta, [:and | args]} ->
         elixir_args = Enum.map(args, &eval_lisp_expr/1)
         Enum.reduce(elixir_args, quote(do: true), fn arg, acc ->
           quote do: unquote(acc) and unquote(arg)
         end)
         
-      {:sequence_paren, _meta, [{:or, _, nil} | args]} ->
+      {:sequence_prefix, _meta, [:or | args]} ->
         elixir_args = Enum.map(args, &eval_lisp_expr/1)
         Enum.reduce(elixir_args, quote(do: false), fn arg, acc ->
           quote do: unquote(acc) or unquote(arg)
         end)
         
-      {:sequence_paren, _meta, [{:not, _, nil}, arg]} ->
+      {:sequence_prefix, _meta, [:not, arg]} ->
         elixir_arg = eval_lisp_expr(arg)
         quote do: not unquote(elixir_arg)
       
       # Conditional expressions
-      {:sequence_paren, _meta, [{:if, _, nil}, condition, then_expr, else_expr]} ->
+      {:sequence_prefix, _meta, [:if, condition, then_expr, else_expr]} ->
         elixir_condition = eval_lisp_expr(condition)
         elixir_then = eval_lisp_expr(then_expr)
         elixir_else = eval_lisp_expr(else_expr)
@@ -208,7 +212,14 @@ defmodule Lisp do
           end).()
         end
       
-      # List operations
+      
+      # Function calls (sequence_prefix format) - use module-scoped calls for recursive support  
+      {:sequence_prefix, _meta, [function | args]} ->
+        elixir_function_name = function
+        elixir_args = Enum.map(args, &eval_lisp_expr/1)
+        quote do: __MODULE__.unquote(elixir_function_name)(unquote_splicing(elixir_args))
+      
+      # List operations (still use sequence_paren format)
       {:sequence_paren, _meta, [{:list, _, nil} | args]} ->
         elixir_args = Enum.map(args, &eval_lisp_expr/1)
         quote do: unquote(elixir_args)
@@ -231,7 +242,7 @@ defmodule Lisp do
         elixir_list = eval_lisp_expr(list)
         quote do: [unquote(elixir_item) | unquote(elixir_list)]
       
-      # Function calls - use module-scoped calls for recursive support
+      # Function calls (sequence_paren format) - use module-scoped calls for recursive support
       {:sequence_paren, _meta, [function | args]} ->
         elixir_function_name = case function do
           {name, _, nil} -> name
