@@ -94,12 +94,26 @@ defmodule Lisp do
         elixir_arg = eval_lisp_expr(arg)
         quote do: -unquote(elixir_arg)
         
+      {:sequence_paren, _meta, [{:-, _, nil}, first, second]} ->
+        # Binary subtraction: (- a b) -> a - b
+        elixir_first = eval_lisp_expr(first)
+        elixir_second = eval_lisp_expr(second)
+        quote do: unquote(elixir_first) - unquote(elixir_second)
+        
       {:sequence_paren, _meta, [{:-, _, nil}, first | rest]} ->
+        # Multi-argument subtraction: (- a b c d) -> a - b - c - d
         elixir_first = eval_lisp_expr(first)
         elixir_rest = Enum.map(rest, &eval_lisp_expr/1)
         quote do: Enum.reduce(unquote(elixir_rest), unquote(elixir_first), fn b, a -> a - b end)
         
+      {:sequence_paren, _meta, [{:*, _, nil}, first, second]} ->
+        # Binary multiplication: (* a b) -> a * b
+        elixir_first = eval_lisp_expr(first)
+        elixir_second = eval_lisp_expr(second)
+        quote do: unquote(elixir_first) * unquote(elixir_second)
+        
       {:sequence_paren, _meta, [{:*, _, nil} | args]} ->
+        # Multi-argument multiplication: (* a b c d) -> a * b * c * d
         elixir_args = Enum.map(args, &eval_lisp_expr/1)
         quote do: Enum.reduce(unquote(elixir_args), 1, &*/2)
         
@@ -210,16 +224,24 @@ defmodule Lisp do
         elixir_list = eval_lisp_expr(list)
         quote do: [unquote(elixir_item) | unquote(elixir_list)]
       
-      # Function calls - look for existing functions
+      # Function calls - use module-scoped calls for recursive support
       {:sequence_paren, _meta, [function | args]} ->
-        elixir_function = lisp_to_elixir_var(function)
+        elixir_function_name = case function do
+          {name, _, nil} -> name
+          name when is_atom(name) -> name
+        end
         elixir_args = Enum.map(args, &eval_lisp_expr/1)
-        quote do: unquote(elixir_function)(unquote_splicing(elixir_args))
+        quote do: __MODULE__.unquote(elixir_function_name)(unquote_splicing(elixir_args))
       
       # Atoms, numbers, strings - pass through
       atom when is_atom(atom) -> atom
       number when is_number(number) -> number
       string when is_binary(string) -> string
+      
+      # Special atoms that should be values, not variables
+      {:nil, _meta, nil} -> nil
+      {:true, _meta, nil} -> true
+      {:false, _meta, nil} -> false
       
       # Variables - convert to Elixir variables
       {var, meta, nil} when is_atom(var) -> {var, meta, nil}
