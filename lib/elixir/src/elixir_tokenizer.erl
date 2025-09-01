@@ -403,21 +403,31 @@ tokenize([${ | Rest], Line, Column, Scope, [{'%', _} | _] = Tokens) ->
   error({?LOC(Line, Column), Message, [${]}, Rest, Scope, Tokens);
 
 tokenize([T | Rest], Line, Column, Scope, Tokens) when T =:= $(; T =:= ${; T =:= $[ ->
-  % Check if we're entering a sequence literal
+  % Check if we're entering a sequence literal or already inside one
   NewScope = case T == $( andalso Tokens /= [] andalso element(1, hd(Tokens)) == sequence_op of
     true ->
-      Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1};
+      % Entering sequence literal - set depth to 1
+      Scope#elixir_tokenizer{sequence_depth = 1};
     false ->
-      Scope
+      % Check if we're already inside a sequence literal and this is a nested opening paren
+      case T == $( andalso Scope#elixir_tokenizer.sequence_depth > 0 of
+        true ->
+          % Increment depth for nested parentheses within sequence literal
+          Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1};
+        false ->
+          Scope
+      end
   end,
   Token = {list_to_atom([T]), {Line, Column, nil}},
   handle_terminator(Rest, Line, Column + 1, NewScope, Token, Tokens);
 
 tokenize([T | Rest], Line, Column, Scope, Tokens) when T =:= $); T =:= $}; T =:= $] ->
-  % Check if we're exiting a sequence literal
+  % Handle closing parentheses - decrement sequence_depth if inside sequence literal
   NewScope = case T == $) andalso Scope#elixir_tokenizer.sequence_depth > 0 of
     true ->
-      Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth - 1};
+      NewDepth = Scope#elixir_tokenizer.sequence_depth - 1,
+      % Reset to 0 when exiting the outermost sequence literal
+      Scope#elixir_tokenizer{sequence_depth = NewDepth};
     false ->
       Scope
   end,
