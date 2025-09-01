@@ -93,7 +93,7 @@ defmodule SequenceParseTest do
 
     IO.puts("")
     IO.puts("Test run complete.")
-    Code.string_to_quoted("~~(end (a b) + e (f 12333) end)")
+    x = quote do ~~(> fnn (a b)   c e (f 123)) end
     |> IO.inspect(label: "yeo")
   end
 end
