@@ -324,8 +324,13 @@ sequence_token -> list_string : build_list_string('$1', delimiter(<<$'>>)).
 sequence_token -> 'true' : handle_literal(?id('$1'), '$1').
 sequence_token -> 'false' : handle_literal(?id('$1'), '$1').
 sequence_token -> 'nil' : handle_literal(?id('$1'), '$1').
-sequence_token -> '(' expr ')' : '$2'.
+sequence_token -> '(' sequence_args ')' : {sequence_paren, meta_from_token('$1'), '$2'}.
 sequence_token -> dual_op : build_sequence_op('$1').
+sequence_token -> mult_op : build_sequence_op('$1').
+sequence_token -> power_op : build_sequence_op('$1').
+sequence_token -> comp_op : build_sequence_op('$1').
+sequence_token -> and_op : build_sequence_op('$1').
+sequence_token -> or_op : build_sequence_op('$1').
 sequence_token -> sequence_atom : build_sequence_op('$1').
 
 bracket_arg -> open_bracket kw_data close_bracket : build_access_arg('$1', '$2', '$3').
