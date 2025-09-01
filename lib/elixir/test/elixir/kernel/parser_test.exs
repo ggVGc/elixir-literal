@@ -1147,10 +1147,8 @@ defmodule Kernel.ParserTest do
         "{:ok, %[], %{}}"
       )
 
-      assert_syntax_error(
-        ["nofile:1:3:", "unexpected space between % and {"],
-        "% {1, 2, 3}"
-      )
+      e = assert_raise TokenMissingError, fn -> parse!("% {1, 2, 3}") end
+      assert_exception_msg(e, ["nofile:1:11:", "syntax error: expression is incomplete"])
     end
 
     test "invalid access" do
@@ -1558,11 +1556,16 @@ defmodule Kernel.ParserTest do
       # Nested mathematical expressions  
       assert parse!("~~(calc (1 + 2) result)") ==
                {:sequence_literal, [line: 1],
-                [{:calc, [line: 1], nil}, {:+, [line: 1], [1, 2]}, {:result, [line: 1], nil}]}
+                [
+                  {:calc, [line: 1], nil},
+                  {:sequence_paren, [line: 1],
+                   [1, {:sequence_prefix, {:+, [line: 1], nil}, [2]}]},
+                  {:result, [line: 1], nil}
+                ]}
     end
 
-    test "empty sequence not supported" do
-      assert_syntax_error(["syntax error before: ", "')'"], "~~()")
+    test "empty sequence supported" do
+      assert parse!("~~()") == {:sequence_literal, [line: 1], []}
     end
 
     test "sequence operator requires parentheses" do
@@ -1596,10 +1599,13 @@ defmodule Kernel.ParserTest do
       # These tests demonstrate that operators are not currently supported
       # in sequence literals. They should be parsed as individual tokens.
 
-      # Arithmetic operators should be preserved as atoms
+      # Arithmetic operators should be transformed to sequence_prefix when followed by arguments
       assert parse!("~~(a + b)") ==
                {:sequence_literal, [line: 1],
-                [{:a, [line: 1], nil}, {:+, [line: 1], nil}, {:b, [line: 1], nil}]}
+                [
+                  {:a, [line: 1], nil},
+                  {:sequence_prefix, {:+, [line: 1], nil}, [{:b, [line: 1], nil}]}
+                ]}
 
       # assert_syntax_error(["syntax error before: ", ""], "~~(x - y)")
       # assert_syntax_error(["syntax error before: ", ""], "~~(foo * bar)")
@@ -1637,14 +1643,20 @@ defmodule Kernel.ParserTest do
 
       assert parse!("~~((a (b c)))") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_paren, [line: 1],
-                  [{:a, [line: 1], nil},
-                   {:sequence_paren, [line: 1], [{:b, [line: 1], nil}, {:c, [line: 1], nil}]}]}]}
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:a, [line: 1], nil},
+                     {:sequence_paren, [line: 1], [{:b, [line: 1], nil}, {:c, [line: 1], nil}]}
+                   ]}
+                ]}
 
       assert parse!("~~(((a)))") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_paren, [line: 1],
-                  [{:sequence_paren, [line: 1], [{:a, [line: 1], nil}]}]}]}
+                [
+                  {:sequence_paren, [line: 1],
+                   [{:sequence_paren, [line: 1], [{:a, [line: 1], nil}]}]}
+                ]}
     end
   end
 
@@ -1653,8 +1665,10 @@ defmodule Kernel.ParserTest do
       # Braces should create sequence_brace nodes
       assert parse!("~~({a b c})") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_brace, [line: 1],
-                  [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil}]}]}
+                [
+                  {:sequence_brace, [line: 1],
+                   [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil}]}
+                ]}
 
       assert parse!("~~({foo})") ==
                {:sequence_literal, [line: 1],
@@ -1664,104 +1678,138 @@ defmodule Kernel.ParserTest do
     test "basic bracket sequences" do
       # Brackets should create sequence_bracket nodes
       assert parse!("~~([1 2 3])") ==
-               {:sequence_literal, [line: 1],
-                [{:sequence_bracket, [line: 1], [1, 2, 3]}]}
+               {:sequence_literal, [line: 1], [{:sequence_bracket, [line: 1], [1, 2, 3]}]}
 
       assert parse!("~~([a b c])") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_bracket, [line: 1],
-                  [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil}]}]}
+                [
+                  {:sequence_bracket, [line: 1],
+                   [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil}]}
+                ]}
     end
 
     test "mixed bracket types in sequences" do
       # Test combinations of parentheses, braces, and brackets
       assert parse!("~~((a {b} [c]))") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_paren, [line: 1],
-                  [{:a, [line: 1], nil},
-                   {:sequence_brace, [line: 1], [{:b, [line: 1], nil}]},
-                   {:sequence_bracket, [line: 1], [{:c, [line: 1], nil}]}]}]}
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:a, [line: 1], nil},
+                     {:sequence_brace, [line: 1], [{:b, [line: 1], nil}]},
+                     {:sequence_bracket, [line: 1], [{:c, [line: 1], nil}]}
+                   ]}
+                ]}
 
       assert parse!("~~({[a b]})") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_brace, [line: 1],
-                  [{:sequence_bracket, [line: 1],
-                    [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}]}]}
+                [
+                  {:sequence_brace, [line: 1],
+                   [{:sequence_bracket, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}]}
+                ]}
     end
 
     test "nested structures with blocks" do
       # Function definition with block body
       assert parse!("~~((def f (x) {(+ x 1)}))") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_paren, [line: 1],
-                  [{:def, [line: 1], nil},
-                   {:f, [line: 1], nil},
-                   {:sequence_paren, [line: 1], [{:x, [line: 1], nil}]},
-                   {:sequence_brace, [line: 1],
-                    [{:sequence_paren, [line: 1],
-                      [{:+, [line: 1], nil}, {:x, [line: 1], nil}, 1]}]}]}]}
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:sequence_prefix, {:def, [line: 1], nil},
+                      [
+                        {:f, [line: 1], nil},
+                        {:sequence_paren, [line: 1], [{:x, [line: 1], nil}]},
+                        {:sequence_brace, [line: 1],
+                         [
+                           {:sequence_paren, [line: 1],
+                            [{:sequence_prefix, {:+, [line: 1], nil}, [{:x, [line: 1], nil}, 1]}]}
+                         ]}
+                      ]}
+                   ]}
+                ]}
     end
 
     test "multi-statement blocks" do
       # Blocks with multiple expressions
       assert parse!("~~({(log x) (inc x) (save x)})") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_brace, [line: 1],
-                  [{:sequence_paren, [line: 1], [{:log, [line: 1], nil}, {:x, [line: 1], nil}]},
-                   {:sequence_paren, [line: 1], [{:inc, [line: 1], nil}, {:x, [line: 1], nil}]},
-                   {:sequence_paren, [line: 1], [{:save, [line: 1], nil}, {:x, [line: 1], nil}]}]}]}
+                [
+                  {:sequence_brace, [line: 1],
+                   [
+                     {:sequence_paren, [line: 1], [{:log, [line: 1], nil}, {:x, [line: 1], nil}]},
+                     {:sequence_paren, [line: 1], [{:inc, [line: 1], nil}, {:x, [line: 1], nil}]},
+                     {:sequence_paren, [line: 1], [{:save, [line: 1], nil}, {:x, [line: 1], nil}]}
+                   ]}
+                ]}
     end
 
     test "data structure literals" do
       # Nested list literals
       assert parse!("~~([[1 2] [3 4]])") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_bracket, [line: 1],
-                  [{:sequence_bracket, [line: 1], [1, 2]},
-                   {:sequence_bracket, [line: 1], [3, 4]}]}]}
+                [
+                  {:sequence_bracket, [line: 1],
+                   [
+                     {:sequence_bracket, [line: 1], [1, 2]},
+                     {:sequence_bracket, [line: 1], [3, 4]}
+                   ]}
+                ]}
 
       # List operations
       assert parse!("~~((map inc [1 2 3 4 5]))") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_paren, [line: 1],
-                  [{:map, [line: 1], nil},
-                   {:inc, [line: 1], nil},
-                   {:sequence_bracket, [line: 1], [1, 2, 3, 4, 5]}]}]}
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:map, [line: 1], nil},
+                     {:inc, [line: 1], nil},
+                     {:sequence_bracket, [line: 1], [1, 2, 3, 4, 5]}
+                   ]}
+                ]}
     end
 
     test "empty braces and brackets" do
       assert parse!("~~({})") ==
-               {:sequence_literal, [line: 1],
-                [{:sequence_brace, [line: 1], []}]}
+               {:sequence_literal, [line: 1], [{:sequence_brace, [line: 1], []}]}
 
       assert parse!("~~([])") ==
-               {:sequence_literal, [line: 1],
-                [{:sequence_bracket, [line: 1], []}]}
+               {:sequence_literal, [line: 1], [{:sequence_bracket, [line: 1], []}]}
 
       assert parse!("~~(({}))") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_paren, [line: 1],
-                  [{:sequence_brace, [line: 1], []}]}]}
+                [{:sequence_paren, [line: 1], [{:sequence_brace, [line: 1], []}]}]}
     end
 
     test "deep nesting of different bracket types" do
       assert parse!("~~(({[{[a]}]}))") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_paren, [line: 1],
-                  [{:sequence_brace, [line: 1],
-                    [{:sequence_bracket, [line: 1],
-                      [{:sequence_brace, [line: 1],
-                        [{:sequence_bracket, [line: 1],
-                          [{:a, [line: 1], nil}]}]}]}]}]}]}
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:sequence_brace, [line: 1],
+                      [
+                        {:sequence_bracket, [line: 1],
+                         [
+                           {:sequence_brace, [line: 1],
+                            [{:sequence_bracket, [line: 1], [{:a, [line: 1], nil}]}]}
+                         ]}
+                      ]}
+                   ]}
+                ]}
     end
 
     test "regular Elixir syntax remains unchanged" do
       # Regular tuples outside sequence literals should parse normally
       assert parse!("{:ok, 123}") == {:ok, 123}
-      assert parse!("{a, b, c}") == {:{}, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil}]}
+
+      assert parse!("{a, b, c}") ==
+               {:{}, [line: 1],
+                [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil}]}
 
       # Regular lists outside sequence literals should parse normally  
       assert parse!("[1, 2, 3]") == [1, 2, 3]
+
       assert parse!("[a, b, c]") ==
                [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil}]
 
@@ -1774,14 +1822,190 @@ defmodule Kernel.ParserTest do
       # Mix of literals and identifiers in brackets
       assert parse!("~~([1 a \"string\" :atom])") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_bracket, [line: 1],
-                  [1, {:a, [line: 1], nil}, "string", :atom]}]}
+                [{:sequence_bracket, [line: 1], [1, {:a, [line: 1], nil}, "string", :atom]}]}
 
       # Complex block with various expression types
       assert parse!("~~({123 foo :key \"value\"})") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_brace, [line: 1],
-                  [123, {:foo, [line: 1], nil}, :key, "value"]}]}
+                [{:sequence_brace, [line: 1], [123, {:foo, [line: 1], nil}, :key, "value"]}]}
+    end
+  end
+
+  describe "sequence literals with operator-led constructs" do
+    test "percent operator sequences" do
+      # Percent should create sequence_prefix nodes
+      assert parse!("~~((% a b))") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:sequence_prefix, {:%, [line: 1], nil},
+                      [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}
+                   ]}
+                ]}
+
+      assert parse!("~~((% :name \"John\" :age 30))") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:sequence_paren, [line: 1],
+                   [{:sequence_prefix, {:%, [line: 1], nil}, [:name, "John", :age, 30]}]}
+                ]}
+    end
+
+    test "ampersand operator sequences" do
+      # Ampersand should create sequence_prefix nodes
+      assert parse!("~~((& inc))") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:sequence_paren, [line: 1],
+                   [{:sequence_prefix, {:&, [line: 1], nil}, [{:inc, [line: 1], nil}]}]}
+                ]}
+
+      assert parse!("~~((& (+ a b)))") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:sequence_prefix, {:&, [line: 1], nil},
+                      [
+                        {:sequence_paren, [line: 1],
+                         [
+                           {:sequence_prefix, {:+, [line: 1], nil},
+                            [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}
+                         ]}
+                      ]}
+                   ]}
+                ]}
+    end
+
+    test "at-sign operator sequences" do
+      # At-sign should create sequence_prefix nodes
+      assert parse!("~~((@ module_attr))") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:sequence_paren, [line: 1],
+                   [{:sequence_prefix, {:@, [line: 1], nil}, [{:module_attr, [line: 1], nil}]}]}
+                ]}
+    end
+
+    test "arithmetic operators as prefix constructs" do
+      # Plus operator
+      assert parse!("~~((+ a b c))") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:sequence_prefix, {:+, [line: 1], nil},
+                      [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil}]}
+                   ]}
+                ]}
+
+      # Minus operator  
+      assert parse!("~~((- x y))") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:sequence_prefix, {:-, [line: 1], nil},
+                      [{:x, [line: 1], nil}, {:y, [line: 1], nil}]}
+                   ]}
+                ]}
+
+      # Multiplication operator
+      assert parse!("~~((* x 2))") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:sequence_paren, [line: 1],
+                   [{:sequence_prefix, {:*, [line: 1], nil}, [{:x, [line: 1], nil}, 2]}]}
+                ]}
+    end
+
+    test "comparison operators as prefix constructs" do
+      assert parse!("~~((= a b))") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:sequence_prefix, {:=, [line: 1], nil},
+                      [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}
+                   ]}
+                ]}
+
+      assert parse!("~~((< x y))") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:sequence_prefix, {:<, [line: 1], nil},
+                      [{:x, [line: 1], nil}, {:y, [line: 1], nil}]}
+                   ]}
+                ]}
+    end
+
+    test "mixed operator constructs" do
+      # Function with percent and ampersand (defun is not an operator, so remains as regular atom)
+      assert parse!("~~((defun process (data) (% :result (& transform data))))") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:defun, [line: 1], nil},
+                     {:process, [line: 1], nil},
+                     {:sequence_paren, [line: 1], [{:data, [line: 1], nil}]},
+                     {:sequence_paren, [line: 1],
+                      [
+                        {:sequence_prefix, {:%, [line: 1], nil},
+                         [
+                           :result,
+                           {:sequence_paren, [line: 1],
+                            [
+                              {:sequence_prefix, {:&, [line: 1], nil},
+                               [{:transform, [line: 1], nil}, {:data, [line: 1], nil}]}
+                            ]}
+                         ]}
+                      ]}
+                   ]}
+                ]}
+
+      # Nested arithmetic with different operators
+      assert parse!("~~((+ (* x 2) (- y 1)))") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:sequence_prefix, {:+, [line: 1], nil},
+                      [
+                        {:sequence_paren, [line: 1],
+                         [{:sequence_prefix, {:*, [line: 1], nil}, [{:x, [line: 1], nil}, 2]}]},
+                        {:sequence_paren, [line: 1],
+                         [{:sequence_prefix, {:-, [line: 1], nil}, [{:y, [line: 1], nil}, 1]}]}
+                      ]}
+                   ]}
+                ]}
+    end
+
+    test "empty operator constructs" do
+      # Empty percent
+      assert parse!("~~((%))") ==
+               {:sequence_literal, [line: 1],
+                [{:sequence_paren, [line: 1], [{:sequence_prefix, {:%, [line: 1], nil}, []}]}]}
+
+      # Empty ampersand
+      assert parse!("~~((&))") ==
+               {:sequence_literal, [line: 1],
+                [{:sequence_paren, [line: 1], [{:sequence_prefix, {:&, [line: 1], nil}, []}]}]}
+    end
+
+    test "regular elixir operators remain unchanged" do
+      # Regular infix operators should still work outside sequences
+      assert parse!("a + b") == {:+, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}
+      assert parse!("x * y") == {:*, [line: 1], [{:x, [line: 1], nil}, {:y, [line: 1], nil}]}
+
+      # Regular capture syntax should work
+      assert parse!("&inc/1") == {:&, [line: 1], [{:/, [line: 1], [{:inc, [line: 1], nil}, 1]}]}
+
+      # Regular module attributes should work  
+      assert parse!("@attr") == {:@, [line: 1], [{:attr, [line: 1], nil}]}
     end
   end
 

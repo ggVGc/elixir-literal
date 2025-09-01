@@ -495,7 +495,7 @@ tokenize([$& | Rest], Line, Column, Scope, Tokens) ->
         capture_op
     end,
 
-  Token = {Kind, {Line, Column, nil}, '&'},
+  Token = create_token(Kind, {Line, Column, nil}, '&', Scope),
   tokenize(Rest, Line, Column + 1, Scope, [Token | Tokens]);
 
 tokenize([T | Rest], Line, Column, Scope, Tokens) when ?at_op(T) ->
@@ -676,7 +676,8 @@ tokenize([$%, ${ | T], Line, Column, Scope, Tokens) ->
   handle_terminator(T, Line, Column + 2, Scope, Token, [{'%{}', {Line, Column, nil}} | Tokens]);
 
 tokenize([$% | T], Line, Column, Scope, Tokens) ->
-  tokenize(T, Line, Column + 1, Scope, [{'%', {Line, Column, nil}} | Tokens]);
+  Token = create_token('%', {Line, Column, nil}, '%', Scope),
+  tokenize(T, Line, Column + 1, Scope, [Token | Tokens]);
 
 tokenize([$. | T], Line, Column, Scope, Tokens) ->
   tokenize_dot(T, Line, Column + 1, {Line, Column, nil}, Scope, Tokens);
@@ -1429,6 +1430,8 @@ is_convertible_token_type(Kind) ->
     unary_op, at_op, capture_op, power_op, concat_op, range_op, xor_op, 
     pipe_op, stab_op, when_op, arrow_op, in_match_op, type_op,
     ellipsis_op, ternary_op, in_op, assoc_op,
+    % Special tokens that should become sequence_atom
+    '%', '&', '@',
     % Keywords that should become sequence_atom in sequence literals
     'and', 'or', 'not', 'if', 'else', 'then', 'elsif', 'when', 'end',
     'do', 'def', 'defp', 'defmacro', 'defstruct', 'defmodule', 'defprotocol',
