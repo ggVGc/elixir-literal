@@ -7,12 +7,28 @@ Code.require_file("lipex/core/arithmetic.ex")
 Code.require_file("lipex/core/logic.ex")
 Code.require_file("lipex/core/control_flow.ex")
 Code.require_file("lipex/functions/calls.ex")
+Code.require_file("lipex/functions/definitions.ex")
 
 defmodule LipexDemo do
   import Lipex
   
+  # Define functions using Lipex syntax
+  deflipex ~~((def square (x) (* x x)))
+  deflipex ~~((def cube (x) (* x x x)))
+  deflipex ~~((def add (a b) (+ a b)))
+  
   def run_demo do
     IO.puts("🌟 ===== LIPEX WORKING DEMO ===== 🌟")
+    IO.puts("")
+    
+    # Function Definitions
+    IO.puts("📝 FUNCTION DEFINITIONS:")
+    IO.puts("  Defined: (def square (x) (* x x))")
+    IO.puts("  Defined: (def cube (x) (* x x x))")
+    IO.puts("  Defined: (def add (a b) (+ a b))")
+    IO.puts("  square(5) = #{square(5)}")
+    IO.puts("  cube(3) = #{cube(3)}")
+    IO.puts("  add(10, 15) = #{add(10, 15)}")
     IO.puts("")
     
     # Arithmetic

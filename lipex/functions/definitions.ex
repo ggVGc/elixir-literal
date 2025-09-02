@@ -44,6 +44,10 @@ defmodule Lipex.Functions.Definitions do
       (def factorial (0) 1)
       (def factorial (n) :when (> n 0) (* n (factorial (- n 1))))
   """
+  def eval_def({:sequence_paren, _meta, [:def, name | rest]}) do
+    eval_function_def(:def, name, rest)
+  end
+  
   def eval_def({:sequence_paren, _meta, [{:def, _, nil}, name | rest]}) do
     eval_function_def(:def, name, rest)
   end
@@ -51,6 +55,10 @@ defmodule Lipex.Functions.Definitions do
   @doc """
   Evaluates a defp (private function) expression.
   """
+  def eval_defp({:sequence_paren, _meta, [:defp, name | rest]}) do
+    eval_function_def(:defp, name, rest)
+  end
+  
   def eval_defp({:sequence_paren, _meta, [{:defp, _, nil}, name | rest]}) do
     eval_function_def(:defp, name, rest)
   end
@@ -58,6 +66,10 @@ defmodule Lipex.Functions.Definitions do
   @doc """
   Evaluates a defmacro expression.
   """
+  def eval_defmacro({:sequence_paren, _meta, [:defmacro, name | rest]}) do
+    eval_function_def(:defmacro, name, rest)
+  end
+  
   def eval_defmacro({:sequence_paren, _meta, [{:defmacro, _, nil}, name | rest]}) do
     eval_function_def(:defmacro, name, rest)
   end
@@ -83,12 +95,19 @@ defmodule Lipex.Functions.Definitions do
       multiple -> {:__block__, [], Enum.map(multiple, &Lipex.eval_lipex_expr/1)}
     end
     
+    # Extract function name atom from AST
+    function_name = case name do
+      {atom, _meta, nil} when is_atom(atom) -> atom
+      atom when is_atom(atom) -> atom
+      _ -> name
+    end
+    
     # Build the function definition
     if guard do
       # Function with guard
       {def_type, [], [
         {:when, [], [
-          {Lipex.lipex_to_elixir_var(name), [], args_ast},
+          {function_name, [], args_ast},
           guard
         ]},
         [do: body_ast]
@@ -96,7 +115,7 @@ defmodule Lipex.Functions.Definitions do
     else
       # Regular function
       {def_type, [], [
-        {Lipex.lipex_to_elixir_var(name), [], args_ast},
+        {function_name, [], args_ast},
         [do: body_ast]
       ]}
     end
