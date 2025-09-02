@@ -134,11 +134,23 @@ defmodule Lipex do
       {:sequence_paren, _meta, [{:defmodule, _, nil} | _args]} ->
         Definitions.eval_defmodule(expr)
       
+      # Handle def with sequence_prefix format (the actual AST structure)
+      {:sequence_paren, _meta, [{:sequence_prefix, _, [:def | args]}]} ->
+        Definitions.eval_def({:sequence_paren, [], [:def | args]})
+      
       {:sequence_paren, _meta, [{:def, _, nil} | _args]} ->
         Definitions.eval_def(expr)
       
+      # Handle defp with sequence_prefix format
+      {:sequence_paren, _meta, [{:sequence_prefix, _, [:defp | args]}]} ->
+        Definitions.eval_defp({:sequence_paren, [], [:defp | args]})
+      
       {:sequence_paren, _meta, [{:defp, _, nil} | _args]} ->
         Definitions.eval_defp(expr)
+      
+      # Handle defmacro with sequence_prefix format
+      {:sequence_paren, _meta, [{:sequence_prefix, _, [:defmacro | args]}]} ->
+        Definitions.eval_defmacro({:sequence_paren, [], [:defmacro | args]})
       
       {:sequence_paren, _meta, [{:defmacro, _, nil} | _args]} ->
         Definitions.eval_defmacro(expr)
@@ -194,8 +206,18 @@ defmodule Lipex do
         # Convert to sequence_prefix format for Logic module
         Logic.eval_logic({:sequence_prefix, [], [op | args]})
       
-      # Function Calls - delegate to calls module
-      {:sequence_prefix, _meta, [function | _args]} when is_atom(function) ->
+      # Handle def/defp/defmacro in sequence_prefix format directly  
+      {:sequence_prefix, _meta, [:def | args]} ->
+        Definitions.eval_def({:sequence_paren, [], [:def | args]})
+        
+      {:sequence_prefix, _meta, [:defp | args]} ->
+        Definitions.eval_defp({:sequence_paren, [], [:defp | args]})
+        
+      {:sequence_prefix, _meta, [:defmacro | args]} ->
+        Definitions.eval_defmacro({:sequence_paren, [], [:defmacro | args]})
+      
+      # Function Calls - delegate to calls module (exclude def/defp/defmacro)
+      {:sequence_prefix, _meta, [function | _args]} when is_atom(function) and function not in [:def, :defp, :defmacro] ->
         Calls.eval_function_call(expr)
       
       {:sequence_paren, _meta, [function | _args]} ->
