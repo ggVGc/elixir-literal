@@ -1711,6 +1711,58 @@ defmodule Kernel.ParserTest do
                    [{:sequence_paren, [line: 1], [{:a, [line: 1], nil}]}]}
                 ]}
     end
+
+    test "multiline sequence expressions" do
+      # Test basic multiline sequence with newlines
+      assert parse!("~~((foo\nbar))") ==
+               {:sequence_literal, [line: 1],
+                [{:sequence_paren, [line: 1], [{:foo, [line: 1], nil}, {:bar, [line: 2], nil}]}]}
+
+      # Test multiline with nested expressions
+      assert parse!("~~((def square (x)\n  (* x x)))") ==
+               {:sequence_literal, [line: 1],
+                [{:sequence_paren, [line: 1],
+                  [{:sequence_prefix, [line: 1],
+                    [
+                      :def,
+                      {:square, [line: 1], nil},
+                      {:sequence_paren, [line: 1], [{:x, [line: 1], nil}]},
+                      {:sequence_paren, [line: 2],
+                       [{:sequence_prefix, [line: 2], 
+                         [:*, {:x, [line: 2], nil}, {:x, [line: 2], nil}]}]}
+                    ]}]}]}
+
+      # Test multiline arithmetic with nested function calls
+      assert parse!("~~((+\n  (* 2 3)\n  (* 4 5)))") ==
+               {:sequence_literal, [line: 1],
+                [{:sequence_paren, [line: 1],
+                  [{:sequence_prefix, [line: 1],
+                    [
+                      :+,
+                      {:sequence_paren, [line: 2],
+                       [{:sequence_prefix, [line: 2], [:*, 2, 3]}]},
+                      {:sequence_paren, [line: 3],
+                       [{:sequence_prefix, [line: 3], [:*, 4, 5]}]}
+                    ]}]}]}
+
+      # Test multiline with mixed brackets
+      assert parse!("~~([hello\nworld])") ==
+               {:sequence_literal, [line: 1],
+                [{:sequence_bracket, [line: 1], [{:hello, [line: 1], nil}, {:world, [line: 2], nil}]}]}
+
+      # Test deeply nested multiline
+      assert parse!("~~((outer\n  (inner\n    nested)))") ==
+               {:sequence_literal, [line: 1],
+                [{:sequence_paren, [line: 1],
+                  [
+                    {:outer, [line: 1], nil},
+                    {:sequence_paren, [line: 2],
+                     [
+                       {:inner, [line: 2], nil},
+                       {:nested, [line: 3], nil}
+                     ]}
+                  ]}]}
+    end
   end
 
   describe "sequence literals with blocks and brackets" do

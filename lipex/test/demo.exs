@@ -15,7 +15,8 @@ defmodule LipexDemo do
   import Lipex
   
   # Define functions using Lipex syntax
-  deflipex ~~((def square (x) (* x x)))
+  deflipex ~~((def square (x)
+    (* x x)))
   deflipex ~~((def cube (x) (* x x x)))
   deflipex ~~((def add (a b) (+ a b)))
   
