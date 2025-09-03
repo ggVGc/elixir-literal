@@ -1516,8 +1516,61 @@ defmodule Kernel.ParserTest do
                {:sequence_literal, [line: 1],
                 [{:hello_world, [line: 1], nil}, {:foo_bar, [line: 1], nil}]}
 
-      # Currently only lowercase identifiers are supported - CamelCase aliases are not
-      assert_syntax_error(["syntax error before: ", "'CamelCase'"], "~~(CamelCase snake_case)")
+      # Both lowercase and uppercase identifiers are now supported
+      assert parse!("~~(CamelCase snake_case)") ==
+               {:sequence_literal, [line: 1],
+                [{:CamelCase, [line: 1], nil}, {:snake_case, [line: 1], nil}]}
+    end
+
+    test "sequences with dot notation identifiers" do
+      # Basic lowercase dot notation
+      assert parse!("~~(io.puts)") ==
+               {:sequence_literal, [line: 1], [{:"io.puts", [line: 1], nil}]}
+      
+      # Basic uppercase dot notation (modules)
+      assert parse!("~~(IO.puts)") ==
+               {:sequence_literal, [line: 1], [{:"IO.puts", [line: 1], nil}]}
+      
+      # Multiple dot-separated parts
+      assert parse!("~~(String.upcase Enum.count)") ==
+               {:sequence_literal, [line: 1], 
+                [{:"String.upcase", [line: 1], nil}, {:"Enum.count", [line: 1], nil}]}
+      
+      # Nested sequences with dot notation
+      assert parse!("~~((IO.puts \"hello\"))") ==
+               {:sequence_literal, [line: 1], 
+                [{:sequence_paren, [line: 1], [{:"IO.puts", [line: 1], nil}, "hello"]}]}
+      
+      # Mixed dot notation with regular identifiers
+      assert parse!("~~(process IO.puts data)") ==
+               {:sequence_literal, [line: 1], 
+                [{:process, [line: 1], nil}, {:"IO.puts", [line: 1], nil}, {:data, [line: 1], nil}]}
+      
+      # Complex module paths
+      assert parse!("~~(GenServer.start_link)") ==
+               {:sequence_literal, [line: 1], [{:"GenServer.start_link", [line: 1], nil}]}
+      
+      # Function calls with dot notation
+      assert parse!("~~((String.upcase \"test\"))") ==
+               {:sequence_literal, [line: 1], 
+                [{:sequence_paren, [line: 1], [{:"String.upcase", [line: 1], nil}, "test"]}]}
+      
+      # Multiple arguments with dot notation functions
+      assert parse!("~~((Enum.map list func))") ==
+               {:sequence_literal, [line: 1], 
+                [{:sequence_paren, [line: 1], 
+                  [{:"Enum.map", [line: 1], nil}, {:list, [line: 1], nil}, {:func, [line: 1], nil}]}]}
+    end
+
+    test "dot notation only works inside sequence literals" do
+      # Outside sequence literals, dots should still be parsed as separate tokens
+      # This verifies we didn't break normal Elixir syntax
+      assert parse!("IO.puts()") == 
+               {{:., [line: 1], [{:__aliases__, [line: 1], [:IO]}, :puts]}, [line: 1], []}
+      
+      # Regular module calls should be unaffected
+      assert parse!("String.upcase(\"test\")") ==
+               {{:., [line: 1], [{:__aliases__, [line: 1], [:String]}, :upcase]}, [line: 1], ["test"]}
     end
 
     test "complex expressions and mixed types supported" do
