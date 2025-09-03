@@ -1612,9 +1612,9 @@ defmodule Kernel.ParserTest do
                   123,
                   :atom,
                   "string",
-                  {true, [line: 1], nil},
-                  {false, [line: 1], nil},
-                  {nil, [line: 1], nil}
+                  true,
+                  false,
+                  nil
                 ]}
 
       # Nested mathematical expressions  
@@ -1735,15 +1735,14 @@ defmodule Kernel.ParserTest do
                 [
                   {:sequence_paren, [line: 1],
                    [
-                     {:sequence_prefix, [line: 1],
+                     {:sequence_prefix, {:def, [line: 1], nil},
                       [
-                        :def,
                         {:square, [line: 1], nil},
                         {:sequence_paren, [line: 1], [{:x, [line: 1], nil}]},
                         {:sequence_paren, [line: 2],
                          [
-                           {:sequence_prefix, [line: 2],
-                            [:*, {:x, [line: 2], nil}, {:x, [line: 2], nil}]}
+                           {:sequence_prefix, {:*, [line: 2], nil},
+                            [{:x, [line: 2], nil}, {:x, [line: 2], nil}]}
                          ]}
                       ]}
                    ]}
@@ -1755,11 +1754,12 @@ defmodule Kernel.ParserTest do
                 [
                   {:sequence_paren, [line: 1],
                    [
-                     {:sequence_prefix, [line: 1],
+                     {:sequence_prefix, {:+, [line: 1], nil},
                       [
-                        :+,
-                        {:sequence_paren, [line: 2], [{:sequence_prefix, [line: 2], [:*, 2, 3]}]},
-                        {:sequence_paren, [line: 3], [{:sequence_prefix, [line: 3], [:*, 4, 5]}]}
+                        {:sequence_paren, [line: 2],
+                         [{:sequence_prefix, {:*, [line: 2], nil}, [2, 3]}]},
+                        {:sequence_paren, [line: 3],
+                         [{:sequence_prefix, {:*, [line: 3], nil}, [4, 5]}]}
                       ]}
                    ]}
                 ]}
