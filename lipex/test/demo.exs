@@ -4,6 +4,7 @@
 Code.require_file("lipex/evaluator.ex")
 Code.require_file("lipex/lipex.ex")
 Code.require_file("lipex/core/data_structures.ex")
+Code.require_file("lipex/core/pattern_matching.ex")
 Code.require_file("lipex/core/arithmetic.ex")
 Code.require_file("lipex/core/logic.ex")
 Code.require_file("lipex/core/control_flow.ex")
@@ -72,6 +73,26 @@ defmodule LipexDemo do
     IO.puts("  (atom? :hello) = #{deflipex ~~((atom? :hello))}")
     IO.puts("  (number? 42) = #{deflipex ~~((number? 42))}")
     IO.puts("  (string? \"world\") = #{deflipex ~~((string? "world"))}")
+    IO.puts("")
+    
+    # Pattern Matching
+    IO.puts("🎯 PATTERN MATCHING:")
+    
+    # Simple variable assignment
+    deflipex ~~((= x 42))
+    IO.puts("  (= x 42) assigns x = #{x}")
+    
+    # Tuple destructuring
+    deflipex ~~((= {a b} (tuple 10 20)))
+    IO.puts("  (= {a b} (tuple 10 20)) assigns a = #{a}, b = #{b}")
+    
+    # List destructuring with brackets
+    deflipex ~~((= [first second | rest] [1 2 3 4 5]))
+    IO.puts("  (= [first second | rest] [1 2 3 4 5]) gives first = #{first}, second = #{second}, rest = #{inspect(rest)}")
+    
+    # Note: Map and nested patterns need simpler syntax due to AST parsing
+    IO.puts("  [Map destructuring examples temporarily simplified for initial demo]")
+    
     IO.puts("")
     
     # Control Flow (temporarily disabled - module not migrated yet)

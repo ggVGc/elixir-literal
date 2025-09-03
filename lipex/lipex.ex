@@ -51,6 +51,8 @@ defmodule Lipex do
     Lipex.Core.DataStructures,
     # Function definitions - need early resolution
     Lipex.Functions.Definitions,
+    # Pattern matching - handle before arithmetic since = is pattern matching, not equality
+    Lipex.Core.PatternMatching,
     # Mathematical operations
     Lipex.Core.Arithmetic,
     # Logical operations and type checks
