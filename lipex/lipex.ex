@@ -41,20 +41,7 @@ defmodule Lipex do
   - **Error Handling**: `(try ...)`, `(rescue ...)`, `(catch ...)`, `(throw ...)`
   """
 
-  # Import all evaluation modules
-  alias Lipex.Core.DataStructures
-  alias Lipex.Core.Arithmetic
-  alias Lipex.Core.Logic
-  alias Lipex.Core.ControlFlow
-  alias Lipex.Functions.Definitions
-  alias Lipex.Functions.Anonymous
-  alias Lipex.Functions.Calls
-  alias Lipex.Advanced.Pipes
-  alias Lipex.Advanced.Comprehensions
-  alias Lipex.Advanced.PatternMatching
-  alias Lipex.Concurrency.Processes
-  alias Lipex.ErrorHandling.TryRescue
-  alias Lipex.Strings.Interpolation
+  # Evaluation modules are referenced directly in @evaluator_modules list below
 
   # Module evaluation order (specific to general)
   # Each module implements the Lipex.Evaluator behavior
@@ -120,6 +107,10 @@ defmodule Lipex do
 
       string when is_binary(string) ->
         string
+
+      # Handle bracket list syntax [a b c] as sugar for (list a b c)
+      {:sequence_bracket, meta, items} ->
+        eval_lipex_expr({:sequence_paren, meta, [{:list, meta, nil} | items]})
 
       # Handle sequence_paren wrapping a single sequence_prefix (unwrap it)
       {:sequence_paren, _meta, [{:sequence_prefix, prefix_meta, args}]} ->

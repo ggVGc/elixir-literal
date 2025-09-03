@@ -53,6 +53,13 @@ defmodule LipexDemo do
     shopping_list = deflipex ~~((list :apples :bananas :coffee :tea))
     IO.puts("  List: #{inspect(shopping_list)}")
     
+    # Bracket syntax for lists (syntax sugar for (list ...))
+    bracket_list = deflipex ~~([1 2 3 4 5])
+    IO.puts("  List with brackets: #{inspect(bracket_list)}")
+    
+    nested_list = deflipex ~~([[:a :b] [:c :d] [:e :f]])
+    IO.puts("  Nested lists: #{inspect(nested_list)}")
+    
     settings = deflipex ~~((kwlist :timeout 3000 :retries 5))
     IO.puts("  Keyword list: #{inspect(settings)}")
     IO.puts("")
