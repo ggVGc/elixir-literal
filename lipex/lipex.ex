@@ -48,7 +48,7 @@ defmodule Lipex do
   # NOTE: Only including migrated modules for now
   @evaluator_modules [
     # String interpolation - handle early since strings are literals
-    Lipex.Strings.Interpolation,
+    # Lipex.Strings.Interpolation,
     # Core data structures - most specific patterns
     Lipex.Core.DataStructures,
     # Function definitions - need early resolution
