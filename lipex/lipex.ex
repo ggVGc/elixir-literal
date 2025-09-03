@@ -86,6 +86,12 @@ defmodule Lipex do
                                      (Map.values)
                                      (Enum.sum)))
   """
+  # Handle sequence literals with multiple expressions
+  defmacro deflipex({:sequence_literal, _meta, exprs}) when length(exprs) > 1 do
+    elixir_exprs = Enum.map(exprs, &eval_lipex_expr/1)
+    {:__block__, [], elixir_exprs}
+  end
+
   # Handle direct sequence literals
   defmacro deflipex({:quote, _, nil}, do: {:sequence_literal, _meta, [expr]}) do
     eval_lipex_expr(expr)
