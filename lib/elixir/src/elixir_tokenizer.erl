@@ -1675,8 +1675,8 @@ tokenize_keyword(terminator, Rest, Line, Column, Atom, Length, Scope, Tokens) ->
   end;
 
 tokenize_keyword(token, Rest, Line, Column, Atom, Length, Scope, Tokens) ->
-  create_token_and_continue(Atom, {Line, Column, nil}, Atom,
-                           Rest, Line, Column + Length, Scope, Tokens);
+  Token = {Atom, {Line, Column, nil}},
+  tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
 
 tokenize_keyword(block, Rest, Line, Column, Atom, Length, Scope, Tokens) ->
   create_token_and_continue(block_identifier, {Line, Column, nil}, Atom,

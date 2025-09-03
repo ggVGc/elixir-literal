@@ -65,11 +65,20 @@ defmodule Lipex.Strings.Interpolation do
   """
   defp process_interpolated_expr(expr) do
     case expr do
-      # Kernel.to_string call with Lipex variable
-      {{:., kernel_meta, [Kernel, :to_string]}, call_meta, [var_expr]} ->
-        # Process the variable through Lipex evaluation
-        processed_var = Lipex.eval_lipex_expr(var_expr)
-        {{:., kernel_meta, [Kernel, :to_string]}, call_meta, [processed_var]}
+      # Kernel.to_string call with expression inside
+      {{:., kernel_meta, [Kernel, :to_string]}, call_meta, [inner_expr]} ->
+        # Process the inner expression through Lipex evaluation first
+        processed_expr = process_interpolated_expr(inner_expr)
+        {{:., kernel_meta, [Kernel, :to_string]}, call_meta, [processed_expr]}
+      
+      # Lipex sequence expressions - these need to be evaluated through Lipex pipeline
+      {:sequence_prefix, meta, args} ->
+        # This is a Lipex expression like (+ 3 4) - evaluate it
+        Lipex.eval_lipex_expr({:sequence_prefix, meta, args})
+      
+      {:sequence_paren, meta, args} ->
+        # This is a Lipex expression like (+ 3 4) in paren form - evaluate it
+        Lipex.eval_lipex_expr({:sequence_paren, meta, args})
       
       # Direct variable reference
       {var, meta, nil} when is_atom(var) ->

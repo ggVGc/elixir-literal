@@ -1526,51 +1526,62 @@ defmodule Kernel.ParserTest do
       # Basic lowercase dot notation
       assert parse!("~~(io.puts)") ==
                {:sequence_literal, [line: 1], [{:"io.puts", [line: 1], nil}]}
-      
+
       # Basic uppercase dot notation (modules)
       assert parse!("~~(IO.puts)") ==
                {:sequence_literal, [line: 1], [{:"IO.puts", [line: 1], nil}]}
-      
+
       # Multiple dot-separated parts
       assert parse!("~~(String.upcase Enum.count)") ==
-               {:sequence_literal, [line: 1], 
+               {:sequence_literal, [line: 1],
                 [{:"String.upcase", [line: 1], nil}, {:"Enum.count", [line: 1], nil}]}
-      
+
       # Nested sequences with dot notation
       assert parse!("~~((IO.puts \"hello\"))") ==
-               {:sequence_literal, [line: 1], 
+               {:sequence_literal, [line: 1],
                 [{:sequence_paren, [line: 1], [{:"IO.puts", [line: 1], nil}, "hello"]}]}
-      
+
       # Mixed dot notation with regular identifiers
       assert parse!("~~(process IO.puts data)") ==
-               {:sequence_literal, [line: 1], 
-                [{:process, [line: 1], nil}, {:"IO.puts", [line: 1], nil}, {:data, [line: 1], nil}]}
-      
+               {:sequence_literal, [line: 1],
+                [
+                  {:process, [line: 1], nil},
+                  {:"IO.puts", [line: 1], nil},
+                  {:data, [line: 1], nil}
+                ]}
+
       # Complex module paths
       assert parse!("~~(GenServer.start_link)") ==
                {:sequence_literal, [line: 1], [{:"GenServer.start_link", [line: 1], nil}]}
-      
+
       # Function calls with dot notation
       assert parse!("~~((String.upcase \"test\"))") ==
-               {:sequence_literal, [line: 1], 
+               {:sequence_literal, [line: 1],
                 [{:sequence_paren, [line: 1], [{:"String.upcase", [line: 1], nil}, "test"]}]}
-      
+
       # Multiple arguments with dot notation functions
       assert parse!("~~((Enum.map list func))") ==
-               {:sequence_literal, [line: 1], 
-                [{:sequence_paren, [line: 1], 
-                  [{:"Enum.map", [line: 1], nil}, {:list, [line: 1], nil}, {:func, [line: 1], nil}]}]}
+               {:sequence_literal, [line: 1],
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:"Enum.map", [line: 1], nil},
+                     {:list, [line: 1], nil},
+                     {:func, [line: 1], nil}
+                   ]}
+                ]}
     end
 
     test "dot notation only works inside sequence literals" do
       # Outside sequence literals, dots should still be parsed as separate tokens
       # This verifies we didn't break normal Elixir syntax
-      assert parse!("IO.puts()") == 
+      assert parse!("IO.puts()") ==
                {{:., [line: 1], [{:__aliases__, [line: 1], [:IO]}, :puts]}, [line: 1], []}
-      
+
       # Regular module calls should be unaffected
       assert parse!("String.upcase(\"test\")") ==
-               {{:., [line: 1], [{:__aliases__, [line: 1], [:String]}, :upcase]}, [line: 1], ["test"]}
+               {{:., [line: 1], [{:__aliases__, [line: 1], [:String]}, :upcase]}, [line: 1],
+                ["test"]}
     end
 
     test "complex expressions and mixed types supported" do
@@ -1721,47 +1732,60 @@ defmodule Kernel.ParserTest do
       # Test multiline with nested expressions
       assert parse!("~~((def square (x)\n  (* x x)))") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_paren, [line: 1],
-                  [{:sequence_prefix, [line: 1],
-                    [
-                      :def,
-                      {:square, [line: 1], nil},
-                      {:sequence_paren, [line: 1], [{:x, [line: 1], nil}]},
-                      {:sequence_paren, [line: 2],
-                       [{:sequence_prefix, [line: 2], 
-                         [:*, {:x, [line: 2], nil}, {:x, [line: 2], nil}]}]}
-                    ]}]}]}
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:sequence_prefix, [line: 1],
+                      [
+                        :def,
+                        {:square, [line: 1], nil},
+                        {:sequence_paren, [line: 1], [{:x, [line: 1], nil}]},
+                        {:sequence_paren, [line: 2],
+                         [
+                           {:sequence_prefix, [line: 2],
+                            [:*, {:x, [line: 2], nil}, {:x, [line: 2], nil}]}
+                         ]}
+                      ]}
+                   ]}
+                ]}
 
       # Test multiline arithmetic with nested function calls
       assert parse!("~~((+\n  (* 2 3)\n  (* 4 5)))") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_paren, [line: 1],
-                  [{:sequence_prefix, [line: 1],
-                    [
-                      :+,
-                      {:sequence_paren, [line: 2],
-                       [{:sequence_prefix, [line: 2], [:*, 2, 3]}]},
-                      {:sequence_paren, [line: 3],
-                       [{:sequence_prefix, [line: 3], [:*, 4, 5]}]}
-                    ]}]}]}
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:sequence_prefix, [line: 1],
+                      [
+                        :+,
+                        {:sequence_paren, [line: 2], [{:sequence_prefix, [line: 2], [:*, 2, 3]}]},
+                        {:sequence_paren, [line: 3], [{:sequence_prefix, [line: 3], [:*, 4, 5]}]}
+                      ]}
+                   ]}
+                ]}
 
       # Test multiline with mixed brackets
       assert parse!("~~([hello\nworld])") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_bracket, [line: 1], [{:hello, [line: 1], nil}, {:world, [line: 2], nil}]}]}
+                [
+                  {:sequence_bracket, [line: 1],
+                   [{:hello, [line: 1], nil}, {:world, [line: 2], nil}]}
+                ]}
 
       # Test deeply nested multiline
       assert parse!("~~((outer\n  (inner\n    nested)))") ==
                {:sequence_literal, [line: 1],
-                [{:sequence_paren, [line: 1],
-                  [
-                    {:outer, [line: 1], nil},
-                    {:sequence_paren, [line: 2],
-                     [
-                       {:inner, [line: 2], nil},
-                       {:nested, [line: 3], nil}
-                     ]}
-                  ]}]}
+                [
+                  {:sequence_paren, [line: 1],
+                   [
+                     {:outer, [line: 1], nil},
+                     {:sequence_paren, [line: 2],
+                      [
+                        {:inner, [line: 2], nil},
+                        {:nested, [line: 3], nil}
+                      ]}
+                   ]}
+                ]}
     end
   end
 
