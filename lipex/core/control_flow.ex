@@ -7,6 +7,47 @@ defmodule Lipex.Core.ControlFlow do
   - Pattern matching: `(match ...)`, `(with ...)`
   """
   
+  @behaviour Lipex.Evaluator
+  
+  @doc """
+  Tries to evaluate control flow expressions.
+  
+  Returns `{:ok, result}` for control flow patterns, `:pass` otherwise.
+  """
+  def try_eval(expr) do
+    case expr do
+      # if patterns with AST node operator
+      {:sequence_prefix, {:if, _, nil}, args} ->
+        {:ok, eval_if({:sequence_paren, [], [{:if, [], nil} | args]})}
+        
+      # if patterns
+      {:sequence_paren, _meta, [{:if, _, nil} | args]} ->
+        {:ok, eval_if({:sequence_paren, [], [{:if, [], nil} | args]})}
+        
+      {:sequence_prefix, _meta, [:if | args]} ->
+        {:ok, eval_if({:sequence_prefix, [], [:if | args]})}
+        
+      # cond patterns  
+      {:sequence_paren, _meta, [{:cond, _, nil} | _clauses]} ->
+        {:ok, eval_cond(expr)}
+        
+      # case patterns
+      {:sequence_paren, _meta, [{:case, _, nil} | _args]} ->
+        {:ok, eval_case(expr)}
+        
+      # with patterns
+      {:sequence_paren, _meta, [{:with, _, nil} | _args]} ->
+        {:ok, eval_with(expr)}
+        
+      # match patterns
+      {:sequence_paren, _meta, [{:match, _, nil} | _args]} ->
+        {:ok, eval_match(expr)}
+        
+      _ ->
+        :pass
+    end
+  end
+  
   @doc """
   Evaluates if expressions.
   
@@ -16,18 +57,35 @@ defmodule Lipex.Core.ControlFlow do
       (if false :yes :no)           -> :no
       (if (> x 0) :positive :not-positive)
   """
+  def eval_if({:sequence_paren, _meta, [{:if, _, nil}, condition, then_expr, else_expr]}) do
+    elixir_condition = Lipex.eval_lipex_expr(condition)
+    elixir_then = Lipex.eval_lipex_expr(then_expr)
+    elixir_else = Lipex.eval_lipex_expr(else_expr)
+    
+    {:if, [],
+     [elixir_condition,
+      [do: elixir_then,
+       else: elixir_else]]}
+  end
+  
+  def eval_if({:sequence_paren, _meta, [{:if, _, nil}, condition, then_expr]}) do
+    elixir_condition = Lipex.eval_lipex_expr(condition)
+    elixir_then = Lipex.eval_lipex_expr(then_expr)
+    
+    {:if, [],
+     [elixir_condition,
+      [do: elixir_then]]}
+  end
+  
   def eval_if({:sequence_prefix, _meta, [:if, condition, then_expr, else_expr]}) do
     elixir_condition = Lipex.eval_lipex_expr(condition)
     elixir_then = Lipex.eval_lipex_expr(then_expr)
     elixir_else = Lipex.eval_lipex_expr(else_expr)
     
-    quote do
-      if unquote(elixir_condition) do
-        unquote(elixir_then)
-      else
-        unquote(elixir_else)
-      end
-    end
+    {:if, [],
+     [elixir_condition,
+      [do: elixir_then,
+       else: elixir_else]]}
   end
   
   # Handle if with only condition and then clause (else defaults to nil)
@@ -35,11 +93,9 @@ defmodule Lipex.Core.ControlFlow do
     elixir_condition = Lipex.eval_lipex_expr(condition)
     elixir_then = Lipex.eval_lipex_expr(then_expr)
     
-    quote do
-      if unquote(elixir_condition) do
-        unquote(elixir_then)
-      end
-    end
+    {:if, [],
+     [elixir_condition,
+      [do: elixir_then]]}
   end
   
   @doc """
@@ -63,11 +119,7 @@ defmodule Lipex.Core.ControlFlow do
         raise "Invalid cond clause format: #{inspect(other)}"
     end)
     
-    quote do
-      cond do
-        unquote_splicing(elixir_clauses)
-      end
-    end
+    {:cond, [], [[do: elixir_clauses]]}
   end
   
   @doc """
@@ -98,11 +150,7 @@ defmodule Lipex.Core.ControlFlow do
         raise "Invalid case clause format: #{inspect(other)}"
     end)
     
-    quote do
-      case unquote(elixir_value) do
-        unquote_splicing(elixir_clauses)
-      end
-    end
+    {:case, [], [elixir_value, [do: elixir_clauses]]}
   end
   
   @doc """
@@ -136,11 +184,7 @@ defmodule Lipex.Core.ControlFlow do
         Lipex.eval_lipex_expr(other)
     end
     
-    quote do
-      with unquote_splicing(elixir_clauses) do
-        unquote(elixir_do)
-      end
-    end
+    {:with, [], elixir_clauses ++ [[do: elixir_do]]}
   end
   
   @doc """
@@ -155,9 +199,7 @@ defmodule Lipex.Core.ControlFlow do
     elixir_pattern = convert_pattern(pattern)
     elixir_value = Lipex.eval_lipex_expr(value)
     
-    quote do
-      unquote(elixir_pattern) = unquote(elixir_value)
-    end
+    {:=, [], [elixir_pattern, elixir_value]}
   end
   
   # Private helper functions

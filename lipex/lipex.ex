@@ -55,6 +55,8 @@ defmodule Lipex do
     Lipex.Functions.Definitions,
     # Pattern matching - handle before arithmetic since = is pattern matching, not equality
     Lipex.Core.PatternMatching,
+    # Control flow - handle if, cond, case before other evaluations
+    Lipex.Core.ControlFlow,
     # Mathematical operations
     Lipex.Core.Arithmetic,
     # Logical operations and type checks
@@ -64,7 +66,6 @@ defmodule Lipex do
 
     # TODO: Add these modules as they get migrated:
     # Lipex.Functions.Anonymous,
-    # Lipex.Core.ControlFlow,
     # Lipex.Advanced.Pipes,
     # Lipex.Advanced.Comprehensions,
     # Lipex.Concurrency.Processes,
@@ -93,13 +94,13 @@ defmodule Lipex do
     {:__block__, [], elixir_exprs}
   end
 
-  # Handle direct sequence literals
-  defmacro deflipex({:quote, _, nil}, do: {:sequence_literal, _meta, [expr]}) do
+  # Handle quoted sequence literals (for backwards compatibility)
+  defmacro deflipex({:sequence_literal, _meta, [expr]}) do
     eval_lipex_expr(expr)
   end
 
-  # Handle quoted sequence literals (for backwards compatibility)
-  defmacro deflipex({:sequence_literal, _meta, [expr]}) do
+  # Handle direct sequence literals
+  defmacro deflipex({:quote, _, nil}, do: {:sequence_literal, _meta, [expr]}) do
     eval_lipex_expr(expr)
   end
 

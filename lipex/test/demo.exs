@@ -123,13 +123,12 @@ defmodule LipexDemo do
     
     IO.puts("")
     
-    # Control Flow (temporarily disabled - module not migrated yet)
+    # Control Flow
     IO.puts("🚦 CONTROL FLOW:")
-    IO.puts("  [Control flow features temporarily disabled during refactoring]")
-    # IO.puts("  (if true :success :failure) = #{deflipex ~~((if true :success :failure))}")
-    # IO.puts("  (if false :success :failure) = #{deflipex ~~((if false :success :failure))}")
-    # condition_result = deflipex ~~((if (> 10 5) :bigger :smaller))
-    # IO.puts("  (if (> 10 5) :bigger :smaller) = #{condition_result}")
+    IO.puts("  (if true :success :failure) = #{deflipex ~~((if true :success :failure))}")
+    IO.puts("  (if false :success :failure) = #{deflipex ~~((if false :success :failure))}")
+    condition_result = deflipex ~~((if (> 10 5) :bigger :smaller))
+    IO.puts("  (if (> 10 5) :bigger :smaller) = #{condition_result}")
     IO.puts("")
     
     # Complex Nested Expressions

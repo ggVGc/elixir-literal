@@ -19,8 +19,14 @@ defmodule Lipex.Core.Arithmetic do
   """
   def try_eval(expr) do
     case expr do
+      # Handle operators as atoms
       {:sequence_prefix, _meta, [op | _args]} when op in @operators ->
         {:ok, eval_arithmetic(expr)}
+      
+      # Handle operators as AST nodes (e.g., {:*, _, nil})
+      {:sequence_prefix, {op, _, nil}, args} when op in @operators ->
+        {:ok, eval_arithmetic({:sequence_prefix, [], [op | args]})}
+        
       _ ->
         :pass
     end
@@ -92,16 +98,7 @@ defmodule Lipex.Core.Arithmetic do
     end
   end
   
-  @doc """
-  Evaluates comparison expressions.
-  
-  ## Examples
-  
-      (< 1 2)           -> true
-      (>= 5 5)          -> true
-      (== a b)          -> true if a equals b
-      (!= a b)          -> true if a doesn't equal b
-  """
+  # Evaluates comparison expressions.
   def eval_arithmetic({:sequence_prefix, _meta, [:<, left, right]}) do
     elixir_left = Lipex.eval_lipex_expr(left)
     elixir_right = Lipex.eval_lipex_expr(right)
@@ -139,14 +136,7 @@ defmodule Lipex.Core.Arithmetic do
   end
   
   
-  @doc """
-  Evaluates modulo and power operations.
-  
-  ## Examples
-  
-      (rem 10 3)        -> 1
-      (pow 2 8)         -> 256
-  """
+  # Evaluates modulo and power operations.
   def eval_arithmetic({:sequence_prefix, _meta, [:rem, dividend, divisor]}) do
     elixir_dividend = Lipex.eval_lipex_expr(dividend)
     elixir_divisor = Lipex.eval_lipex_expr(divisor)
@@ -159,15 +149,7 @@ defmodule Lipex.Core.Arithmetic do
     quote do: :math.pow(unquote(elixir_base), unquote(elixir_exponent))
   end
   
-  @doc """
-  Evaluates mathematical functions.
-  
-  ## Examples
-  
-      (abs -5)          -> 5
-      (min 1 2 3)       -> 1
-      (max 1 2 3)       -> 3
-  """
+  # Evaluates mathematical functions.
   def eval_arithmetic({:sequence_prefix, _meta, [:abs, value]}) do
     elixir_value = Lipex.eval_lipex_expr(value)
     quote do: abs(unquote(elixir_value))

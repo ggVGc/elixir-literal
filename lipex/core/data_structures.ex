@@ -19,9 +19,13 @@ defmodule Lipex.Core.DataStructures do
   """
   def try_eval(expr) do
     case expr do
-      # Maps: (% key1 value1 key2 value2)
+      # Maps with atom operator: (% key1 value1 key2 value2)
       {:sequence_prefix, _meta, [:% | _args]} ->
         {:ok, eval_map(expr)}
+      
+      # Maps with AST node operator: (% key1 value1) where % is {:%, _, nil}
+      {:sequence_prefix, {:%, _, nil}, args} ->
+        {:ok, eval_map({:sequence_prefix, [], [:% | args]})}
       
       # Tuples: (tuple a b c)
       {:sequence_paren, _meta, [{:tuple, _, nil} | _args]} ->

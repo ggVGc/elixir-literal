@@ -23,6 +23,10 @@ defmodule Lipex.Functions.Definitions do
         {:ok, eval_defmodule(expr)}
       
       # def patterns - multiple formats due to AST variations
+      # Handle sequence_prefix where def is the operator (e.g., (def square (x) ...))
+      {:sequence_prefix, {:def, _, nil}, args} ->
+        {:ok, eval_def({:sequence_paren, [], [{:def, [], nil} | args]})}
+        
       {:sequence_paren, _meta, [{:sequence_prefix, _, [:def | args]}]} ->
         {:ok, eval_def({:sequence_paren, [], [:def | args]})}
       
@@ -32,7 +36,11 @@ defmodule Lipex.Functions.Definitions do
       {:sequence_prefix, _meta, [:def | args]} ->
         {:ok, eval_def({:sequence_paren, [], [:def | args]})}
       
-      # defp patterns  
+      # defp patterns
+      # Handle sequence_prefix where defp is the operator
+      {:sequence_prefix, {:defp, _, nil}, args} ->
+        {:ok, eval_defp({:sequence_paren, [], [{:defp, [], nil} | args]})}
+        
       {:sequence_paren, _meta, [{:sequence_prefix, _, [:defp | args]}]} ->
         {:ok, eval_defp({:sequence_paren, [], [:defp | args]})}
       
@@ -43,6 +51,10 @@ defmodule Lipex.Functions.Definitions do
         {:ok, eval_defp({:sequence_paren, [], [:defp | args]})}
       
       # defmacro patterns
+      # Handle sequence_prefix where defmacro is the operator
+      {:sequence_prefix, {:defmacro, _, nil}, args} ->
+        {:ok, eval_defmacro({:sequence_paren, [], [{:defmacro, [], nil} | args]})}
+        
       {:sequence_paren, _meta, [{:sequence_prefix, _, [:defmacro | args]}]} ->
         {:ok, eval_defmacro({:sequence_paren, [], [:defmacro | args]})}
       

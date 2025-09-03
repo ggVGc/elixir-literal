@@ -22,7 +22,7 @@ defmodule Lipex.Functions.Calls do
         {:ok, eval_function_call(expr)}
       
       # Function calls with sequence_paren: (Module.func arg1 arg2) or (func arg1 arg2)
-      {:sequence_paren, _meta, [function | _args]} ->
+      {:sequence_paren, _meta, [_function | _args]} ->
         {:ok, eval_function_call(expr)}
       
       # Not a function call expression
