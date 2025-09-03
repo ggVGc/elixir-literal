@@ -47,6 +47,8 @@ defmodule Lipex do
   # Each module implements the Lipex.Evaluator behavior
   # NOTE: Only including migrated modules for now
   @evaluator_modules [
+    # String interpolation - handle early since strings are literals
+    Lipex.Strings.Interpolation,
     # Core data structures - most specific patterns
     Lipex.Core.DataStructures,
     # Function definitions - need early resolution
@@ -66,8 +68,7 @@ defmodule Lipex do
     # Lipex.Advanced.Pipes,
     # Lipex.Advanced.Comprehensions,
     # Lipex.Concurrency.Processes,
-    # Lipex.ErrorHandling.TryRescue,
-    # Lipex.Strings.Interpolation
+    # Lipex.ErrorHandling.TryRescue
   ]
 
   @doc """
