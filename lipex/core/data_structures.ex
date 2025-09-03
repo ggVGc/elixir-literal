@@ -10,6 +10,41 @@ defmodule Lipex.Core.DataStructures do
   - Lists: `(list 1 2 3)`
   """
   
+  @behaviour Lipex.Evaluator
+  
+  @doc """
+  Tries to evaluate data structure expressions.
+  
+  Returns `{:ok, result}` for data structure patterns, `:pass` otherwise.
+  """
+  def try_eval(expr) do
+    case expr do
+      # Maps: (% key1 value1 key2 value2)
+      {:sequence_prefix, _meta, [:% | _args]} ->
+        {:ok, eval_map(expr)}
+      
+      # Tuples: (tuple a b c)
+      {:sequence_paren, _meta, [{:tuple, _, nil} | _args]} ->
+        {:ok, eval_tuple(expr)}
+      
+      # Structs: (struct ModuleName :field1 val1 :field2 val2)
+      {:sequence_paren, _meta, [{:struct, _, nil} | _args]} ->
+        {:ok, eval_struct(expr)}
+      
+      # Keyword Lists: (kwlist :key1 val1 :key2 val2)
+      {:sequence_paren, _meta, [{:kwlist, _, nil} | _args]} ->
+        {:ok, eval_kwlist(expr)}
+      
+      # Lists: (list 1 2 3)
+      {:sequence_paren, _meta, [{:list, _, nil} | _args]} ->
+        {:ok, eval_list(expr)}
+      
+      # Not a data structure expression
+      _ ->
+        :pass
+    end
+  end
+  
   @doc """
   Evaluates map construction expressions.
   

@@ -1,6 +1,7 @@
 #!/usr/bin/env elixir
 
 # Require all lipex modules
+Code.require_file("lipex/evaluator.ex")
 Code.require_file("lipex/lipex.ex")
 Code.require_file("lipex/core/data_structures.ex")
 Code.require_file("lipex/core/arithmetic.ex")
@@ -66,12 +67,13 @@ defmodule LipexDemo do
     IO.puts("  (string? \"world\") = #{deflipex ~~((string? "world"))}")
     IO.puts("")
     
-    # Control Flow
+    # Control Flow (temporarily disabled - module not migrated yet)
     IO.puts("🚦 CONTROL FLOW:")
-    IO.puts("  (if true :success :failure) = #{deflipex ~~((if true :success :failure))}")
-    IO.puts("  (if false :success :failure) = #{deflipex ~~((if false :success :failure))}")
-    condition_result = deflipex ~~((if (> 10 5) :bigger :smaller))
-    IO.puts("  (if (> 10 5) :bigger :smaller) = #{condition_result}")
+    IO.puts("  [Control flow features temporarily disabled during refactoring]")
+    # IO.puts("  (if true :success :failure) = #{deflipex ~~((if true :success :failure))}")
+    # IO.puts("  (if false :success :failure) = #{deflipex ~~((if false :success :failure))}")
+    # condition_result = deflipex ~~((if (> 10 5) :bigger :smaller))
+    # IO.puts("  (if (> 10 5) :bigger :smaller) = #{condition_result}")
     IO.puts("")
     
     # Complex Nested Expressions

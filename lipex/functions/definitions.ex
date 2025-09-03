@@ -9,6 +9,54 @@ defmodule Lipex.Functions.Definitions do
   - Macros: (defmacro macro_name (args) body)
   """
   
+  @behaviour Lipex.Evaluator
+  
+  @doc """
+  Tries to evaluate function and module definition expressions.
+  
+  Returns `{:ok, result}` for definition patterns, `:pass` otherwise.
+  """
+  def try_eval(expr) do
+    case expr do
+      # defmodule patterns
+      {:sequence_paren, _meta, [{:defmodule, _, nil} | _args]} ->
+        {:ok, eval_defmodule(expr)}
+      
+      # def patterns - multiple formats due to AST variations
+      {:sequence_paren, _meta, [{:sequence_prefix, _, [:def | args]}]} ->
+        {:ok, eval_def({:sequence_paren, [], [:def | args]})}
+      
+      {:sequence_paren, _meta, [{:def, _, nil} | _args]} ->
+        {:ok, eval_def(expr)}
+        
+      {:sequence_prefix, _meta, [:def | args]} ->
+        {:ok, eval_def({:sequence_paren, [], [:def | args]})}
+      
+      # defp patterns  
+      {:sequence_paren, _meta, [{:sequence_prefix, _, [:defp | args]}]} ->
+        {:ok, eval_defp({:sequence_paren, [], [:defp | args]})}
+      
+      {:sequence_paren, _meta, [{:defp, _, nil} | _args]} ->
+        {:ok, eval_defp(expr)}
+        
+      {:sequence_prefix, _meta, [:defp | args]} ->
+        {:ok, eval_defp({:sequence_paren, [], [:defp | args]})}
+      
+      # defmacro patterns
+      {:sequence_paren, _meta, [{:sequence_prefix, _, [:defmacro | args]}]} ->
+        {:ok, eval_defmacro({:sequence_paren, [], [:defmacro | args]})}
+      
+      {:sequence_paren, _meta, [{:defmacro, _, nil} | _args]} ->
+        {:ok, eval_defmacro(expr)}
+        
+      {:sequence_prefix, _meta, [:defmacro | args]} ->
+        {:ok, eval_defmacro({:sequence_paren, [], [:defmacro | args]})}
+      
+      _ ->
+        :pass
+    end
+  end
+  
   @doc """
   Evaluates a defmodule expression.
   
