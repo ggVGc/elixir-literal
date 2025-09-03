@@ -56,7 +56,9 @@ defmodule Lipex do
     # Mathematical operations
     Lipex.Core.Arithmetic,
     # Logical operations and type checks
-    Lipex.Core.Logic
+    Lipex.Core.Logic,
+    # Function calls - handle as fallback for arbitrary function calls
+    Lipex.Functions.Calls
 
     # TODO: Add these modules as they get migrated:
     # Lipex.Functions.Anonymous,
@@ -65,8 +67,7 @@ defmodule Lipex do
     # Lipex.Advanced.Comprehensions,
     # Lipex.Concurrency.Processes,
     # Lipex.ErrorHandling.TryRescue,
-    # Lipex.Strings.Interpolation,
-    # Lipex.Functions.Calls
+    # Lipex.Strings.Interpolation
   ]
 
   @doc """
