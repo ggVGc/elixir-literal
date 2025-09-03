@@ -7,6 +7,25 @@ defmodule Lipex.Core.Arithmetic do
   - Comparison: `(< ...)`, `(> ...)`, `(<= ...)`, `(>= ...)`, `(== ...)`, `(!= ...)`
   """
   
+  @behaviour Lipex.Evaluator
+  
+  # List of supported arithmetic and comparison operators
+  @operators [:+, :-, :*, :/, :<, :>, :<=, :>=, :==, :!=]
+  
+  @doc """
+  Tries to evaluate arithmetic and comparison expressions.
+  
+  Returns `{:ok, result}` for arithmetic patterns, `:pass` otherwise.
+  """
+  def try_eval(expr) do
+    case expr do
+      {:sequence_prefix, _meta, [op | _args]} when op in @operators ->
+        {:ok, eval_arithmetic(expr)}
+      _ ->
+        :pass
+    end
+  end
+  
   @doc """
   Evaluates arithmetic expressions.
   

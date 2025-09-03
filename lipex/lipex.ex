@@ -56,6 +56,30 @@ defmodule Lipex do
   alias Lipex.ErrorHandling.TryRescue
   alias Lipex.Strings.Interpolation
   
+  # Module evaluation order (specific to general)
+  # Each module implements the Lipex.Evaluator behavior
+  # NOTE: Only including migrated modules for now
+  @evaluator_modules [
+    # Core data structures - most specific patterns
+    Lipex.Core.DataStructures,
+    # Function definitions - need early resolution  
+    Lipex.Functions.Definitions,
+    # Mathematical operations
+    Lipex.Core.Arithmetic,
+    # Logical operations and type checks
+    Lipex.Core.Logic
+    
+    # TODO: Add these modules as they get migrated:
+    # Lipex.Functions.Anonymous,
+    # Lipex.Core.ControlFlow,
+    # Lipex.Advanced.Pipes,
+    # Lipex.Advanced.Comprehensions,
+    # Lipex.Concurrency.Processes,
+    # Lipex.ErrorHandling.TryRescue,
+    # Lipex.Strings.Interpolation,
+    # Lipex.Functions.Calls
+  ]
+  
   @doc """
   Main macro for defining and evaluating Lipex expressions.
   
@@ -85,10 +109,65 @@ defmodule Lipex do
   @doc """
   Evaluates a single Lipex expression and returns the appropriate Elixir AST.
   
-  This function coordinates between all the specialized evaluation modules,
-  delegating to the appropriate module based on the expression type.
+  This function uses a modular approach where each evaluation module implements
+  the Lipex.Evaluator behavior. We try each module in order until one succeeds.
   """
   def eval_lipex_expr(expr) do
+    case expr do
+      # Handle literals directly (no module needed)  
+      number when is_number(number) -> number  
+      string when is_binary(string) -> string
+      
+      # Handle sequence_paren wrapping a single sequence_prefix (unwrap it)
+      {:sequence_paren, _meta, [{:sequence_prefix, prefix_meta, args}]} ->
+        eval_lipex_expr({:sequence_prefix, prefix_meta, args})
+      
+      # Handle boolean literals that look like variables (must come BEFORE generic variable pattern)
+      {true, _meta, nil} -> true
+      {false, _meta, nil} -> false
+      {nil, _meta, nil} -> nil
+      
+      # Variables - convert to Elixir variables
+      {var, meta, nil} when is_atom(var) -> {var, meta, nil}
+      
+      # Special atoms with : prefix
+      {:nil, _meta, nil} -> nil
+      {:true, _meta, nil} -> true
+      {:false, _meta, nil} -> false
+      
+      # Handle bare atoms
+      true -> true
+      false -> false
+      nil -> nil
+      atom when is_atom(atom) -> atom
+      
+      # Delegate to evaluation modules
+      _ -> try_modules(expr)
+    end
+  end
+  
+  # Tries each evaluation module in order until one handles the expression.
+  defp try_modules(expr) do
+    Enum.reduce_while(@evaluator_modules, nil, fn module, _acc ->
+      case module.try_eval(expr) do
+        {:ok, result} -> {:halt, result}
+        :pass -> {:cont, nil}
+        {:error, reason} -> {:halt, raise_evaluation_error(reason, expr, module)}
+      end
+    end) || raise_unsupported_expression(expr)
+  end
+  
+  defp raise_evaluation_error(reason, expr, module) do
+    raise "Evaluation error in #{inspect(module)}: #{reason}. Expression: #{inspect(expr)}"
+  end
+  
+  defp raise_unsupported_expression(expr) do
+    raise "Unsupported Lipex expression: #{inspect(expr)}"
+  end
+  
+  # BACKUP: Old evaluation function (will be removed after migration is complete)
+  @doc false
+  def eval_lipex_expr_old(expr) do
     case expr do
       # Handle sequence_paren wrapping a single sequence_prefix (unwrap it)
       {:sequence_paren, _meta, [{:sequence_prefix, prefix_meta, args}]} ->

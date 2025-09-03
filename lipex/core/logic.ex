@@ -4,8 +4,35 @@ defmodule Lipex.Core.Logic do
   
   Supports:
   - Logical operations: `(and ...)`, `(or ...)`, `(not ...)`
+  - Type checking: `(atom? ...)`, `(number? ...)`, etc.
   - Boolean operations with short-circuiting
   """
+  
+  @behaviour Lipex.Evaluator
+  
+  # List of supported logical and type checking operators
+  @operators [:and, :or, :not, :truthy?, :falsy?, :nil?, :some?, :atom?, :number?, :integer?, :float?, :string?, :list?, :tuple?, :map?, :function?, :pid?]
+  
+  @doc """
+  Tries to evaluate logical and type checking expressions.
+  
+  Returns `{:ok, result}` for logical patterns, `:pass` otherwise.
+  """
+  def try_eval(expr) do
+    case expr do
+      # sequence_prefix format: (and arg1 arg2)
+      {:sequence_prefix, _meta, [op | _args]} when op in @operators ->
+        {:ok, eval_logic(expr)}
+      
+      # sequence_paren format for type checks: (atom? arg)
+      {:sequence_paren, _meta, [{op, _, nil} | args]} when op in @operators ->
+        # Convert to sequence_prefix format
+        {:ok, eval_logic({:sequence_prefix, [], [op | args]})}
+      
+      _ ->
+        :pass
+    end
+  end
   
   @doc """
   Evaluates logical AND expressions.
