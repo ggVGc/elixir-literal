@@ -1,5 +1,7 @@
 # Elixir with Sequence Literal Support - Project Summary
 
+When running lipex examples, use './bin/elixir', not the global elixir binary.
+
 ## Overview
 
 This is a fork of the Elixir programming language that extends the tokenizer and parser to support **sequence literals** - a new syntax feature that enables Lisp-like s-expression programming within Elixir using the `~~(...)` syntax. This allows developers to write Lisp-style code that compiles to regular Elixir AST.
