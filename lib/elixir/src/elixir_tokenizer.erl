@@ -1363,6 +1363,16 @@ tokenize([H | T]) when ?is_downcase(H); H =:= $_ ->
 tokenize(_List) ->
   {error, empty}.
 
+%% New tokenize function that accepts scope for sequence literal support
+tokenize_with_scope([H | T], Scope) when ?is_upcase(H) ->
+  {Acc, Rest, Length, Special} = tokenize_continue_with_scope(T, [H], 1, [], Scope),
+  {alias, lists:reverse(Acc), Rest, Length, true, Special};
+tokenize_with_scope([H | T], Scope) when ?is_downcase(H); H =:= $_ ->
+  {Acc, Rest, Length, Special} = tokenize_continue_with_scope(T, [H], 1, [], Scope),
+  {identifier, lists:reverse(Acc), Rest, Length, true, Special};
+tokenize_with_scope(_List, _Scope) ->
+  {error, empty}.
+
 tokenize_continue([$@ | T], Acc, Length, Special) ->
   tokenize_continue(T, [$@ | Acc], Length + 1, [at | lists:delete(at, Special)]);
 tokenize_continue([$! | T], Acc, Length, Special) ->
@@ -1374,8 +1384,37 @@ tokenize_continue([H | T], Acc, Length, Special) when ?is_upcase(H); ?is_downcas
 tokenize_continue(Rest, Acc, Length, Special) ->
   {Acc, Rest, Length, Special}.
 
+%% Extended tokenize_continue that accepts dots in sequence literals
+tokenize_continue_with_scope([$@ | T], Acc, Length, Special, Scope) ->
+  tokenize_continue_with_scope(T, [$@ | Acc], Length + 1, [at | lists:delete(at, Special)], Scope);
+tokenize_continue_with_scope([$! | T], Acc, Length, Special, _Scope) ->
+  {[$! | Acc], T, Length + 1, [punctuation | Special]};
+tokenize_continue_with_scope([$? | T], Acc, Length, Special, _Scope) ->
+  {[$? | Acc], T, Length + 1, [punctuation | Special]};
+tokenize_continue_with_scope([H | T], Acc, Length, Special, Scope) when ?is_upcase(H); ?is_downcase(H); ?is_digit(H); H =:= $_ ->
+  tokenize_continue_with_scope(T, [H | Acc], Length + 1, Special, Scope);
+%% Accept dots when inside sequence literals (sequence_depth > 0)
+tokenize_continue_with_scope([$. | T], Acc, Length, Special, Scope) when Scope#elixir_tokenizer.sequence_depth > 0 ->
+  tokenize_continue_with_scope(T, [$. | Acc], Length + 1, Special, Scope);
+tokenize_continue_with_scope(Rest, Acc, Length, Special, _Scope) ->
+  {Acc, Rest, Length, Special}.
+
 tokenize_identifier(String, Line, Column, Scope, MaybeKeyword) ->
-  case (Scope#elixir_tokenizer.identifier_tokenizer):tokenize(String) of
+  %% Try the new scope-aware tokenizer for sequence literals, fall back to regular tokenizer
+  TokenizerResult = case Scope#elixir_tokenizer.sequence_depth > 0 of
+    true ->
+      %% Check if tokenizer supports scope-aware tokenization
+      case catch (Scope#elixir_tokenizer.identifier_tokenizer):tokenize_with_scope(String, Scope) of
+        {'EXIT', {undef, _}} ->
+          %% Fall back to regular tokenizer if tokenize_with_scope is not available
+          (Scope#elixir_tokenizer.identifier_tokenizer):tokenize(String);
+        Result ->
+          Result
+      end;
+    false ->
+      (Scope#elixir_tokenizer.identifier_tokenizer):tokenize(String)
+  end,
+  case TokenizerResult of
     {Kind, Acc, Rest, Length, Ascii, Special} ->
       Keyword = MaybeKeyword andalso maybe_keyword(Rest),
 

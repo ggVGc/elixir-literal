@@ -406,6 +406,35 @@ defmodule String.Tokenizer do
     {:error, :empty}
   end
 
+  # Scope-aware tokenization for sequence literals (allows dots)
+  def tokenize_with_scope([head | tail], scope) do
+    cond do
+      ascii_upper?(head) ->
+        # In sequence literals, treat uppercase identifiers as identifiers (not aliases)
+        # This allows IO.puts to be parsed as an identifier token
+        validate(continue_with_scope(tail, [head], 1, true, @latin, [], scope), :identifier)
+
+      ascii_lower?(head) ->
+        validate(continue_with_scope(tail, [head], 1, true, @latin, [], scope), :identifier)
+
+      head == ?_ ->
+        validate(continue_with_scope(tail, [head], 1, true, @latin, [], scope), :identifier)
+
+      true ->
+        scriptset = unicode_start(head)
+        
+        if scriptset != @bottom do
+          validate(continue_with_scope(tail, [head], 1, false, scriptset, [], scope), :atom)
+        else
+          {:error, {:unexpected_token, [head]}}
+        end
+    end
+  end
+
+  def tokenize_with_scope([], _scope) do
+    {:error, :empty}
+  end
+
   defp continue([?! | tail], acc, length, ascii_letters?, scriptset, special) do
     {[?! | acc], tail, length + 1, ascii_letters?, scriptset, [:punctuation | special]}
   end
@@ -454,6 +483,62 @@ defmodule String.Tokenizer do
   end
 
   defp continue([], acc, length, ascii_letters?, scriptset, special) do
+    {acc, [], length, ascii_letters?, scriptset, special}
+  end
+
+  # Scope-aware continue function that accepts dots in sequence literals
+  defp continue_with_scope([?! | tail], acc, length, ascii_letters?, scriptset, special, _scope) do
+    {[?! | acc], tail, length + 1, ascii_letters?, scriptset, [:punctuation | special]}
+  end
+
+  defp continue_with_scope([?? | tail], acc, length, ascii_letters?, scriptset, special, _scope) do
+    {[?? | acc], tail, length + 1, ascii_letters?, scriptset, [:punctuation | special]}
+  end
+
+  defp continue_with_scope([?@ | tail], acc, length, ascii_letters?, scriptset, special, scope) do
+    special = [:at | List.delete(special, :at)]
+    continue_with_scope(tail, [?@ | acc], length + 1, ascii_letters?, scriptset, special, scope)
+  end
+
+  defp continue_with_scope([head | tail] = list, acc, length, ascii_letters?, scriptset, special, scope) do
+    cond do
+      ascii_lower?(head) or ascii_upper?(head) ->
+        continue_with_scope(tail, [head | acc], length + 1, ascii_letters?, ss_latin(scriptset), special, scope)
+
+      head == ?_ or ascii_continue?(head) ->
+        continue_with_scope(tail, [head | acc], length + 1, ascii_letters?, scriptset, special, scope)
+
+      # Accept dots when inside sequence literals  
+      head == ?. and scope != nil and sequence_depth_greater_than_zero?(scope) ->
+        continue_with_scope(tail, [head | acc], length + 1, ascii_letters?, scriptset, special, scope)
+
+      # Pattern is used for performance and to not mark ascii tokens as unicode
+      # ' \\\t\n\r!"#$%&\'()*+,-./:;<=>?@[]^`{|}~'
+      head <= 127 ->
+        {acc, list, length, ascii_letters?, scriptset, special}
+
+      true ->
+        with @bottom <- unicode_start(head),
+             @bottom <- unicode_upper(head),
+             @bottom <- unicode_continue(head) do
+          case normalize_start(head) do
+            @bottom ->
+              {:error, {:unexpected_token, :lists.reverse([head | acc])}}
+
+            {head, ss} ->
+              ss = ss_intersect(scriptset, ss)
+              special = [:nfkc | List.delete(special, :nfkc)]
+              continue_with_scope(tail, [head | acc], length + 1, false, ss, special, scope)
+          end
+        else
+          ss ->
+            ss = ss_intersect(scriptset, ss)
+            continue_with_scope(tail, [head | acc], length + 1, false, ss, special, scope)
+        end
+    end
+  end
+
+  defp continue_with_scope([], acc, length, ascii_letters?, scriptset, special, _scope) do
     {acc, [], length, ascii_letters?, scriptset, special}
   end
 
@@ -540,6 +625,20 @@ defmodule String.Tokenizer do
              @bottom <- unicode_upper(head),
              @bottom <- unicode_continue(head),
              do: @top
+    end
+  end
+
+  # Check if we're inside sequence literals (sequence_depth > 0)
+  defp sequence_depth_greater_than_zero?(scope) do
+    try do
+      # Access sequence_depth field from elixir_tokenizer record
+      # The record has the structure: {elixir_tokenizer, terminators, unescape, cursor_completion, 
+      # existing_atoms_only, static_atoms_encoder, preserve_comments, identifier_tokenizer, 
+      # ascii_identifiers_only, indentation, column, mismatch_hints, warnings, sequence_depth}
+      depth = elem(scope, 13)  # sequence_depth is at 0-indexed position 13
+      depth > 0
+    rescue
+      _ -> false
     end
   end
 end
