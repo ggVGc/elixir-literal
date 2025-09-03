@@ -1612,9 +1612,9 @@ defmodule Kernel.ParserTest do
                   123,
                   :atom,
                   "string",
-                  true,
-                  false,
-                  nil
+                  {true, [line: 1], nil},
+                  {false, [line: 1], nil},
+                  {nil, [line: 1], nil}
                 ]}
 
       # Nested mathematical expressions  
@@ -1654,9 +1654,13 @@ defmodule Kernel.ParserTest do
     end
 
     test "sequence literals in larger expressions" do
-      # Sequence literals are currently not supported in most contexts due to grammar limitations
-      assert_syntax_error(["syntax error before: ", "'~~'"], "x = ~~(foo bar)")
-      assert_syntax_error(["syntax error before: ", "'~~'"], "func(~~(a b))")
+      # Sequence literals are now supported in assignment contexts
+      assert parse!("x = ~~(foo bar)") ==
+               {:=, [line: 1],
+                [
+                  {:x, [line: 1], nil},
+                  {:sequence_literal, [line: 1], [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}]}
+                ]}
     end
 
     test "operators in sequences - current limitation" do
