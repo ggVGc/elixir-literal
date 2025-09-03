@@ -21,8 +21,12 @@ defmodule Lipex.Core.PatternMatching do
   """
   def try_eval(expr) do
     case expr do
-      # Pattern matching: (= pattern value)
+      # Pattern matching with atom operator: (= pattern value)
       {:sequence_prefix, _meta, [:=, pattern, value]} ->
+        {:ok, eval_pattern_match(pattern, value)}
+      
+      # Pattern matching with AST node operator: (= pattern value) where = is {:=, _, nil}
+      {:sequence_prefix, {:=, _, nil}, [pattern, value]} ->
         {:ok, eval_pattern_match(pattern, value)}
       
       # Not a pattern matching expression

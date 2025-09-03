@@ -20,9 +20,13 @@ defmodule Lipex.Core.Logic do
   """
   def try_eval(expr) do
     case expr do
-      # sequence_prefix format: (and arg1 arg2)
+      # sequence_prefix format with atom operator: (and arg1 arg2)
       {:sequence_prefix, _meta, [op | _args]} when op in @operators ->
         {:ok, eval_logic(expr)}
+      
+      # sequence_prefix format with AST node operator: (and arg1 arg2) where and is {:and, _, nil}
+      {:sequence_prefix, {op, _, nil}, args} when op in @operators ->
+        {:ok, eval_logic({:sequence_prefix, [], [op | args]})}
       
       # sequence_paren format for type checks: (atom? arg)
       {:sequence_paren, _meta, [{op, _, nil} | args]} when op in @operators ->
@@ -60,15 +64,7 @@ defmodule Lipex.Core.Logic do
     end
   end
   
-  @doc """
-  Evaluates logical OR expressions.
-  
-  ## Examples
-  
-      (or false true)       -> true
-      (or false false false) -> false
-      (or)                  -> false
-  """
+  # Evaluates logical OR expressions.
   def eval_logic({:sequence_prefix, _meta, [:or | args]}) do
     elixir_args = Enum.map(args, &Lipex.eval_lipex_expr/1)
     
@@ -86,30 +82,13 @@ defmodule Lipex.Core.Logic do
     end
   end
   
-  @doc """
-  Evaluates logical NOT expressions.
-  
-  ## Examples
-  
-      (not true)            -> false
-      (not false)           -> true
-      (not nil)             -> true
-  """
+  # Evaluates logical NOT expressions.
   def eval_logic({:sequence_prefix, _meta, [:not, arg]}) do
     elixir_arg = Lipex.eval_lipex_expr(arg)
     quote do: not unquote(elixir_arg)
   end
   
-  @doc """
-  Evaluates truthiness testing.
-  
-  ## Examples
-  
-      (truthy? nil)         -> false
-      (truthy? false)       -> false  
-      (truthy? 0)           -> true
-      (falsy? nil)          -> true
-  """
+  # Evaluates truthiness testing.
   def eval_logic({:sequence_prefix, _meta, [:truthy?, arg]}) do
     elixir_arg = Lipex.eval_lipex_expr(arg)
     quote do
@@ -132,16 +111,7 @@ defmodule Lipex.Core.Logic do
     end
   end
   
-  @doc """
-  Evaluates nil checking operations.
-  
-  ## Examples
-  
-      (nil? nil)            -> true
-      (nil? false)          -> false
-      (some? nil)           -> false
-      (some? 42)            -> true
-  """
+  # Evaluates nil checking operations.
   def eval_logic({:sequence_prefix, _meta, [:nil?, arg]}) do
     elixir_arg = Lipex.eval_lipex_expr(arg)
     quote do: is_nil(unquote(elixir_arg))
@@ -152,16 +122,7 @@ defmodule Lipex.Core.Logic do
     quote do: not is_nil(unquote(elixir_arg))
   end
   
-  @doc """
-  Evaluates type checking operations.
-  
-  ## Examples
-  
-      (atom? :hello)        -> true
-      (number? 42)          -> true
-      (string? "hello")     -> true
-      (list? [1 2 3])       -> true
-  """
+  # Evaluates type checking operations.
   def eval_logic({:sequence_prefix, _meta, [:atom?, arg]}) do
     elixir_arg = Lipex.eval_lipex_expr(arg)
     quote do: is_atom(unquote(elixir_arg))
