@@ -95,6 +95,53 @@ defmodule LipexDemo do
     
     IO.puts("")
     
+    # Function Calls
+    IO.puts("🔧 FUNCTION CALLS:")
+    
+    # Simple module function calls
+    IO.puts("  Simple function calls:")
+    deflipex ~~(("IO.puts" "  -> Hello from Lipex function call!"))
+    upcase_result = deflipex ~~(("String.upcase" "hello world"))
+    IO.puts("  (\"String.upcase\" \"hello world\") = #{upcase_result}")
+    
+    count_result = deflipex ~~(("Enum.count" [1 2 3 4 5]))
+    IO.puts("  (\"Enum.count\" [1 2 3 4 5]) = #{count_result}")
+    
+    # Nested function calls
+    IO.puts("  Nested function calls:")
+    deflipex ~~(("IO.puts" ("String.upcase" "  -> nested calls work perfectly!")))
+    
+    # More function calls
+    abs_result = deflipex ~~(("Kernel.abs" -42))
+    IO.puts("  (\"Kernel.abs\" -42) = #{abs_result}")
+    
+    # String manipulation
+    join_result = deflipex ~~(("Enum.join" ["hello" "lipex" "world"] " "))
+    IO.puts("  (\"Enum.join\" [\"hello\" \"lipex\" \"world\"] \" \") = #{join_result}")
+    
+    IO.puts("")
+    
+    # NEW: Natural dot notation (no more string quotes needed!)
+    IO.puts("✨ NATURAL DOT NOTATION:")
+    IO.puts("  Function calls with natural syntax (no string quotes):")
+    deflipex ~~((IO.puts "  -> Hello with natural IO.puts syntax!"))
+    
+    # Show the difference between old and new syntax
+    natural_upcase = deflipex ~~((String.upcase "natural syntax"))
+    IO.puts("  (String.upcase \"natural syntax\") = #{natural_upcase}")
+    
+    natural_count = deflipex ~~((Enum.count [1 2 3 4 5 6]))
+    IO.puts("  (Enum.count [1 2 3 4 5 6]) = #{natural_count}")
+    
+    # Nested calls with natural syntax
+    deflipex ~~((IO.puts (String.upcase "  -> nested natural calls work!")))
+    
+    # Use Integer.to_string instead of Kernel.abs (which has special parser handling)
+    int_to_string = deflipex ~~((Integer.to_string 42))
+    IO.puts("  (Integer.to_string 42) = #{int_to_string}")
+    
+    IO.puts("")
+    
     # Control Flow (temporarily disabled - module not migrated yet)
     IO.puts("🚦 CONTROL FLOW:")
     IO.puts("  [Control flow features temporarily disabled during refactoring]")
