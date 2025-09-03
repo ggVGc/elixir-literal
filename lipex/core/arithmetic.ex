@@ -138,19 +138,6 @@ defmodule Lipex.Core.Arithmetic do
     quote do: unquote(elixir_left) != unquote(elixir_right)
   end
   
-  # Support for Lisp-style equality with special nil/empty list handling
-  def eval_arithmetic({:sequence_prefix, _meta, [:=, left, right]}) do
-    elixir_left = Lipex.eval_lipex_expr(left)
-    elixir_right = Lipex.eval_lipex_expr(right)
-    quote do
-      # Handle Lisp-style list comparison where nil and empty list are equivalent
-      case {unquote(elixir_left), unquote(elixir_right)} do
-        {[], nil} -> true
-        {nil, []} -> true
-        {a, b} -> a == b
-      end
-    end
-  end
   
   @doc """
   Evaluates modulo and power operations.
