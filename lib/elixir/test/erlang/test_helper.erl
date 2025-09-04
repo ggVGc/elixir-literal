@@ -9,7 +9,8 @@
   control_test,
   function_test,
   string_test,
-  tokenizer_test
+  tokenizer_test,
+  sequence_literal_test
 ]).
 
 test() ->

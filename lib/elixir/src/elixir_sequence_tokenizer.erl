@@ -49,98 +49,17 @@ tokenize(String, Line, Column, Scope, Tokens) ->
           tokenize(Rest, Line, Column + 2, Scope, [Token | Tokens])
       end;
 
-    % Handle strings - both double and single quotes become sequence_string
+    % Handle strings - double quotes become sequence_string
     [$" | Rest] ->
       tokenize_string(Rest, Line, Column + 1, $", Scope, Tokens);
 
-    [$' | Rest] ->
-      tokenize_string(Rest, Line, Column + 1, $', Scope, Tokens);
-
-    % Handle atoms
+    % Handle atoms with colon prefix
     [$: | Rest] ->
       tokenize_atom(Rest, Line, Column + 1, Scope, Tokens);
 
     % Handle numbers
     [H | _] when ?is_digit(H) ->
       tokenize_number(String, Line, Column, Scope, Tokens);
-
-    % Handle identifiers and keywords (including those with dots)
-    [H | _] when ?is_upcase(H); ?is_downcase(H); H =:= $_ ->
-      tokenize_identifier(String, Line, Column, Scope, Tokens);
-
-    % Handle operators
-    [$+, $+, $+ | Rest] ->
-      tokenize_operator("+++", Rest, Line, Column + 3, Scope, Tokens);
-    [$+, $+ | Rest] ->
-      tokenize_operator("++", Rest, Line, Column + 2, Scope, Tokens);
-    [$+ | Rest] ->
-      tokenize_operator("+", Rest, Line, Column + 1, Scope, Tokens);
-
-    [$-, $-, $- | Rest] ->
-      tokenize_operator("---", Rest, Line, Column + 3, Scope, Tokens);
-    [$-, $- | Rest] ->
-      tokenize_operator("--", Rest, Line, Column + 2, Scope, Tokens);
-    [$-, $> | Rest] ->
-      tokenize_operator("->", Rest, Line, Column + 2, Scope, Tokens);
-    [$- | Rest] ->
-      tokenize_operator("-", Rest, Line, Column + 1, Scope, Tokens);
-
-    [$*, $* | Rest] ->
-      tokenize_operator("**", Rest, Line, Column + 2, Scope, Tokens);
-    [$* | Rest] ->
-      tokenize_operator("*", Rest, Line, Column + 1, Scope, Tokens);
-
-    [$/ | Rest] ->
-      tokenize_operator("/", Rest, Line, Column + 1, Scope, Tokens);
-
-    [$=, $=, $= | Rest] ->
-      tokenize_operator("===", Rest, Line, Column + 3, Scope, Tokens);
-    [$=, $= | Rest] ->
-      tokenize_operator("==", Rest, Line, Column + 2, Scope, Tokens);
-    [$=, $~ | Rest] ->
-      tokenize_operator("=~", Rest, Line, Column + 2, Scope, Tokens);
-    [$= | Rest] ->
-      tokenize_operator("=", Rest, Line, Column + 1, Scope, Tokens);
-
-    [$!, $=, $= | Rest] ->
-      tokenize_operator("!==", Rest, Line, Column + 3, Scope, Tokens);
-    [$!, $= | Rest] ->
-      tokenize_operator("!=", Rest, Line, Column + 2, Scope, Tokens);
-    [$! | Rest] ->
-      tokenize_operator("!", Rest, Line, Column + 1, Scope, Tokens);
-
-    [$<, $< | Rest] ->
-      tokenize_operator("<<", Rest, Line, Column + 2, Scope, Tokens);
-    [$<, $= | Rest] ->
-      tokenize_operator("<=", Rest, Line, Column + 2, Scope, Tokens);
-    [$<, $- | Rest] ->
-      tokenize_operator("<-", Rest, Line, Column + 2, Scope, Tokens);
-    [$< | Rest] ->
-      tokenize_operator("<", Rest, Line, Column + 1, Scope, Tokens);
-
-    [$>, $> | Rest] ->
-      tokenize_operator(">>", Rest, Line, Column + 2, Scope, Tokens);
-    [$>, $= | Rest] ->
-      tokenize_operator(">=", Rest, Line, Column + 2, Scope, Tokens);
-    [$> | Rest] ->
-      tokenize_operator(">", Rest, Line, Column + 1, Scope, Tokens);
-
-    [$&, $& | Rest] ->
-      tokenize_operator("&&", Rest, Line, Column + 2, Scope, Tokens);
-    [$& | Rest] ->
-      tokenize_operator("&", Rest, Line, Column + 1, Scope, Tokens);
-
-    [$|, $| | Rest] ->
-      tokenize_operator("||", Rest, Line, Column + 2, Scope, Tokens);
-    [$|, $> | Rest] ->
-      tokenize_operator("|>", Rest, Line, Column + 2, Scope, Tokens);
-    [$| | Rest] ->
-      tokenize_operator("|", Rest, Line, Column + 1, Scope, Tokens);
-
-    [$., $. | Rest] ->
-      tokenize_operator("..", Rest, Line, Column + 2, Scope, Tokens);
-    [$. | Rest] ->
-      tokenize_operator(".", Rest, Line, Column + 1, Scope, Tokens);
 
     % Handle punctuation
     [$, | Rest] ->
@@ -167,13 +86,12 @@ tokenize(String, Line, Column, Scope, Tokens) ->
           tokenize(Rest, Line, Column + 1, Scope, Tokens)
       end;
 
-    % Handle unexpected characters
-    [H | Rest] ->
-      Reason = {?LOC(Line, Column), "unexpected character in sequence literal: ", [H]},
-      {error, Reason, Rest, [], Tokens}
+    % Handle any other non-whitespace sequence as sequence_token
+    _ ->
+      tokenize_sequence_token(String, Line, Column, Scope, Tokens)
   end.
 
-%% String tokenization - both "..." and '...' become sequence_string
+%% String tokenization - "..." becomes sequence_string
 tokenize_string(String, Line, Column, Quote, Scope, Tokens) ->
   case extract_string(String, Quote, Line, Column, []) of
     {ok, Value, Rest, NewLine, NewColumn} ->
@@ -273,69 +191,30 @@ extract_integer(String, []) ->
 extract_integer(String, Acc) ->
   {ok, lists:reverse(Acc), String}.
 
-%% Identifier tokenization - allows dots and becomes sequence_identifier or sequence_keyword
-tokenize_identifier(String, Line, Column, Scope, Tokens) ->
-  case extract_identifier(String, []) of
+%% Sequence token tokenization - any non-structural element becomes sequence_token
+tokenize_sequence_token(String, Line, Column, Scope, Tokens) ->
+  case extract_sequence_token(String, []) of
     {ok, Value, Rest, Length} ->
       Atom = list_to_atom(Value),
-      TokenType = case is_keyword(Atom) of
-        true -> sequence_keyword;
-        false -> sequence_identifier
-      end,
-      Token = {TokenType, {Line, Column, nil}, Atom},
+      Token = {sequence_token, {Line, Column, nil}, Atom},
       tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
     {error, Reason} ->
       {error, Reason, String, [], Tokens}
   end.
 
-%% Extract identifier allowing dots
-extract_identifier([], Acc) when Acc =/= [] ->
+%% Extract sequence token - anything until whitespace or structural character
+extract_sequence_token([], Acc) when Acc =/= [] ->
   {ok, lists:reverse(Acc), [], length(Acc)};
-extract_identifier([H | Rest], Acc) when ?is_upcase(H); ?is_downcase(H); ?is_digit(H); H =:= $_; H =:= $.; H =:= $? ->
-  extract_identifier(Rest, [H | Acc]);
-extract_identifier(String, []) ->
-  {error, "no identifier found"};
-extract_identifier(String, Acc) ->
-  {ok, lists:reverse(Acc), String, length(Acc)}.
-
-%% Check if an atom is a keyword
-is_keyword('and') -> true;
-is_keyword('or') -> true;
-is_keyword('not') -> true;
-is_keyword('if') -> true;
-is_keyword('else') -> true;
-is_keyword('elsif') -> true;
-is_keyword('unless') -> true;
-is_keyword('when') -> true;
-is_keyword('do') -> true;
-is_keyword('end') -> true;
-is_keyword('def') -> true;
-is_keyword('defp') -> true;
-is_keyword('defmacro') -> true;
-is_keyword('defstruct') -> true;
-is_keyword('defmodule') -> true;
-is_keyword('defprotocol') -> true;
-is_keyword('defimpl') -> true;
-is_keyword('true') -> true;
-is_keyword('false') -> true;
-is_keyword('nil') -> true;
-is_keyword('try') -> true;
-is_keyword('catch') -> true;
-is_keyword('rescue') -> true;
-is_keyword('after') -> true;
-is_keyword('case') -> true;
-is_keyword('cond') -> true;
-is_keyword('receive') -> true;
-is_keyword('for') -> true;
-is_keyword('with') -> true;
-is_keyword('fn') -> true;
-is_keyword(_) -> false.
-
-%% Operator tokenization - all operators become sequence_operator
-tokenize_operator(OpStr, Rest, Line, Column, Scope, Tokens) ->
-  OpAtom = list_to_atom(OpStr),
-  Token = {sequence_operator, {Line, Column - length(OpStr), nil}, OpAtom},
-  tokenize(Rest, Line, Column, Scope, [Token | Tokens]).
+extract_sequence_token([H | Rest], Acc) when ?is_space(H); H =:= $(; H =:= $); H =:= ${; 
+                                              H =:= $}; H =:= $[; H =:= $]; H =:= $,; H =:= $; ->
+  case Acc of
+    [] -> {error, "no token found"};
+    _ -> {ok, lists:reverse(Acc), [H | Rest], length(Acc)}
+  end;
+extract_sequence_token([H | Rest], Acc) ->
+  extract_sequence_token(Rest, [H | Acc]);
+extract_sequence_token([], []) ->
+  {error, "no token found"}.
 
 %% Helper functions
 previous_was_eol([]) -> false;
