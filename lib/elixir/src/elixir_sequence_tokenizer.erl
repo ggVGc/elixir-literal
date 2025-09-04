@@ -20,8 +20,8 @@ tokenize(String, Line, Column, Scope, Tokens) ->
       Token = {')', {Line, Column, previous_was_eol(Tokens)}},
       case NewScope#elixir_tokenizer.sequence_depth of
         0 ->
-          % Exiting sequence literal - return to normal tokenizer
-          elixir_tokenizer:tokenize(Rest, Line, Column + 1, NewScope, [Token | Tokens]);
+          % Exiting sequence literal - return tokens and let main tokenizer continue
+          {ok, Line, Column + 1, [], [Token | Tokens], []};
         _ ->
           % Still inside nested sequence literal
           tokenize(Rest, Line, Column + 1, NewScope, [Token | Tokens])
