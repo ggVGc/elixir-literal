@@ -205,6 +205,28 @@ tokenize([$# | String], Line, Column, Scope, Tokens) ->
       tokenize(Rest, Line, Column, Scope, reset_eol(Tokens))
   end;
 
+% Sequence literals
+
+tokenize([$~, $~, $( | Rest], Line, Column, Scope, Tokens) ->
+  % Entering sequence literal - increment depth and dispatch to sequence tokenizer
+  NewScope = Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1},
+  SequenceOpToken = {sequence_op, {Line, Column, previous_was_eol(Tokens)}, '~~'},
+  ParenToken = {'(', {Line, Column + 2, nil}},
+  elixir_sequence_tokenizer:tokenize(Rest, Line, Column + 3, NewScope, [ParenToken, SequenceOpToken | Tokens]);
+
+tokenize([$~, $~, $~, H | _] = String, Line, Column, Scope, Tokens) when
+    ?is_space(H) orelse ?is_digit(H) orelse ?is_upcase(H) orelse ?is_downcase(H) orelse
+    H =:= $( orelse H =:= $[ orelse H =:= ${ orelse H =:= $| orelse H =:= $< ->
+  % This is a ~~~ unary operator, delegate to the normal three-token operator pattern
+  [T1, T2, T3 | Rest] = String,
+  handle_unary_op(Rest, Line, Column, unary_op, 3, list_to_atom([T1, T2, T3]), Scope, Tokens);
+
+
+tokenize([$~, $~ | Rest], Line, Column, Scope, Tokens) ->
+  % Sequence operator without parentheses
+  Token = {sequence_op, {Line, Column, previous_was_eol(Tokens)}, '~~'},
+  tokenize(Rest, Line, Column + 2, Scope, [Token | Tokens]);
+
 % Sigils
 
 tokenize([$~, H | _T] = Original, Line, Column, Scope, Tokens) when ?is_upcase(H) orelse ?is_downcase(H) ->
