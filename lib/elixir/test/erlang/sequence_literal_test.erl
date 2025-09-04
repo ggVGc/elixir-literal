@@ -41,7 +41,7 @@ sequence_nested_brackets_test() ->
   [{sequence_op, {1, 1, false}, '~~'},
    {'(', {1, 3, nil}},
    {'(', {1, 4, nil}},
-   {sequence_identifier, {1, 5, _}, a},
+   {sequence_identifiers, {1, 5, _}, a},
    {')', {1, 6, false}},
    {')', {1, 7, false}}] = tokenize("~~((a))"),
 
