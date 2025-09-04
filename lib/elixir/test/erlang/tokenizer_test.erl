@@ -20,7 +20,7 @@ type_test() ->
   [{int, {1, 1, 1}, "1"},
    {type_op, {1, 3, nil}, '::'},
    {int, {1, 6, 3}, "3"}] = tokenize("1 :: 3"),
-  [{true, {1, 1, nil}, true},
+  [{'true', {1, 1, nil}},
    {type_op, {1, 5, nil}, '::'},
    {int, {1, 7, 3}, "3"}] = tokenize("true::3"),
   [{identifier, {1, 1, _}, name},
