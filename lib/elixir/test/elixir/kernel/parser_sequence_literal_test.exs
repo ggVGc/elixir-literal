@@ -25,6 +25,35 @@ defmodule Kernel.ParserSequenceLiteralTest do
     end
   end
 
+  test "sequence literals in quote blocks - parser error analysis" do
+    # This works (direct parsing)
+    direct_result = parse!("~~(+ 1 2 3)")
+    assert {:sequence_literal, _, _} = direct_result
+    
+    # This should work but may fail (quote block parsing)
+    quote_result = try do
+      parse!("quote do ~~(+ 1 2 3) end")
+    rescue
+      e -> {:error, e}
+    catch
+      :error, e -> {:error, e}
+    end
+    
+    case quote_result do
+      {:error, error} ->
+        # Capture the specific parser error for analysis
+        IO.puts("Parser error: #{Exception.message(error)}")
+        IO.inspect(error, label: "Full error details")
+        # For now, expect this to fail so we can see the error
+        assert false, "Parser failed with: #{Exception.message(error)}"
+      result ->
+        # If it succeeds, show us what we got
+        IO.inspect(result, label: "Quote block parsing result")
+        # This should contain a quote structure with sequence_literal inside
+        assert true
+    end
+  end
+
   describe "sequence literals with simplified tokenizer" do
     # The simplified tokenizer produces sequence_token for identifiers, keywords, and operators
     # while preserving sequence_number, sequence_string, and sequence_atom.
