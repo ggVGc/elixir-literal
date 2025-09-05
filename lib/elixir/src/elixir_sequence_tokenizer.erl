@@ -30,7 +30,11 @@ tokenize(String, Line, Column, Scope, Tokens) ->
     % Handle opening parenthesis and brackets (stay in sequence mode)
     [H | Rest] when H =:= $(; H =:= ${; H =:= $[ ->
       Token = {list_to_atom([H]), {Line, Column, nil}},
-      tokenize(Rest, Line, Column + 1, Scope, [Token | Tokens]);
+      NewScope = case H of
+        $( -> Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1};
+        _ -> Scope
+      end,
+      tokenize(Rest, Line, Column + 1, NewScope, [Token | Tokens]);
 
     % Handle closing brackets (not parenthesis)
     [H | Rest] when H =:= $}; H =:= $] ->

@@ -42,7 +42,8 @@ sequence_nested_brackets_test() ->
    {'(', {1, 3, nil}},
    {'(', {1, 4, nil}},
    {sequence_token, {1, 5, nil}, a},
-   {')', {1, 6, false}}] = tokenize("~~((a))"),
+   {')', {1, 6, false}},
+   {')', {1, 7, false}}] = tokenize("~~((a))"),
 
   [{sequence_op, {1, 1, nil}, '~~'},
    {'(', {1, 3, nil}},
@@ -203,13 +204,15 @@ sequence_no_parens_test() ->
 
 %% Test nested sequence literals
 sequence_nested_test() ->
-  % ~~(a ~~(b) c) - inner sequence should be fully isolated
+  % ~~(a (b) c) - inner parentheses should be preserved as tokens
   [{sequence_op, {1, 1, nil}, '~~'},
    {'(', {1, 3, nil}},
    {sequence_token, {1, 4, nil}, a},
    {'(', {1, 6, nil}},
    {sequence_token, {1, 7, nil}, b},
-   {')', {1, 8, false}}] = tokenize("~~(a (b) c)"),
+   {')', {1, 8, false}},
+   {sequence_token, {1, 10, nil}, c},
+   {')', {1, 11, false}}] = tokenize("~~(a (b) c)"),
   ok.
 
 %% Test mixed content in sequence literals - ALL must be sequence_* tokens
