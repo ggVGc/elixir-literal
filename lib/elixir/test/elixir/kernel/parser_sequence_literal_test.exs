@@ -29,16 +29,15 @@ defmodule Kernel.ParserSequenceLiteralTest do
     # This works (direct parsing)
     direct_result = parse!("~~(+ 1 2 3)")
     assert {:sequence_literal, _, _} = direct_result
-    
+
     # This should work but may fail (quote block parsing)
-    quote_result = try do
-      parse!("quote do ~~(+ 1 2 3) end")
-    rescue
-      e -> {:error, e}
-    catch
-      :error, e -> {:error, e}
-    end
-    
+    quote_result =
+      try do
+        parse!("quote do ~~(+ 1 2 3) end")
+      rescue
+        e -> {:error, e}
+      end
+
     case quote_result do
       {:error, error} ->
         # Capture the specific parser error for analysis
@@ -46,6 +45,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
         IO.inspect(error, label: "Full error details")
         # For now, expect this to fail so we can see the error
         assert false, "Parser failed with: #{Exception.message(error)}"
+
       result ->
         # If it succeeds, show us what we got
         IO.inspect(result, label: "Quote block parsing result")
@@ -376,15 +376,71 @@ defmodule Kernel.ParserSequenceLiteralTest do
              end)
     end
 
+    test "sequence literals produce sequence_begin and sequence_end tokens" do
+      tokens = tokenize("~~(hello)")
+
+      # Should have sequence_begin token
+      has_begin =
+        Enum.any?(tokens, fn
+          {:sequence_begin, {_, _, _}, :"~~("} -> true
+          _ -> false
+        end)
+
+      # Should have sequence_end token  
+      has_end =
+        Enum.any?(tokens, fn
+          {:sequence_end, {_, _, _}, :")"} -> true
+          _ -> false
+        end)
+
+      assert has_begin, "Expected sequence_begin token"
+      assert has_end, "Expected sequence_end token"
+    end
+
+    test "bracket pairs produce sequence_block tokens" do
+      # Test parentheses
+      paren_tokens = tokenize("~~((a))")
+
+      has_paren_block =
+        Enum.any?(paren_tokens, fn
+          {:sequence_block, {_, _, _}, :"()", _} -> true
+          _ -> false
+        end)
+
+      assert has_paren_block, "Expected sequence_block token for parentheses"
+
+      # Test square brackets
+      bracket_tokens = tokenize("~~([a])")
+
+      has_bracket_block =
+        Enum.any?(bracket_tokens, fn
+          {:sequence_block, {_, _, _}, :"[]", _} -> true
+          _ -> false
+        end)
+
+      assert has_bracket_block, "Expected sequence_block token for brackets"
+
+      # Test curly braces
+      brace_tokens = tokenize("~~({a})")
+
+      has_brace_block =
+        Enum.any?(brace_tokens, fn
+          {:sequence_block, {_, _, _}, :{}, _} -> true
+          _ -> false
+        end)
+
+      assert has_brace_block, "Expected sequence_block token for braces"
+    end
+
     test "tokenizer isolation - only sequence_* tokens inside sequences" do
       tokens = tokenize("~~(hello 123 :atom \"string\" + true)")
 
-      # Filter out structural tokens (sequence_op, parens, etc.)
+      # Filter out structural tokens (sequence_begin, sequence_end, etc.)
       content_tokens =
         Enum.filter(tokens, fn
-          {:sequence_op, {_, _, _}, _} -> false
-          {:"(", {_, _, _}} -> false
-          {:")", {_, _, _}} -> false
+          {:sequence_begin, {_, _, _}, _} -> false
+          {:sequence_end, {_, _, _}, _} -> false
+          {:sequence_block, {_, _, _}, _, _} -> false
           _ -> true
         end)
 
