@@ -1,200 +1,164 @@
-#!/usr/bin/env elixir
-
-# Require all lipex modules
-Code.require_file("lipex/lipex.ex")
-Code.require_file("lipex/core/data_structures.ex")
-Code.require_file("lipex/core/arithmetic.ex")
-Code.require_file("lipex/core/logic.ex")
-Code.require_file("lipex/core/control_flow.ex")
-Code.require_file("lipex/functions/calls.ex")
-
 defmodule LipexComprehensiveTest do
+  use ExUnit.Case, async: true
+  
   @moduledoc """
   Comprehensive test suite demonstrating all working Lipex functionality.
   """
   
   import Lipex
   
-  def run_all_tests do
-    IO.puts("🚀 === COMPREHENSIVE LIPEX TEST SUITE === 🚀\n")
+  describe "arithmetic operations" do
+    test "basic arithmetic operations work" do
+      assert deflipex(beginliteral (+ 1 2 3 4 5) endliteral) == 15
+      assert deflipex(beginliteral (* 2 3 4) endliteral) == 24
+      assert deflipex(beginliteral (- 100 25 10) endliteral) == 65
+      assert deflipex(beginliteral (/ 100 5 2) endliteral) == 10.0
+      assert deflipex(beginliteral (- 42) endliteral) == -42
+    end
     
-    test_arithmetic_operations()
-    test_data_structures()
-    test_logical_operations()
-    test_control_flow()
-    test_nested_expressions()
-    test_complex_scenarios()
+    test "comparison operations work" do
+      assert deflipex(beginliteral (< 1 5) endliteral) == true
+      assert deflipex(beginliteral (> 10 5) endliteral) == true
+      assert deflipex(beginliteral (<= 5 5) endliteral) == true
+      assert deflipex(beginliteral (>= 7 3) endliteral) == true
+      assert deflipex(beginliteral (== :hello :hello) endliteral) == true
+      assert deflipex(beginliteral (!= :foo :bar) endliteral) == true
+    end
     
-    IO.puts("\n🎉 === ALL TESTS COMPLETED SUCCESSFULLY! === 🎉")
-    IO.puts("✨ Lipex is working beautifully! ✨")
+    test "mathematical functions work" do
+      assert deflipex(beginliteral (abs (- 42)) endliteral) == 42
+      assert deflipex(beginliteral (min 5 2 8 1) endliteral) == 1
+      assert deflipex(beginliteral (max 5 2 8 1) endliteral) == 8
+      assert deflipex(beginliteral (rem 17 5) endliteral) == 2
+    end
   end
   
-  def test_arithmetic_operations do
-    IO.puts("🔢 --- ARITHMETIC OPERATIONS ---")
+  describe "data structures" do
+    test "maps work correctly" do
+      simple_map = deflipex beginliteral (% :name "Alice" :age 30) endliteral
+      assert simple_map == %{name: "Alice", age: 30}
+      
+      complex_map = deflipex beginliteral (% "key1" :value1 :key2 42 :nested (% :x 10 :y 20)) endliteral
+      assert complex_map == %{"key1" => :value1, key2: 42, nested: %{x: 10, y: 20}}
+    end
     
-    # Basic arithmetic
-    IO.puts("Basic arithmetic:")
-    IO.puts("  (+ 1 2 3 4 5) = #{deflipex ~~((+ 1 2 3 4 5))}")
-    IO.puts("  (* 2 3 4) = #{deflipex ~~((* 2 3 4))}")
-    IO.puts("  (- 100 25 10) = #{deflipex ~~((- 100 25 10))}")
-    IO.puts("  (/ 100 5 2) = #{deflipex ~~((/ 100 5 2))}")
-    IO.puts("  (- 42) = #{deflipex ~~((- 42))}")  # Unary negation
+    test "tuples work correctly" do
+      assert deflipex(beginliteral (tuple :ok :success) endliteral) == {:ok, :success}
+      assert deflipex(beginliteral (tuple 1 2 3 4) endliteral) == {1, 2, 3, 4}
+      assert deflipex(beginliteral (tuple) endliteral) == {}
+    end
     
-    # Comparisons
-    IO.puts("\nComparisons:")
-    IO.puts("  (< 1 5) = #{deflipex ~~((< 1 5))}")
-    IO.puts("  (> 10 5) = #{deflipex ~~((> 10 5))}")
-    IO.puts("  (<= 5 5) = #{deflipex ~~((<= 5 5))}")
-    IO.puts("  (>= 7 3) = #{deflipex ~~((>= 7 3))}")
-    IO.puts("  (== :hello :hello) = #{deflipex ~~((== :hello :hello))}")
-    IO.puts("  (!= :foo :bar) = #{deflipex ~~((!= :foo :bar))}")
+    test "lists work correctly" do
+      assert deflipex(beginliteral (list 1 2 3 4 5) endliteral) == [1, 2, 3, 4, 5]
+      assert deflipex(beginliteral (list :a :b :c) endliteral) == [:a, :b, :c]
+      assert deflipex(beginliteral (list) endliteral) == []
+    end
     
-    # Mathematical functions
-    IO.puts("\nMath functions:")
-    IO.puts("  (abs (- 42)) = #{deflipex ~~((abs (- 42)))}")
-    IO.puts("  (min 5 2 8 1) = #{deflipex ~~((min 5 2 8 1))}")
-    IO.puts("  (max 5 2 8 1) = #{deflipex ~~((max 5 2 8 1))}")
-    IO.puts("  (rem 17 5) = #{deflipex ~~((rem 17 5))}")
-    
-    IO.puts("")
+    test "keyword lists work correctly" do
+      kwlist = deflipex beginliteral (kwlist :timeout 5000 :retries 3 :mode :sync) endliteral
+      assert kwlist == [timeout: 5000, retries: 3, mode: :sync]
+    end
   end
   
-  def test_data_structures do
-    IO.puts("🏗️ --- DATA STRUCTURES ---")
+  describe "logical operations" do
+    test "boolean operations work" do
+      assert deflipex(beginliteral (and true true true) endliteral) == true
+      assert deflipex(beginliteral (and true false true) endliteral) == false
+      assert deflipex(beginliteral (or false false true) endliteral) == true
+      assert deflipex(beginliteral (or false false false) endliteral) == false
+      assert deflipex(beginliteral (not true) endliteral) == false
+      assert deflipex(beginliteral (not false) endliteral) == true
+    end
     
-    # Maps
-    IO.puts("Maps using (% ...) syntax:")
-    simple_map = deflipex ~~((% :name "Alice" :age 30))
-    IO.puts("  (% :name \"Alice\" :age 30) = #{inspect(simple_map)}")
+    test "type checking works" do
+      assert deflipex(beginliteral (atom? :hello) endliteral) == true
+      assert deflipex(beginliteral (number? 42) endliteral) == true
+      assert deflipex(beginliteral (string? "hello") endliteral) == true
+      assert deflipex(beginliteral (list? (list 1 2 3)) endliteral) == true
+      assert deflipex(beginliteral (tuple? (tuple :ok :value)) endliteral) == true
+    end
     
-    complex_map = deflipex ~~((% "key1" :value1 :key2 42 :nested (% :x 10 :y 20)))
-    IO.puts("  Complex map = #{inspect(complex_map)}")
-    
-    # Tuples
-    IO.puts("\nTuples:")
-    IO.puts("  (tuple :ok :success) = #{inspect(deflipex ~~((tuple :ok :success)))}")
-    IO.puts("  (tuple 1 2 3 4) = #{inspect(deflipex ~~((tuple 1 2 3 4)))}")
-    IO.puts("  (tuple) = #{inspect(deflipex ~~((tuple)))}")
-    
-    # Lists  
-    IO.puts("\nLists:")
-    IO.puts("  (list 1 2 3 4 5) = #{inspect(deflipex ~~((list 1 2 3 4 5)))}")
-    IO.puts("  (list :a :b :c) = #{inspect(deflipex ~~((list :a :b :c)))}")
-    IO.puts("  (list) = #{inspect(deflipex ~~((list)))}")
-    
-    # Keyword lists
-    IO.puts("\nKeyword Lists:")
-    kwlist = deflipex ~~((kwlist :timeout 5000 :retries 3 :mode :sync))
-    IO.puts("  (kwlist :timeout 5000 :retries 3 :mode :sync) = #{inspect(kwlist)}")
-    
-    IO.puts("")
+    test "truthiness operations work" do
+      assert deflipex(beginliteral (truthy? 42) endliteral) == true
+      assert deflipex(beginliteral (truthy? nil) endliteral) == false
+      assert deflipex(beginliteral (falsy? false) endliteral) == true
+      assert deflipex(beginliteral (nil? nil) endliteral) == true
+      assert deflipex(beginliteral (some? 42) endliteral) == true
+    end
   end
   
-  def test_logical_operations do
-    IO.puts("🧠 --- LOGICAL OPERATIONS ---")
+  describe "control flow" do
+    test "if expressions work" do
+      assert deflipex(beginliteral (if true :yes :no) endliteral) == :yes
+      assert deflipex(beginliteral (if false :yes :no) endliteral) == :no
+      assert deflipex(beginliteral (if (> 5 3) :bigger :smaller) endliteral) == :bigger
+    end
     
-    # Boolean logic
-    IO.puts("Boolean operations:")
-    IO.puts("  (and true true true) = #{deflipex ~~((and true true true))}")
-    IO.puts("  (and true false true) = #{deflipex ~~((and true false true))}")
-    IO.puts("  (or false false true) = #{deflipex ~~((or false false true))}")
-    IO.puts("  (or false false false) = #{deflipex ~~((or false false false))}")
-    IO.puts("  (not true) = #{deflipex ~~((not true))}")
-    IO.puts("  (not false) = #{deflipex ~~((not false))}")
-    
-    # Type checking
-    IO.puts("\nType checking:")
-    IO.puts("  (atom? :hello) = #{deflipex ~~((atom? :hello))}")
-    IO.puts("  (number? 42) = #{deflipex ~~((number? 42))}")
-    IO.puts("  (string? \"hello\") = #{deflipex ~~((string? "hello"))}")
-    IO.puts("  (list? (list 1 2 3)) = #{deflipex ~~((list? (list 1 2 3)))}")
-    IO.puts("  (tuple? (tuple :ok :value)) = #{deflipex ~~((tuple? (tuple :ok :value)))}")
-    
-    # Truthiness
-    IO.puts("\nTruthiness:")
-    IO.puts("  (truthy? 42) = #{deflipex ~~((truthy? 42))}")
-    IO.puts("  (truthy? nil) = #{deflipex ~~((truthy? nil))}")
-    IO.puts("  (falsy? false) = #{deflipex ~~((falsy? false))}")
-    IO.puts("  (nil? nil) = #{deflipex ~~((nil? nil))}")
-    IO.puts("  (some? 42) = #{deflipex ~~((some? 42))}")
-    
-    IO.puts("")
+    test "conditional with only then branch works" do
+      assert deflipex(beginliteral (if true :success) endliteral) == :success
+      assert deflipex(beginliteral (if false :success) endliteral) == nil
+    end
   end
   
-  def test_control_flow do
-    IO.puts("🚦 --- CONTROL FLOW ---")
+  describe "nested expressions" do
+    test "nested arithmetic works" do
+      nested_math = deflipex beginliteral (+ (* 2 3) (- 10 5) (/ 20 4)) endliteral
+      assert nested_math == 16.0
+    end
     
-    # If expressions
-    IO.puts("If expressions:")
-    IO.puts("  (if true :yes :no) = #{deflipex ~~((if true :yes :no))}")
-    IO.puts("  (if false :yes :no) = #{deflipex ~~((if false :yes :no))}")
-    IO.puts("  (if (> 5 3) :bigger :smaller) = #{deflipex ~~((if (> 5 3) :bigger :smaller))}")
+    test "nested logic works" do
+      nested_logic = deflipex beginliteral (and (> 5 3) (< 2 10) (== :foo :foo)) endliteral
+      assert nested_logic == true
+    end
     
-    # Conditional with only then branch
-    IO.puts("  (if true :success) = #{deflipex ~~((if true :success))}")
-    IO.puts("  (if false :success) = #{inspect(deflipex ~~((if false :success)))}")
+    test "nested data structures work" do
+      nested_data = deflipex beginliteral (% :user (% :name "Bob" :age (+ 20 10)) :scores (list 95 87 92)) endliteral
+      assert nested_data == %{user: %{name: "Bob", age: 30}, scores: [95, 87, 92]}
+    end
     
-    IO.puts("")
+    test "complex conditionals work" do
+      complex_if = deflipex beginliteral (if (and (> 10 5) (< 3 7)) (+ 1 2 3) (* 2 2 2)) endliteral
+      assert complex_if == 6
+    end
   end
   
-  def test_nested_expressions do
-    IO.puts("🏢 --- NESTED EXPRESSIONS ---")
+  describe "complex scenarios" do
+    test "mathematical expressions work" do
+      # Quadratic 2x² - 5x + 6 at x=3
+      quadratic = deflipex beginliteral (+ (* 2 (* 3 3)) (* (- 5) 3) 6) endliteral
+      assert quadratic == 9  # 2*9 + (-5)*3 + 6 = 18 - 15 + 6 = 9
+    end
     
-    # Nested arithmetic
-    nested_math = deflipex ~~((+ (* 2 3) (- 10 5) (/ 20 4)))
-    IO.puts("Complex math: (+ (* 2 3) (- 10 5) (/ 20 4)) = #{nested_math}")
+    test "data processing works" do
+      scores = deflipex beginliteral (list 85 92 78 96 88) endliteral
+      max_score = deflipex beginliteral (max 85 92 78 96 88) endliteral
+      min_score = deflipex beginliteral (min 85 92 78 96 88) endliteral
+      
+      assert scores == [85, 92, 78, 96, 88]
+      assert max_score == 96
+      assert min_score == 78
+    end
     
-    # Nested comparisons and logic  
-    nested_logic = deflipex ~~((and (> 5 3) (< 2 10) (== :foo :foo)))
-    IO.puts("Complex logic: (and (> 5 3) (< 2 10) (== :foo :foo)) = #{nested_logic}")
+    test "configuration-like data structures work" do
+      config = deflipex beginliteral (% :database (% :host "localhost" :port 5432) :cache (kwlist :ttl 300 :size 1000) :features (list :auth :logging :metrics)) endliteral
+      expected_config = %{
+        database: %{host: "localhost", port: 5432},
+        cache: [ttl: 300, size: 1000],
+        features: [:auth, :logging, :metrics]
+      }
+      assert config == expected_config
+    end
     
-    # Nested data structures
-    nested_data = deflipex ~~((% :user (% :name "Bob" :age (+ 20 10)) :scores (list 95 87 92)))
-    IO.puts("Nested structures:")
-    IO.puts("  #{inspect(nested_data)}")
+    test "complex boolean logic works" do
+      # Test that complex expressions can be created (structure test)
+      access_check = deflipex beginliteral (and (or (== :role :admin) (== :role :moderator)) (not (== :status :banned)) (> :score 50)) endliteral
+      # This creates a complex boolean expression structure - exact evaluation depends on variable bindings
+      assert is_boolean(access_check) or is_tuple(access_check)  # Structure test
+    end
     
-    # Complex conditionals
-    complex_if = deflipex ~~((if (and (> 10 5) (< 3 7)) (+ 1 2 3) (* 2 2 2)))
-    IO.puts("Complex if: #{complex_if}")
-    
-    IO.puts("")
-  end
-  
-  def test_complex_scenarios do
-    IO.puts("🌟 --- COMPLEX SCENARIOS ---")
-    
-    # Mathematical expression
-    IO.puts("Mathematical expressions:")
-    quadratic = deflipex ~~((+ (* 2 (* 3 3)) (* (- 5) 3) 6))
-    IO.puts("  Quadratic 2x² - 5x + 6 at x=3: #{quadratic}")
-    
-    # Data processing simulation
-    IO.puts("\nData processing:")
-    scores = deflipex ~~((list 85 92 78 96 88))
-    max_score = deflipex ~~((max 85 92 78 96 88))
-    min_score = deflipex ~~((min 85 92 78 96 88))
-    IO.puts("  Scores: #{inspect(scores)}")
-    IO.puts("  Max score: #{max_score}")
-    IO.puts("  Min score: #{min_score}")
-    
-    # Configuration-like data
-    IO.puts("\nConfiguration data:")
-    config = deflipex ~~((% :database (% :host "localhost" :port 5432) :cache (kwlist :ttl 300 :size 1000) :features (list :auth :logging :metrics)))
-    IO.puts("  #{inspect(config, pretty: true)}")
-    
-    # Complex boolean logic
-    IO.puts("\nComplex boolean expressions:")
-    _access_check = deflipex ~~((and (or (== :role :admin) (== :role :moderator)) (not (== :status :banned)) (> :score 50)))
-    IO.puts("  Access check structure created successfully")
-    
-    # Nested conditionals
-    IO.puts("\nNested conditionals:")
-    grade = deflipex ~~((if (>= 95 90) :A (if (>= 95 80) :B (if (>= 95 70) :C :F))))
-    IO.puts("  Grade for 95: #{grade}")
-    
-    IO.puts("")
+    test "nested conditionals work" do
+      grade = deflipex beginliteral (if (>= 95 90) :A (if (>= 95 80) :B (if (>= 95 70) :C :F))) endliteral
+      assert grade == :A
+    end
   end
 end
-
-# Run the comprehensive tests
-LipexComprehensiveTest.run_all_tests()

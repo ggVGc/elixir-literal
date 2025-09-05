@@ -1,14 +1,6 @@
-#!/usr/bin/env elixir
-
-# Require all lipex modules
-Code.require_file("lipex/lipex.ex")
-Code.require_file("lipex/core/data_structures.ex")
-Code.require_file("lipex/core/arithmetic.ex")
-Code.require_file("lipex/core/logic.ex")
-Code.require_file("lipex/core/control_flow.ex")
-Code.require_file("lipex/functions/calls.ex")
-
 defmodule LipexBasicTest do
+  use ExUnit.Case, async: true
+  
   @moduledoc """
   Basic tests for the Lipex implementation.
   
@@ -21,101 +13,96 @@ defmodule LipexBasicTest do
   
   import Lipex
   
-  def run_all_tests do
-    IO.puts("=== Lipex Basic Test Suite ===\n")
+  describe "arithmetic operations" do
+    test "addition works correctly" do
+      result = deflipex beginliteral (+ 1 2 3) endliteral
+      assert result == 6
+    end
     
-    test_arithmetic()
-    test_data_structures()
-    test_logic_operations()
-    test_control_flow()
+    test "multiplication works correctly" do
+      result = deflipex beginliteral (* 2 3 4) endliteral
+      assert result == 24
+    end
     
-    IO.puts("\n=== All basic tests completed! ===")
+    test "subtraction works correctly" do
+      result = deflipex beginliteral (- 10 3) endliteral
+      assert result == 7
+    end
+    
+    test "division works correctly" do
+      result = deflipex beginliteral (/ 12 4) endliteral
+      assert result == 3.0
+    end
+    
+    test "less than comparison works correctly" do
+      result = deflipex beginliteral (< 1 2) endliteral
+      assert result == true
+    end
+    
+    test "greater than or equal comparison works correctly" do
+      result = deflipex beginliteral (>= 5 5) endliteral
+      assert result == true
+    end
   end
   
-  def test_arithmetic do
-    IO.puts("--- Arithmetic Operations ---")
+  describe "data structures" do
+    test "map creation works correctly" do
+      result = deflipex beginliteral (% :name "John" :age 30) endliteral
+      assert result == %{name: "John", age: 30}
+    end
     
-    # Basic arithmetic
-    result1 = deflipex ~~((+ 1 2 3))
-    IO.puts("(+ 1 2 3) = #{result1}")  # Should be 6
+    test "tuple creation works correctly" do
+      result = deflipex beginliteral (tuple :ok :success) endliteral
+      assert result == {:ok, :success}
+    end
     
-    result2 = deflipex ~~((* 2 3 4))
-    IO.puts("(* 2 3 4) = #{result2}")  # Should be 24
-    
-    result3 = deflipex ~~((- 10 3))
-    IO.puts("(- 10 3) = #{result3}")  # Should be 7
-    
-    result4 = deflipex ~~((/ 12 4))
-    IO.puts("(/ 12 4) = #{result4}")  # Should be 3.0
-    
-    # Comparisons
-    result5 = deflipex ~~((< 1 2))
-    IO.puts("(< 1 2) = #{result5}")  # Should be true
-    
-    result6 = deflipex ~~((>= 5 5))
-    IO.puts("(>= 5 5) = #{result6}")  # Should be true
-    
-    IO.puts("")
+    test "list creation works correctly" do
+      result = deflipex beginliteral (list 1 2 3) endliteral
+      assert result == [1, 2, 3]
+    end
   end
   
-  def test_data_structures do
-    IO.puts("--- Data Structures ---")
+  describe "logical operations" do
+    test "and operation works correctly" do
+      result = deflipex beginliteral (and true true false) endliteral
+      assert result == false
+    end
     
-    # Maps
-    map_result = deflipex ~~((% :name "John" :age 30))
-    IO.puts("(% :name \"John\" :age 30) = #{inspect(map_result)}")
+    test "or operation works correctly" do
+      result = deflipex beginliteral (or false true false) endliteral
+      assert result == true
+    end
     
-    # Tuples  
-    tuple_result = deflipex ~~((tuple :ok :success))
-    IO.puts("(tuple :ok :success) = #{inspect(tuple_result)}")
+    test "not operation works correctly" do
+      result = deflipex beginliteral (not false) endliteral
+      assert result == true
+    end
     
-    # Lists
-    list_result = deflipex ~~((list 1 2 3))
-    IO.puts("(list 1 2 3) = #{inspect(list_result)}")
+    test "atom type checking works correctly" do
+      result = deflipex beginliteral (atom? :hello) endliteral
+      assert result == true
+    end
     
-    IO.puts("")
+    test "number type checking works correctly" do
+      result = deflipex beginliteral (number? 42) endliteral
+      assert result == true
+    end
   end
   
-  def test_logic_operations do
-    IO.puts("--- Logical Operations ---")
+  describe "control flow" do
+    test "if expression with true condition works correctly" do
+      result = deflipex beginliteral (if true :yes :no) endliteral
+      assert result == :yes
+    end
     
-    # Boolean logic
-    and_result = deflipex ~~((and true true false))
-    IO.puts("(and true true false) = #{and_result}")  # Should be false
+    test "if expression with false condition works correctly" do
+      result = deflipex beginliteral (if false :yes :no) endliteral
+      assert result == :no
+    end
     
-    or_result = deflipex ~~((or false true false))
-    IO.puts("(or false true false) = #{or_result}")  # Should be true
-    
-    not_result = deflipex ~~((not false))
-    IO.puts("(not false) = #{not_result}")  # Should be true
-    
-    # Type checking
-    atom_check = deflipex ~~((atom? :hello))
-    IO.puts("(atom? :hello) = #{atom_check}")  # Should be true
-    
-    number_check = deflipex ~~((number? 42))
-    IO.puts("(number? 42) = #{number_check}")  # Should be true
-    
-    IO.puts("")
-  end
-  
-  def test_control_flow do
-    IO.puts("--- Control Flow ---")
-    
-    # If expressions
-    if_result1 = deflipex ~~((if true :yes :no))
-    IO.puts("(if true :yes :no) = #{if_result1}")  # Should be :yes
-    
-    if_result2 = deflipex ~~((if false :yes :no))
-    IO.puts("(if false :yes :no) = #{if_result2}")  # Should be :no
-    
-    # Nested expressions
-    nested_result = deflipex ~~((if (> (+ 2 3) 4) :big :small))
-    IO.puts("(if (> (+ 2 3) 4) :big :small) = #{nested_result}")  # Should be :big
-    
-    IO.puts("")
+    test "nested expressions in if work correctly" do
+      result = deflipex beginliteral (if (> (+ 2 3) 4) :big :small) endliteral
+      assert result == :big
+    end
   end
 end
-
-# Run the tests
-LipexBasicTest.run_all_tests()
