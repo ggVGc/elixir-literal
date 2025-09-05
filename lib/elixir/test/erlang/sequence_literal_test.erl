@@ -182,7 +182,7 @@ sequence_op_embedded_test() ->
    {sequence_end, {1, 5, nil}, ')'}] = tokenize("~~(~)"),
 
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_op, {1, 4, nil}, '~~'},
+   {sequence_op, {1, 4, false}, '~~'},
    {sequence_end, {1, 6, nil}, ')'}] = tokenize("~~(~~)"),
 
   ok.
