@@ -1,0 +1,2 @@
+- Add support to mix projects for mapping specific filetypes to essentially be wrapped in macro_name beginliteral ... endliteral, where macro_name is some macro that consumes sequence_literal AST.
+- Edit mix to support alternative compilers easier?
