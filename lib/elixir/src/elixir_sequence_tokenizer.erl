@@ -251,7 +251,21 @@ extract_sequence_token([], []) ->
 
 %% Extract content between matching brackets
 extract_bracket_content(String, ClosingChar, Line, Column, Scope, Acc) ->
-  case tokenize_single_item(String, Line, Column, Scope) of
+  % Handle empty brackets - if we immediately find the closing character
+  case String of
+    [ClosingChar | Rest] when ClosingChar =/= $) ->
+      % Empty bracket pair (but not closing paren which ends sequence)
+      {ok, Acc, Rest, Line, Column + 1, Scope};
+    [ClosingChar | _] when ClosingChar =:= $), Scope#elixir_tokenizer.sequence_depth =:= 1 ->
+      % This is the final closing paren of an empty sequence literal 
+      {ok, Acc, String, Line, Column, Scope};
+    [ClosingChar | Rest] when ClosingChar =:= $) ->
+      % Empty nested parentheses
+      FinalScope = Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth - 1},
+      {ok, Acc, Rest, Line, Column + 1, FinalScope};
+    _ ->
+      % Not empty, proceed with normal tokenization
+      case tokenize_single_item(String, Line, Column, Scope) of
     {ok, Token, Rest, NewLine, NewColumn, NewScope} ->
       case Rest of
         [ClosingChar | FinalRest] when ClosingChar =/= $) ->
@@ -279,6 +293,7 @@ extract_bracket_content(String, ClosingChar, Line, Column, Scope, Acc) ->
       case ClosingChar of
         $) -> {ok, Acc, Rest, FinalLine, FinalColumn, FinalScope};
         _ -> {error, {?LOC(Line, Column), "missing closing bracket: ", [ClosingChar]}}
+      end
       end
   end.
 

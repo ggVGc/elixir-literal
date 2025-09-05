@@ -176,6 +176,24 @@ sequence_empty_test() ->
    {sequence_end, {1, 4, nil}, ')'}] = tokenize("~~()"),
   ok.
 
+%% Test empty bracket structures
+sequence_empty_brackets_test() ->
+  % Empty square brackets
+  [{sequence_begin, {1, 1, nil}, '~~('},
+   {sequence_block, {1, 4, nil}, '[]', []},
+   {sequence_end, {1, 6, nil}, ')'}] = tokenize("~~([])"),
+
+  % Empty curly braces
+  [{sequence_begin, {1, 1, nil}, '~~('},
+   {sequence_block, {1, 4, nil}, '{}', []},
+   {sequence_end, {1, 6, nil}, ')'}] = tokenize("~~({})"),
+
+  % Empty nested parentheses
+  [{sequence_begin, {1, 1, nil}, '~~('},
+   {sequence_block, {1, 4, nil}, '()', []},
+   {sequence_end, {1, 6, nil}, ')'}] = tokenize("~~(())"),
+  ok.
+
 sequence_op_embedded_test() ->
   [{sequence_begin, {1, 1, nil}, '~~('},
    {sequence_token, {1, 4, nil}, '~'},
