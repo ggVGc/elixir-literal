@@ -122,6 +122,11 @@ sequence_literals_test() ->
    {sequence_atom, {1, 4, nil}, foo},
    {')', {1, 8, false}}] = tokenize("~~(:foo)"),
 
+  [{sequence_op, {1, 1, nil}, '~~'},
+   {'(', {1, 3, nil}},
+   {sequence_atom, {1, 4, nil}, 'spaced atom'},
+   {')', {1, 8, false}}] = tokenize("~~(:\"spaced atom\")"),
+
   % Test float literals - MUST be sequence_number
   [{sequence_op, {1, 1, nil}, '~~'},
    {'(', {1, 3, nil}},
@@ -175,6 +180,19 @@ sequence_empty_test() ->
   [{sequence_op, {1, 1, nil}, '~~'},
    {'(', {1, 3, nil}},
    {')', {1, 4, false}}] = tokenize("~~()"),
+  ok.
+
+sequence_op_embedded_test() ->
+  [{sequence_op, {1, 1, nil}, '~~'},
+   {'(', {1, 3, nil}},
+   {'sequence_token', {1, 4, nil}, '~'},
+   {')', {1, 5, false}}] = tokenize("~~(~)"),
+
+  [{sequence_op, {1, 1, nil}, '~~'},
+   {'(', {1, 3, nil}},
+   {'sequence_op', {1, 4, false}, '~~'},
+   {')', {1, 6, false}}] = tokenize("~~(~~)"),
+
   ok.
 
 %% Test sequence operator without parentheses - normal tokenization
