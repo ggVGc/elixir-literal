@@ -22,7 +22,8 @@ quoted_test() ->
    {do,{1,7,nil}},
    {sequence_begin,{1,10,nil},'~~('},
    {sequence_token,{1,13,nil},a},
-   {sequence_end,{1,14,nil},')'}] = tokenize("quote do ~~(a) end"),
+   {sequence_end,{1,14,nil},')'},
+   {'end',{1,16,nil}}] = tokenize("quote do ~~(a) end"),
 
 [{do_identifier,{1,1,"quote"},quote},
    {do,{1,7,nil}},
@@ -32,7 +33,8 @@ quoted_test() ->
    {sequence_number,{1,17,nil},1},
    {sequence_atom,{1,19,nil},yeo},
    {sequence_string,{1,24,nil},"breo"},
-   {sequence_end,{1,30,nil},')'}] = tokenize("quote do ~~(+ a 1 :yeo \"breo\") end"),
+   {sequence_end,{1,30,nil},')'},
+   {'end',{1,32,nil}}] = tokenize("quote do ~~(+ a 1 :yeo \"breo\") end"),
   ok.
 
 %% Test basic sequence operator tokenization
