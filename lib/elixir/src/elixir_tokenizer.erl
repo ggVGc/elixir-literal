@@ -210,9 +210,8 @@ tokenize([$# | String], Line, Column, Scope, Tokens) ->
 tokenize([$~, $~, $( | Rest], Line, Column, Scope, Tokens) ->
   % Entering sequence literal - increment depth and dispatch to sequence tokenizer
   NewScope = Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1},
-  SequenceOpToken = {sequence_op, {Line, Column, previous_was_eol(Tokens)}, '~~'},
-  ParenToken = {'(', {Line, Column + 2, nil}},
-  elixir_sequence_tokenizer:tokenize(Rest, Line, Column + 3, NewScope, [ParenToken, SequenceOpToken | Tokens]);
+  SequenceBeginToken = {sequence_begin, {Line, Column, previous_was_eol(Tokens)}, '~~('},
+  elixir_sequence_tokenizer:tokenize(Rest, Line, Column + 3, NewScope, [SequenceBeginToken | Tokens]);
 
 tokenize([$~, $~, $~, H | _] = String, Line, Column, Scope, Tokens) when
     ?is_space(H) orelse ?is_digit(H) orelse ?is_upcase(H) orelse ?is_downcase(H) orelse
