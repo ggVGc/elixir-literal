@@ -187,6 +187,12 @@ defmodule Kernel.ParserSequenceLiteralTest do
                    [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}
                 ]}
 
+      assert parse!("~~(+ 1 2)") ==
+               {:sequence_literal, [line: 1],
+                [
+                  {:sequence_prefix, {:+, [line: 1], nil}, [1, 2]}
+                ]}
+
       assert parse!("~~(- x y)") ==
                {:sequence_literal, [line: 1],
                 [
