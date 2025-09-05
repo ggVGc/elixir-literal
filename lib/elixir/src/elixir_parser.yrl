@@ -45,7 +45,7 @@ Terminals
   bin_heredoc list_heredoc
   comp_op at_op unary_op and_op or_op arrow_op match_op in_op in_match_op ellipsis_op
   type_op dual_op mult_op power_op concat_op range_op xor_op pipe_op stab_op when_op
-  capture_int capture_op assoc_op rel_op ternary_op dot_call_op sequence_op sequence_atom sequence_token
+  capture_int capture_op assoc_op rel_op ternary_op dot_call_op sequence_op sequence_atom sequence_token sequence_number
   'true' 'false' 'nil' 'do' eol ';' ',' '.'
   '(' ')' '[' ']' '{' '}' '<<' '>>' '%{}' '%'
   int flt char
@@ -318,6 +318,7 @@ sequence_token_list -> sequence_token_list eol sequence_element : '$1' ++ ['$3']
 
 % Accept various token types inside sequences  
 sequence_element -> sequence_token : build_sequence_token('$1').
+sequence_element -> sequence_number : element(3, '$1').
 sequence_element -> int : handle_number(number_value('$1'), '$1', ?exprs('$1')).
 sequence_element -> flt : handle_number(number_value('$1'), '$1', ?exprs('$1')).
 sequence_element -> bin_string : build_bin_string('$1', delimiter(<<$">>)).
