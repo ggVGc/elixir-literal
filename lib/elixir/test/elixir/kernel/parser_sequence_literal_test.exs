@@ -25,33 +25,23 @@ defmodule Kernel.ParserSequenceLiteralTest do
     end
   end
 
-  test "sequence literals in quote blocks - parser error analysis" do
+  test "sequence literals in quote blocks - parser working with beginliteral/endliteral" do
     # This works (direct parsing)
-    direct_result = parse!("~~(+ 1 2 3)")
+    direct_result = parse!("beginliteral + 1 2 3 endliteral")
     assert {:sequence_literal, _, _} = direct_result
+
+    # This now works with beginliteral/endliteral (the fix!)
+    quote_result = parse!("quote do beginliteral + 1 2 3 endliteral end")
     
-    # This should work but may fail (quote block parsing)
-    quote_result = try do
-      parse!("quote do ~~(+ 1 2 3) end")
-    rescue
-      e -> {:error, e}
-    catch
-      :error, e -> {:error, e}
-    end
+    # Verify the structure is correct
+    assert {:quote, [line: 1], [[do: {:sequence_literal, [line: 1], [{:sequence_prefix, {:+, [line: 1], nil}, [1, 2, 3]}]}]]} = quote_result
     
-    case quote_result do
-      {:error, error} ->
-        # Capture the specific parser error for analysis
-        IO.puts("Parser error: #{Exception.message(error)}")
-        IO.inspect(error, label: "Full error details")
-        # For now, expect this to fail so we can see the error
-        assert false, "Parser failed with: #{Exception.message(error)}"
-      result ->
-        # If it succeeds, show us what we got
-        IO.inspect(result, label: "Quote block parsing result")
-        # This should contain a quote structure with sequence_literal inside
-        assert true
-    end
+    # Test other cases too
+    assert parse!("quote do beginliteral hello world endliteral end") ==
+           {:quote, [line: 1], [[do: {:sequence_literal, [line: 1], [{:hello, [line: 1], nil}, {:world, [line: 1], nil}]}]]}
+           
+    assert parse!("quote do beginliteral endliteral end") ==
+           {:quote, [line: 1], [[do: {:sequence_literal, [line: 1], []}]]}
   end
 
   describe "sequence literals with simplified tokenizer" do

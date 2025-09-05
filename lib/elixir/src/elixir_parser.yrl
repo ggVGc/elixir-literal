@@ -34,13 +34,13 @@ Nonterminals
   dot_op dot_alias dot_bracket_identifier dot_call_identifier
   dot_identifier dot_op_identifier dot_do_identifier dot_paren_identifier
   do_block fn_eoe do_eoe block_eoe block_item block_list
-  sequence_expr sequence_args sequence_token_list sequence_element
+  sequence_expr sequence_args sequence_token_list sequence_element beginliteral_eoe
   .
 
 Terminals
   identifier kw_identifier kw_identifier_safe kw_identifier_unsafe bracket_identifier
   paren_identifier do_identifier block_identifier op_identifier
-  fn 'end' alias
+  fn 'end' 'beginliteral' 'endliteral' alias
   atom atom_quoted atom_safe atom_unsafe bin_string list_string sigil
   bin_heredoc list_heredoc
   comp_op at_op unary_op and_op or_op arrow_op match_op in_op in_match_op ellipsis_op
@@ -307,7 +307,7 @@ parens_call -> dot_call_identifier call_args_parens : build_parens('$1', '$2', {
 parens_call -> dot_call_identifier call_args_parens call_args_parens : build_nested_parens('$1', '$2', '$3', {[], []}).
 
 %% Sequence expressions
-sequence_expr -> sequence_op open_paren sequence_args close_paren : build_sequence('$1', '$3', '$4').
+sequence_expr -> beginliteral_eoe sequence_args 'endliteral' : build_sequence('$1', '$2', '$3').
 
 sequence_args -> sequence_token_list : '$1'.
 sequence_args -> '$empty' : [].
@@ -326,6 +326,16 @@ sequence_element -> open_paren sequence_args close_paren : {sequence_paren, meta
 sequence_element -> '{' sequence_args '}' : {sequence_brace, meta_from_token('$1'), '$2'}.
 sequence_element -> '[' sequence_args ']' : {sequence_bracket, meta_from_token('$1'), '$2'}.
 sequence_element -> sequence_atom : build_sequence_op('$1').
+sequence_element -> identifier : build_identifier('$1').
+sequence_element -> atom : handle_literal(?exprs('$1'), '$1', atom_colon_meta('$1')).
+sequence_element -> dual_op : build_identifier('$1').
+sequence_element -> mult_op : build_identifier('$1').
+sequence_element -> power_op : build_identifier('$1').
+sequence_element -> comp_op : build_identifier('$1').
+sequence_element -> rel_op : build_identifier('$1').
+sequence_element -> and_op : build_identifier('$1').
+sequence_element -> or_op : build_identifier('$1').
+sequence_element -> unary_op : build_identifier('$1').
 
 bracket_arg -> open_bracket kw_data close_bracket : build_access_arg('$1', '$2', '$3').
 bracket_arg -> open_bracket container_expr close_bracket : build_access_arg('$1', '$2', '$3').
@@ -360,6 +370,9 @@ fn_eoe -> 'fn' eoe : next_is_eol('$1', '$2').
 
 do_eoe -> 'do' : '$1'.
 do_eoe -> 'do' eoe : '$1'.
+
+beginliteral_eoe -> 'beginliteral' : '$1'.
+beginliteral_eoe -> 'beginliteral' eoe : next_is_eol('$1', '$2').
 
 block_eoe -> block_identifier : '$1'.
 block_eoe -> block_identifier eoe : '$1'.
@@ -981,8 +994,8 @@ build_call({op_identifier, Location, Identifier}, [Arg]) ->
 build_call({_, Location, Identifier}, Args) ->
   {Identifier, meta_from_location(Location), Args}.
 
-build_sequence({sequence_op, Location, _}, Args, CloseParen) ->
-  Meta = newlines_pair({sequence_op, Location}, CloseParen) ++ meta_from_location(Location),
+build_sequence(BeginLiteral, Args, EndLiteral) ->
+  Meta = newlines_pair(BeginLiteral, EndLiteral) ++ meta_from_token(BeginLiteral),
   TransformedArgs = transform_sequence_args(Args),
   {sequence_literal, Meta, TransformedArgs}.
 

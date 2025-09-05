@@ -1531,7 +1531,7 @@ check_terminator({Start, Meta}, Terminators, Scope)
   Indentation = Scope#elixir_tokenizer.indentation,
   {ok, Scope#elixir_tokenizer{terminators=[{Start, Meta, Indentation} | Terminators]}};
 
-check_terminator({Start, Meta}, Terminators, Scope) when Start == 'fn'; Start == 'do' ->
+check_terminator({Start, Meta}, Terminators, Scope) when Start == 'fn'; Start == 'do'; Start == 'beginliteral' ->
   Indentation = Scope#elixir_tokenizer.indentation,
 
   NewScope =
@@ -1561,7 +1561,7 @@ check_terminator({'end', {EndLine, _, _}}, [{'do', _, Indentation} | Terminators
   {ok, NewScope#elixir_tokenizer{terminators=Terminators}};
 
 check_terminator({End, {EndLine, EndColumn, _}}, [{Start, {StartLine, StartColumn, _}, _} | Terminators], Scope)
-    when End == 'end'; End == ')'; End == ']'; End == '}'; End == '>>' ->
+    when End == 'end'; End == 'endliteral'; End == ')'; End == ']'; End == '}'; End == '>>' ->
   case terminator(Start) of
     End ->
       {ok, Scope#elixir_tokenizer{terminators=Terminators}};
@@ -1625,6 +1625,7 @@ sigil_terminator(O) -> O.
 
 terminator('fn') -> 'end';
 terminator('do') -> 'end';
+terminator('beginliteral') -> 'endliteral';
 terminator('(')  -> ')';
 terminator('[')  -> ']';
 terminator('{')  -> '}';
@@ -1635,6 +1636,8 @@ terminator('<<') -> '>>'.
 keyword_or_unsafe_to_atom(true, "fn", _Line, _Column, _Scope) -> {keyword, 'fn', terminator};
 keyword_or_unsafe_to_atom(true, "do", _Line, _Column, _Scope) -> {keyword, 'do', terminator};
 keyword_or_unsafe_to_atom(true, "end", _Line, _Column, _Scope) -> {keyword, 'end', terminator};
+keyword_or_unsafe_to_atom(true, "beginliteral", _Line, _Column, _Scope) -> {keyword, 'beginliteral', terminator};
+keyword_or_unsafe_to_atom(true, "endliteral", _Line, _Column, _Scope) -> {keyword, 'endliteral', terminator};
 keyword_or_unsafe_to_atom(true, "true", _Line, _Column, _Scope) -> {keyword, 'true', token};
 keyword_or_unsafe_to_atom(true, "false", _Line, _Column, _Scope) -> {keyword, 'false', token};
 keyword_or_unsafe_to_atom(true, "nil", _Line, _Column, _Scope) -> {keyword, 'nil', token};
