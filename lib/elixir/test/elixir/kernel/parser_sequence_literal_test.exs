@@ -214,16 +214,23 @@ defmodule Kernel.ParserSequenceLiteralTest do
   end
 
   describe "edge cases and special scenarios" do
-    test "nested sequences have limitations" do
-      # Nested sequence literals don't work as expected due to tokenizer limitations
-      # The inner ~~ is treated as a token, not an operator
+    test "nested parentheses work correctly" do
+      # Simple nested parentheses now work - they create sequence_paren structures
+      assert parse!("~~((a b))") ==
+               {:sequence_literal, [line: 1],
+                [{:sequence_paren, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}]}
+
+      # Single element in nested parentheses
+      assert parse!("~~((a))") ==
+               {:sequence_literal, [line: 1],
+                [{:sequence_paren, [line: 1], [{:a, [line: 1], nil}]}]}
+
+      # Empty nested parentheses create empty sequence_paren
+      assert parse!("~~(())") ==
+               {:sequence_literal, [line: 1], [{:sequence_paren, [line: 1], []}]}
+
+      # Nested sequence literals still don't work due to ~~ being treated as token
       assert_syntax_error(["syntax error before:"], "~~(a ~~(b) c)")
-
-      # Simple nested parentheses have parsing issues - they are incomplete
-      assert_syntax_error(["expression is incomplete"], "~~((a b))")
-
-      # Empty nested parentheses also fail
-      assert_syntax_error(["expression is incomplete"], "~~(())")
     end
 
     test "whitespace handling" do
