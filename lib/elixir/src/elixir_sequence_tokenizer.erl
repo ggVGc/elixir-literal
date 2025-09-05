@@ -54,7 +54,7 @@ tokenize(String, Line, Column, Scope, Tokens) ->
 
     % Handle sequence operator ~~
     [$~, $~ | Rest] ->
-      Token = {sequence_op, {Line, Column, nil}, '~~'},
+      Token = {sequence_op, {Line, Column, previous_was_eol(Tokens)}, '~~'},
       % Check if next token is opening parenthesis for nested sequence
       case Rest of
         [$( | _] ->
@@ -375,7 +375,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
     
     % Handle sequence operator ~~
     [$~, $~ | Rest] ->
-      Token = {sequence_op, {Line, Column, nil}, '~~'},
+      Token = {sequence_op, {Line, Column, false}, '~~'},
       {ok, Token, Rest, Line, Column + 2, Scope};
     
     % Handle sequence tokens
