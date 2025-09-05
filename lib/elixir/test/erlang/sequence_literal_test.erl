@@ -57,17 +57,11 @@ sequence_literal_parens_test() ->
 %% Test nested brackets in sequence literals
 sequence_nested_brackets_test() ->
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {'(', {1, 4, nil}},
-   {sequence_token, {1, 5, nil}, a},
-   {')', {1, 6, false}},
+   {sequence_block, {1, 4, nil}, '()', [{sequence_token, {1, 5, nil}, a}]},
    {sequence_end, {1, 7, nil}, ')'}] = tokenize("~~((a))"),
 
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {'[', {1, 4, nil}},
-   {'{', {1, 5, nil}},
-   {sequence_token, {1, 6, nil}, a},
-   {'}', {1, 7, false}},
-   {']', {1, 8, false}},
+   {sequence_block, {1, 4, nil}, '[]', [{sequence_block, {1, 5, nil}, '{}', [{sequence_token, {1, 6, nil}, a}]}]},
    {sequence_end, {1, 9, nil}, ')'}] = tokenize("~~([{a}])"),
   ok.
 
@@ -184,11 +178,11 @@ sequence_empty_test() ->
 
 sequence_op_embedded_test() ->
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {'sequence_token', {1, 4, nil}, '~'},
+   {sequence_token, {1, 4, nil}, '~'},
    {sequence_end, {1, 5, nil}, ')'}] = tokenize("~~(~)"),
 
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {'sequence_op', {1, 4, false}, '~~'},
+   {sequence_op, {1, 4, nil}, '~~'},
    {sequence_end, {1, 6, nil}, ')'}] = tokenize("~~(~~)"),
 
   ok.
@@ -201,12 +195,10 @@ sequence_no_parens_test() ->
 
 %% Test nested sequence literals
 sequence_nested_test() ->
-  % ~~(a (b) c) - inner parentheses should be preserved as tokens
+  % ~~(a (b) c) - inner parentheses should be sequence_block
   [{sequence_begin, {1, 1, nil}, '~~('},
    {sequence_token, {1, 4, nil}, a},
-   {'(', {1, 6, nil}},
-   {sequence_token, {1, 7, nil}, b},
-   {')', {1, 8, false}},
+   {sequence_block, {1, 6, nil}, '()', [{sequence_token, {1, 7, nil}, b}]},
    {sequence_token, {1, 10, nil}, c},
    {sequence_end, {1, 11, nil}, ')'}] = tokenize("~~(a (b) c)"),
   ok.
@@ -216,11 +208,11 @@ sequence_mixed_content_test() ->
   % ~~("hello", 42, :atom, IO.puts)
   [{sequence_begin, {1, 1, nil}, '~~('},
    {sequence_string, {1, 4, nil}, "hello"},
-   {',', {1, 11, false}},
+   {sequence_token, {1, 11, nil}, ','},
    {sequence_number, {1, 13, nil}, 42},
-   {',', {1, 15, false}},
+   {sequence_token, {1, 15, nil}, ','},
    {sequence_atom, {1, 17, nil}, atom},
-   {',', {1, 22, false}},
+   {sequence_token, {1, 22, nil}, ','},
    {sequence_token, {1, 24, nil}, 'IO.puts'},
    {sequence_end, {1, 31, nil}, ')'}] = tokenize("~~(\"hello\", 42, :atom, IO.puts)"),
   ok.
@@ -234,7 +226,6 @@ sequence_isolation_test() ->
   InsideTokens = lists:filter(
     fun({sequence_begin, _, _}) -> false;  % Skip sequence_begin markers
        ({sequence_end, _, _}) -> false;    % Skip sequence_end markers
-       ({',', _}) -> false;                % Skip commas
        (_) -> true                         % Include all other tokens
     end, Tokens),
 
@@ -244,6 +235,7 @@ sequence_isolation_test() ->
        ({sequence_number, _, _}) -> true;
        ({sequence_atom, _, _}) -> true;
        ({sequence_token, _, _}) -> true;
+       ({sequence_block, _, _, _}) -> true;
        (_) -> false
     end, InsideTokens),
 
