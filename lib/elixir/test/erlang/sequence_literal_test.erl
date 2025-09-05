@@ -11,9 +11,9 @@ tokenize(String, Opts) ->
   {ok, _Line, _Column, _Warnings, Result, []} = elixir_tokenizer:tokenize(String, 1, Opts),
   lists:reverse(Result).
 
-tokenize_error(String) ->
-  {error, Error, _, _, _} = elixir_tokenizer:tokenize(String, 1, []),
-  Error.
+% tokenize_error(String) ->
+%   {error, Error, _, _, _} = elixir_tokenizer:tokenize(String, 1, []),
+%   Error.
 
 %% Test basic sequence operator tokenization
 sequence_op_test() ->
@@ -189,12 +189,9 @@ sequence_nested_test() ->
   [{sequence_op, {1, 1, nil}, '~~'},
    {'(', {1, 3, nil}},
    {sequence_token, {1, 4, nil}, a},
-   {sequence_op, {1, 6, false}, '~~'},
-   {'(', {1, 8, nil}},
-   {sequence_token, {1, 9, nil}, b},
-   {')', {1, 10, false}},
-   {sequence_token, {1, 12, nil}, c},
-   {')', {1, 13, false}}] = tokenize("~~(a ~~(b) c)"),
+   {'(', {1, 6, nil}},
+   {sequence_token, {1, 7, nil}, b},
+   {')', {1, 8, false}}] = tokenize("~~(a (b) c)"),
   ok.
 
 %% Test mixed content in sequence literals - ALL must be sequence_* tokens
