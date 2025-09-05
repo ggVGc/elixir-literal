@@ -115,6 +115,9 @@ extract_string([C | Rest], Quote, Line, Column, Acc) ->
   extract_string(Rest, Quote, Line, Column + 1, [C | Acc]).
 
 %% Atom tokenization - :atom becomes sequence_atom
+tokenize_atom([$" | Rest], Line, Column, Scope, Tokens) ->
+  % Handle quoted atom like :"spaced atom"
+  extract_quoted_atom(Rest, Line, Column + 1, [], Scope, Tokens, Column - 1);
 tokenize_atom(String, Line, Column, Scope, Tokens) ->
   case extract_atom(String, Line, Column, []) of
     {ok, Value, Rest, Length} ->
@@ -123,6 +126,21 @@ tokenize_atom(String, Line, Column, Scope, Tokens) ->
     {error, Reason} ->
       {error, Reason, String, [], Tokens}
   end.
+
+%% Extract quoted atom - handles :"spaced atom"
+extract_quoted_atom([], Line, Column, _Acc, _Scope, _Tokens, _StartColumn) ->
+  {error, {?LOC(Line, Column), "missing closing quote for atom", []}, [], [], []};
+extract_quoted_atom([$" | Rest], Line, Column, Acc, Scope, Tokens, StartColumn) ->
+  AtomName = lists:reverse(Acc),
+  Token = {sequence_atom, {Line, StartColumn, nil}, list_to_atom(AtomName)},
+  tokenize(Rest, Line, Column + 1, Scope, [Token | Tokens]);
+extract_quoted_atom([$\\ | [C | Rest]], Line, Column, Acc, Scope, Tokens, StartColumn) ->
+  % Handle escape sequences
+  extract_quoted_atom(Rest, Line, Column + 2, [C | Acc], Scope, Tokens, StartColumn);
+extract_quoted_atom([$\n | Rest], Line, Column, Acc, Scope, Tokens, StartColumn) ->
+  extract_quoted_atom(Rest, Line + 1, 1, [$\n | Acc], Scope, Tokens, StartColumn);
+extract_quoted_atom([C | Rest], Line, Column, Acc, Scope, Tokens, StartColumn) ->
+  extract_quoted_atom(Rest, Line, Column + 1, [C | Acc], Scope, Tokens, StartColumn).
 
 %% Extract atom name
 extract_atom([], Line, Column, []) ->

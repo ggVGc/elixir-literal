@@ -125,7 +125,7 @@ sequence_literals_test() ->
   [{sequence_op, {1, 1, nil}, '~~'},
    {'(', {1, 3, nil}},
    {sequence_atom, {1, 4, nil}, 'spaced atom'},
-   {')', {1, 8, false}}] = tokenize("~~(:\"spaced atom\")"),
+   {')', {1, 18, false}}] = tokenize("~~(:\"spaced atom\")"),
 
   % Test float literals - MUST be sequence_number
   [{sequence_op, {1, 1, nil}, '~~'},
