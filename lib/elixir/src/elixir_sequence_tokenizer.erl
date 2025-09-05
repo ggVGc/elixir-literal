@@ -20,8 +20,8 @@ tokenize(String, Line, Column, Scope, Tokens) ->
       Token = {sequence_end, {Line, Column, nil}, ')'},
       case NewScope#elixir_tokenizer.sequence_depth of
         0 ->
-          % Exiting sequence literal - return tokens and let main tokenizer continue
-          {ok, Line, Column + 1, [], [Token | Tokens], []};
+          % Exiting sequence literal - return remainder for main tokenizer to continue
+          {ok, Line, Column + 1, Rest, [Token | Tokens], []};
         _ ->
           % Still inside nested sequence literal
           tokenize(Rest, Line, Column + 1, NewScope, [Token | Tokens])
@@ -117,14 +117,14 @@ tokenize_string(String, Line, Column, Quote, Scope, Tokens) ->
   end.
 
 %% Extract string content until closing quote
-extract_string([], Quote, Line, Column, Acc) ->
+extract_string([], Quote, Line, Column, _Acc) ->
   {error, {?LOC(Line, Column), "missing terminator: ", [Quote]}};
 extract_string([Quote | Rest], Quote, Line, Column, Acc) ->
   {ok, lists:reverse(Acc), Rest, Line, Column + 1};
 extract_string([$\\, C | Rest], Quote, Line, Column, Acc) ->
   % Simple escape handling - just include the escaped character
   extract_string(Rest, Quote, Line, Column + 2, [C | Acc]);
-extract_string([$\n | Rest], Quote, Line, Column, Acc) ->
+extract_string([$\n | Rest], Quote, Line, _Column, Acc) ->
   extract_string(Rest, Quote, Line + 1, 1, [$\n | Acc]);
 extract_string([C | Rest], Quote, Line, Column, Acc) ->
   extract_string(Rest, Quote, Line, Column + 1, [C | Acc]).
@@ -152,7 +152,7 @@ extract_quoted_atom([$" | Rest], Line, Column, Acc, Scope, Tokens, StartColumn) 
 extract_quoted_atom([$\\ | [C | Rest]], Line, Column, Acc, Scope, Tokens, StartColumn) ->
   % Handle escape sequences
   extract_quoted_atom(Rest, Line, Column + 2, [C | Acc], Scope, Tokens, StartColumn);
-extract_quoted_atom([$\n | Rest], Line, Column, Acc, Scope, Tokens, StartColumn) ->
+extract_quoted_atom([$\n | Rest], Line, _Column, Acc, Scope, Tokens, StartColumn) ->
   extract_quoted_atom(Rest, Line + 1, 1, [$\n | Acc], Scope, Tokens, StartColumn);
 extract_quoted_atom([C | Rest], Line, Column, Acc, Scope, Tokens, StartColumn) ->
   extract_quoted_atom(Rest, Line, Column + 1, [C | Acc], Scope, Tokens, StartColumn).
@@ -164,8 +164,8 @@ extract_atom([], _Line, _Column, Acc) ->
   {ok, lists:reverse(Acc), [], length(Acc)};
 extract_atom([H | Rest], Line, Column, Acc) when ?is_upcase(H); ?is_downcase(H); ?is_digit(H); H =:= $_; H =:= $? ->
   extract_atom(Rest, Line, Column, [H | Acc]);
-extract_atom(String, _Line, _Column, []) ->
-  {error, {?LOC(_Line, _Column), "invalid atom name", []}};
+extract_atom(_String, Line, Column, []) ->
+  {error, {?LOC(Line, Column), "invalid atom name", []}};
 extract_atom(String, _Line, _Column, Acc) ->
   {ok, lists:reverse(Acc), String, length(Acc)}.
 
@@ -219,7 +219,7 @@ extract_integer([], Acc) when Acc =/= [] ->
   {ok, lists:reverse(Acc), []};
 extract_integer([H | Rest], Acc) when ?is_digit(H) ->
   extract_integer(Rest, [H | Acc]);
-extract_integer(String, []) ->
+extract_integer(_String, []) ->
   {error, "no digits found"};
 extract_integer(String, Acc) ->
   {ok, lists:reverse(Acc), String}.
