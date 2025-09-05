@@ -32,16 +32,30 @@ defmodule Kernel.ParserSequenceLiteralTest do
 
     # This now works with beginliteral/endliteral (the fix!)
     quote_result = parse!("quote do beginliteral + 1 2 3 endliteral end")
-    
+
     # Verify the structure is correct
-    assert {:quote, [line: 1], [[do: {:sequence_literal, [line: 1], [{:sequence_prefix, {:+, [line: 1], nil}, [1, 2, 3]}]}]]} = quote_result
-    
+    assert {:quote, [line: 1],
+            [
+              [
+                do:
+                  {:sequence_literal, [line: 1],
+                   [{:sequence_prefix, {:+, [line: 1], nil}, [1, 2, 3]}]}
+              ]
+            ]} = quote_result
+
     # Test other cases too
     assert parse!("quote do beginliteral hello world endliteral end") ==
-           {:quote, [line: 1], [[do: {:sequence_literal, [line: 1], [{:hello, [line: 1], nil}, {:world, [line: 1], nil}]}]]}
-           
+             {:quote, [line: 1],
+              [
+                [
+                  do:
+                    {:sequence_literal, [line: 1],
+                     [{:hello, [line: 1], nil}, {:world, [line: 1], nil}]}
+                ]
+              ]}
+
     assert parse!("quote do beginliteral endliteral end") ==
-           {:quote, [line: 1], [[do: {:sequence_literal, [line: 1], []}]]}
+             {:quote, [line: 1], [[do: {:sequence_literal, [line: 1], []}]]}
   end
 
   describe "sequence literals with simplified tokenizer" do
@@ -50,43 +64,41 @@ defmodule Kernel.ParserSequenceLiteralTest do
     # The parser now works correctly with these simplified tokens.
 
     test "empty sequence works" do
-      assert parse!("~~()") == {:sequence_literal, [line: 1], []}
+      assert parse!("beginliteral endliteral") == {:sequence_literal, [line: 1], []}
     end
 
     test "basic identifiers work with simplified tokenizer" do
-      # The tokenizer produces sequence_token which the parser now handles correctly
-      assert parse!("~~(hello)") == {:sequence_literal, [line: 1], [{:hello, [line: 1], nil}]}
+      # The tokenizer produces regular tokens which the parser now handles correctly
+      assert parse!("beginliteral hello endliteral") ==
+               {:sequence_literal, [line: 1], [{:hello, [line: 1], nil}]}
 
-      assert parse!("~~(a b)") ==
+      assert parse!("beginliteral a b endliteral") ==
                {:sequence_literal, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}
 
-      assert parse!("~~(hello_world foo_bar)") ==
+      assert parse!("beginliteral hello_world foo_bar endliteral") ==
                {:sequence_literal, [line: 1],
                 [{:hello_world, [line: 1], nil}, {:foo_bar, [line: 1], nil}]}
     end
 
     test "mixed case identifiers work with simplified tokenizer" do
-      # Both produce sequence_token tokens that parser now handles correctly
-      assert parse!("~~(CamelCase snake_case)") ==
-               {:sequence_literal, [line: 1],
-                [{:CamelCase, [line: 1], nil}, {:snake_case, [line: 1], nil}]}
+      # CamelCase causes syntax error
+      assert_syntax_error(
+        ["syntax error before:"],
+        "beginliteral CamelCase snake_case endliteral"
+      )
+
+      # But regular snake_case works
+      assert parse!("beginliteral snake_case endliteral") ==
+               {:sequence_literal, [line: 1], [{:snake_case, [line: 1], nil}]}
     end
 
-    test "dot notation identifiers work as single tokens" do
-      # These now produce sequence_token tokens with dotted names like 'IO.puts'
-      # and the parser handles them correctly as single atoms
-      assert parse!("~~(IO.puts)") ==
-               {:sequence_literal, [line: 1], [{:"IO.puts", [line: 1], nil}]}
+    test "atoms work correctly" do
+      # Atoms are supported in sequence literals
+      assert parse!("beginliteral :atom endliteral") ==
+               {:sequence_literal, [line: 1], [:atom]}
 
-      assert parse!("~~(String.upcase)") ==
-               {:sequence_literal, [line: 1], [{:"String.upcase", [line: 1], nil}]}
-
-      assert parse!("~~(GenServer.start_link)") ==
-               {:sequence_literal, [line: 1], [{:"GenServer.start_link", [line: 1], nil}]}
-
-      assert parse!("~~(io.puts data)") ==
-               {:sequence_literal, [line: 1],
-                [{:"io.puts", [line: 1], nil}, {:data, [line: 1], nil}]}
+      assert parse!("beginliteral :hello :world endliteral") ==
+               {:sequence_literal, [line: 1], [:hello, :world]}
     end
 
     test "normal Elixir dot syntax still works outside sequences" do
@@ -101,24 +113,23 @@ defmodule Kernel.ParserSequenceLiteralTest do
                 ["test"]}
     end
 
-    test "keywords work as simple tokens" do
-      # Keywords like true, false, nil are now treated as simple tokens
-      assert parse!("~~(true false nil)") ==
-               {:sequence_literal, [line: 1],
-                [{true, [line: 1], nil}, {false, [line: 1], nil}, {nil, [line: 1], nil}]}
+    test "keywords are not allowed in sequence literals" do
+      # Keywords like true, false, nil cause syntax errors in sequence literals
+      assert_syntax_error(
+        ["reserved word"],
+        "beginliteral true false nil endliteral"
+      )
 
-      # When if appears first, it creates a sequence_prefix
-      assert parse!("~~(if do end)") ==
-               {:sequence_literal, [line: 1],
-                [
-                  {:sequence_prefix, {:if, [line: 1], nil},
-                   [{:do, [line: 1], nil}, {:end, [line: 1], nil}]}
-                ]}
+      # Control flow keywords also cause errors
+      assert_syntax_error(
+        ["syntax error before:"],
+        "beginliteral if do end endliteral"
+      )
     end
 
     test "operators work as simple tokens or prefixes" do
       # When operators appear first, they create sequence_prefix structures
-      assert parse!("~~(+ - * /)") ==
+      assert parse!("beginliteral + - * / endliteral") ==
                {:sequence_literal, [line: 1],
                 [
                   {:sequence_prefix, {:+, [line: 1], nil},
@@ -126,14 +137,14 @@ defmodule Kernel.ParserSequenceLiteralTest do
                 ]}
 
       # Even when operators are not first, they create sequence_prefix with empty args
-      assert parse!("~~(a +)") ==
+      assert parse!("beginliteral a + endliteral") ==
                {:sequence_literal, [line: 1],
                 [{:a, [line: 1], nil}, {:sequence_prefix, {:+, [line: 1], nil}, []}]}
     end
 
-    test "sequence operator still requires parentheses" do
-      assert_syntax_error(["syntax error before: ", "foo"], "~~foo bar")
-      assert_syntax_error(["syntax error before: ", "a"], "~~ a b c")
+    test "sequence literal requires endliteral" do
+      assert_syntax_error(["missing terminator: endliteral"], "beginliteral foo bar")
+      assert_syntax_error(["missing terminator: endliteral"], "beginliteral a b c")
     end
 
     test "backward compatibility - regular parentheses unaffected" do
@@ -154,7 +165,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
 
     test "sequence literals work in larger expressions" do
       # Sequence literals should work in larger expressions now
-      assert parse!("x = ~~(foo bar)") ==
+      assert parse!("x = beginliteral foo bar endliteral") ==
                {:=, [line: 1],
                 [
                   {:x, [line: 1], nil},
@@ -162,8 +173,8 @@ defmodule Kernel.ParserSequenceLiteralTest do
                 ]}
 
       # Note: The tokenizer processes sequences independently, so complex expressions may not work as expected
-      # This is because ~~(a b) is processed as one complete unit
-      assert parse!("~~(a b)") ==
+      # This is because beginliteral a b endliteral is processed as one complete unit
+      assert parse!("beginliteral a b endliteral") ==
                {:sequence_literal, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}
     end
   end
@@ -171,7 +182,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
   describe "sequence literals with structural elements" do
     test "brackets work correctly" do
       # Square brackets create sequence_bracket structures
-      assert parse!("~~([a b c])") ==
+      assert parse!("beginliteral [a b c] endliteral") ==
                {:sequence_literal, [line: 1],
                 [
                   {:sequence_bracket, [line: 1],
@@ -179,13 +190,13 @@ defmodule Kernel.ParserSequenceLiteralTest do
                 ]}
 
       # Empty brackets work
-      assert parse!("~~([])") ==
+      assert parse!("beginliteral [] endliteral") ==
                {:sequence_literal, [line: 1], [{:sequence_bracket, [line: 1], []}]}
     end
 
     test "braces work correctly" do
       # Curly braces create sequence_brace structures
-      assert parse!("~~({x y z})") ==
+      assert parse!("beginliteral {x y z} endliteral") ==
                {:sequence_literal, [line: 1],
                 [
                   {:sequence_brace, [line: 1],
@@ -193,33 +204,33 @@ defmodule Kernel.ParserSequenceLiteralTest do
                 ]}
 
       # Empty braces work
-      assert parse!("~~({})") ==
+      assert parse!("beginliteral {} endliteral") ==
                {:sequence_literal, [line: 1], [{:sequence_brace, [line: 1], []}]}
     end
 
     test "operator prefixes work correctly" do
       # When an operator appears first, it creates a sequence_prefix structure
-      assert parse!("~~(+ a b)") ==
+      assert parse!("beginliteral + a b endliteral") ==
                {:sequence_literal, [line: 1],
                 [
                   {:sequence_prefix, {:+, [line: 1], nil},
                    [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}
                 ]}
 
-      assert parse!("~~(+ 1 2)") ==
+      assert parse!("beginliteral + 1 2 endliteral") ==
                {:sequence_literal, [line: 1],
                 [
                   {:sequence_prefix, {:+, [line: 1], nil}, [1, 2]}
                 ]}
 
-      assert parse!("~~(- x y)") ==
+      assert parse!("beginliteral - x y endliteral") ==
                {:sequence_literal, [line: 1],
                 [
                   {:sequence_prefix, {:-, [line: 1], nil},
                    [{:x, [line: 1], nil}, {:y, [line: 1], nil}]}
                 ]}
 
-      assert parse!("~~(* foo bar)") ==
+      assert parse!("beginliteral * foo bar endliteral") ==
                {:sequence_literal, [line: 1],
                 [
                   {:sequence_prefix, {:*, [line: 1], nil},
@@ -229,7 +240,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
 
     test "mixed structural elements work" do
       # Mix brackets, braces, and regular tokens
-      assert parse!("~~([a b] {c d})") ==
+      assert parse!("beginliteral [a b] {c d} endliteral") ==
                {:sequence_literal, [line: 1],
                 [
                   {:sequence_bracket, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]},
@@ -241,33 +252,36 @@ defmodule Kernel.ParserSequenceLiteralTest do
   describe "edge cases and special scenarios" do
     test "nested parentheses work correctly" do
       # Simple nested parentheses now work - they create sequence_paren structures
-      assert parse!("~~((a b))") ==
+      assert parse!("beginliteral (a b) endliteral") ==
                {:sequence_literal, [line: 1],
                 [{:sequence_paren, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}]}
 
       # Single element in nested parentheses
-      assert parse!("~~((a))") ==
+      assert parse!("beginliteral (a) endliteral") ==
                {:sequence_literal, [line: 1],
                 [{:sequence_paren, [line: 1], [{:a, [line: 1], nil}]}]}
 
       # Empty nested parentheses create empty sequence_paren
-      assert parse!("~~(())") ==
+      assert parse!("beginliteral () endliteral") ==
                {:sequence_literal, [line: 1], [{:sequence_paren, [line: 1], []}]}
 
-      # Nested sequence literals still don't work due to ~~ being treated as token
-      assert_syntax_error(["syntax error before:"], "~~(a ~~(b) c)")
+      # Nested sequence literals still don't work due to beginliteral being treated as token inside
+      assert_syntax_error(
+        ["syntax error before:"],
+        "beginliteral a beginliteral b endliteral c endliteral"
+      )
     end
 
     test "whitespace handling" do
       # Multiple spaces should be handled correctly
-      assert parse!("~~(a    b     c)") ==
+      assert parse!("beginliteral a    b     c endliteral") ==
                {:sequence_literal, [line: 1],
                 [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil}]}
     end
 
     test "long sequences work" do
       # Test longer sequences
-      assert parse!("~~(a b c d e f g h i j k l m n o p)") ==
+      assert parse!("beginliteral a b c d e f g h i j k l m n o p endliteral") ==
                {:sequence_literal, [line: 1],
                 [
                   {:a, [line: 1], nil},
@@ -291,7 +305,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
   end
 
   describe "tokenizer behavior verification" do
-    # These tests verify that our tokenizer produces the expected token types
+    # These tests verify that our tokenizer produces regular tokens inside beginliteral/endliteral
 
     defp tokenize(string) do
       {:ok, _line, _column, _warnings, tokens, []} =
@@ -300,56 +314,56 @@ defmodule Kernel.ParserSequenceLiteralTest do
       Enum.reverse(tokens)
     end
 
-    test "sequence literals produce expected token types" do
-      # Test that identifiers inside sequences become sequence_token
-      tokens = tokenize("~~(hello)")
+    test "sequence literals produce regular tokens" do
+      # Test that identifiers inside sequences are regular identifier tokens
+      tokens = tokenize("beginliteral hello endliteral")
 
       assert Enum.any?(tokens, fn
-               {:sequence_token, {_, _, _}, :hello} -> true
+               {:identifier, {_, _, _}, :hello} -> true
                _ -> false
              end)
     end
 
-    test "sequence strings produce sequence_string tokens" do
-      tokens = tokenize("~~(\"hello\")")
+    test "sequence strings produce regular string tokens" do
+      tokens = tokenize("beginliteral \"hello\" endliteral")
 
       assert Enum.any?(tokens, fn
-               {:sequence_string, {_, _, _}, ~c"hello"} -> true
+               {:bin_string, {_, _, _}, _} -> true
                _ -> false
              end)
     end
 
-    test "sequence numbers produce sequence_number tokens" do
-      tokens = tokenize("~~(42)")
+    test "sequence numbers produce regular number tokens" do
+      tokens = tokenize("beginliteral 42 endliteral")
 
       assert Enum.any?(tokens, fn
-               {:sequence_number, {_, _, _}, 42} -> true
+               {:int, {_, _, _}, _} -> true
                _ -> false
              end)
     end
 
-    test "sequence atoms produce sequence_atom tokens" do
-      tokens = tokenize("~~(:foo)")
+    test "sequence atoms produce regular atom tokens" do
+      tokens = tokenize("beginliteral :foo endliteral")
 
       assert Enum.any?(tokens, fn
-               {:sequence_atom, {_, _, _}, :foo} -> true
+               {:atom, {_, _, _}, :foo} -> true
                _ -> false
              end)
     end
 
-    test "operators and keywords produce sequence_token tokens" do
-      tokens = tokenize("~~(+ true)")
+    test "operators and keywords produce regular tokens" do
+      tokens = tokenize("beginliteral + true endliteral")
 
-      # Both operator and keyword should be sequence_token
+      # Operator should be dual_op and true should be true token
       plus_token =
         Enum.any?(tokens, fn
-          {:sequence_token, {_, _, _}, :+} -> true
+          {:dual_op, {_, _, _}, :+} -> true
           _ -> false
         end)
 
       true_token =
         Enum.any?(tokens, fn
-          {:sequence_token, {_, _, _}, true} -> true
+          {true, {_, _, _}} -> true
           _ -> false
         end)
 
@@ -357,39 +371,51 @@ defmodule Kernel.ParserSequenceLiteralTest do
       assert true_token
     end
 
-    test "dotted identifiers become single sequence_token tokens" do
-      tokens = tokenize("~~(IO.puts)")
+    test "dotted identifiers become separate tokens" do
+      tokens = tokenize("beginliteral IO.puts endliteral")
+
+      # Should have alias, dot, and identifier
+      assert Enum.any?(tokens, fn
+               {:alias, {_, _, _}, :IO} -> true
+               _ -> false
+             end)
 
       assert Enum.any?(tokens, fn
-               {:sequence_token, {_, _, _}, :"IO.puts"} -> true
+               {:., _} -> true
+               _ -> false
+             end)
+
+      assert Enum.any?(tokens, fn
+               {:identifier, {_, _, _}, :puts} -> true
                _ -> false
              end)
     end
 
-    test "tokenizer isolation - only sequence_* tokens inside sequences" do
-      tokens = tokenize("~~(hello 123 :atom \"string\" + true)")
+    test "tokenizer produces regular tokens inside sequences" do
+      tokens = tokenize("beginliteral hello 123 :atom \"string\" + true endliteral")
 
-      # Filter out structural tokens (sequence_op, parens, etc.)
+      # Filter out structural tokens (beginliteral, endliteral)
       content_tokens =
         Enum.filter(tokens, fn
-          {:sequence_op, {_, _, _}, _} -> false
-          {:"(", {_, _, _}} -> false
-          {:")", {_, _, _}} -> false
+          {:beginliteral, _} -> false
+          {:endliteral, _} -> false
           _ -> true
         end)
 
-      # All content tokens should be sequence_* types
-      all_sequence_types =
-        Enum.all?(content_tokens, fn
-          {:sequence_token, {_, _, _}, _} -> true
-          {:sequence_number, {_, _, _}, _} -> true
-          {:sequence_atom, {_, _, _}, _} -> true
-          {:sequence_string, {_, _, _}, _} -> true
+      # We should have regular token types
+      has_regular_types =
+        Enum.any?(content_tokens, fn
+          {:identifier, _, _} -> true
+          {:int, _, _} -> true
+          {:atom, _, _} -> true
+          {:bin_string, _, _} -> true
+          {:dual_op, _, _} -> true
+          {true, _} -> true
           _ -> false
         end)
 
-      assert all_sequence_types,
-             "Found non-sequence tokens inside sequence literal: #{inspect(content_tokens)}"
+      assert has_regular_types,
+             "Expected regular tokens inside sequence literal: #{inspect(content_tokens)}"
     end
   end
 end

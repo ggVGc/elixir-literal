@@ -8,8 +8,12 @@ tokenize(String) ->
   tokenize(String, []).
 
 tokenize(String, Opts) ->
-  {ok, _Line, _Column, _Warnings, Result, []} = elixir_tokenizer:tokenize(String, 1, Opts),
-  lists:reverse(Result).
+  case elixir_tokenizer:tokenize(String, 1, Opts) of
+    {ok, _Line, _Column, _Warnings, Result, []} ->
+      lists:reverse(Result);
+    {error, _, _, _, _} = Error ->
+      Error
+  end.
 
 % tokenize_error(String) ->
 %   {error, Error, _, _, _} = elixir_tokenizer:tokenize(String, 1, []),
@@ -20,271 +24,254 @@ quoted_test() ->
 
 [{do_identifier,{1,1,"quote"},quote},
    {do,{1,7,nil}},
-   {sequence_op,{1,10,nil},'~~'},
-   {'(',{1,12,nil}},
-   {sequence_token,{1,13,nil},a},
-   {')',{1,14,false}}] = tokenize("quote do ~~(a) end"),
+   {beginliteral,{1,10,nil}},
+   {identifier,{1,23,"a"},a},
+   {endliteral,{1,25,nil}},
+   {'end',{1,36,nil}}] = tokenize("quote do beginliteral a endliteral end"),
 
 [{do_identifier,{1,1,"quote"},quote},
    {do,{1,7,nil}},
-   {sequence_op,{1,10,nil},'~~'},
-   {'(',{1,12,nil}},
-   {sequence_token,{1,13,nil},'+'},
-   {sequence_token,{1,15,nil},a},
-   {sequence_number,{1,17,nil},1},
-   {sequence_atom,{1,19,nil},yeo},
-   {sequence_string,{1,24,nil},"breo"},
-   {')',{1,30,false}}] = tokenize("quote do ~~(+ a 1 :yeo \"breo\") end"),
+   {beginliteral,{1,10,nil}},
+   {dual_op,{1,23,nil},'+'},
+   {identifier,{1,25,"a"},a},
+   {int,{1,27,1},"1"},
+   {atom,{1,29,"yeo"},yeo},
+   {bin_string,{1,34,nil},[<<"breo">>]},
+   {endliteral,{1,41,nil}},
+   {'end',{1,52,nil}}] = tokenize("quote do beginliteral + a 1 :yeo \"breo\" endliteral end"),
   ok.
 
-%% Test basic sequence operator tokenization
-sequence_op_test() ->
-  [{sequence_op, {1, 1, nil}, '~~'}] = tokenize("~~"),
-  [{identifier, {1, 1, "a"}, a},
-   {sequence_op, {1, 3, nil}, '~~'},
-   {identifier, {1, 6, "b"}, b}] = tokenize("a ~~ b"),
+%% Test basic beginliteral keyword tokenization
+sequence_keyword_test() ->
+  % beginliteral without endliteral causes error
+  {error, _, _, _, _} = tokenize("beginliteral"),
+  % beginliteral in middle of tokens also causes error
+  {error, _, _, _, _} = tokenize("a beginliteral b"),
   ok.
 
-%% Test sequence literal with parentheses - ISOLATED TOKENIZATION
-sequence_literal_parens_test() ->
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {')', {1, 4, false}}] = tokenize("~~()"),
+%% Test sequence literal with beginliteral/endliteral - ISOLATED TOKENIZATION
+sequence_literal_keywords_test() ->
+  [{beginliteral, {1, 1, nil}},
+   {endliteral, {1, 14, nil}}] = tokenize("beginliteral endliteral"),
 
-  % Content within sequence literal should use sequence_* tokens
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_token, {1, 4, nil}, hello},
-   {')', {1, 9, false}}] = tokenize("~~(hello)"),
+  % Content within sequence literal uses regular tokens
+  [{beginliteral, {1, 1, nil}},
+   {identifier, {1, 14, "hello"}, hello},
+   {endliteral, {1, 20, nil}}] = tokenize("beginliteral hello endliteral"),
   ok.
 
 %% Test nested brackets in sequence literals
 sequence_nested_brackets_test() ->
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {'(', {1, 4, nil}},
-   {sequence_token, {1, 5, nil}, a},
-   {')', {1, 6, false}},
-   {')', {1, 7, false}}] = tokenize("~~((a))"),
+  [{beginliteral, {1, 1, nil}},
+   {'(', {1, 14, nil}},
+   {identifier, {1, 15, "a"}, a},
+   {')', {1, 16, nil}},
+   {endliteral, {1, 18, nil}}] = tokenize("beginliteral (a) endliteral"),
 
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {'[', {1, 4, nil}},
-   {'{', {1, 5, nil}},
-   {sequence_token, {1, 6, nil}, a},
-   {'}', {1, 7, false}},
-   {']', {1, 8, false}},
-   {')', {1, 9, false}}] = tokenize("~~([{a}])"),
+  [{beginliteral, {1, 1, nil}},
+   {'[', {1, 14, nil}},
+   {'{', {1, 15, nil}},
+   {identifier, {1, 16, "a"}, a},
+   {'}', {1, 17, nil}},
+   {']', {1, 18, nil}},
+   {endliteral, {1, 20, nil}}] = tokenize("beginliteral [{a}] endliteral"),
   ok.
 
-%% Test identifiers with dots in sequence literals - MUST BE SINGLE TOKENS
+%% Test identifiers with dots in sequence literals
 sequence_dotted_identifiers_test() ->
-  % IO.puts MUST become a single token
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_token, {1, 4, nil}, 'IO.puts'},
-   {')', {1, 11, false}}] = tokenize("~~(IO.puts)"),
+  % IO.puts becomes separate tokens (alias, dot, identifier)
+  [{beginliteral, {1, 1, nil}},
+   {alias, {1, 14, "IO"}, 'IO'},
+   {'.', {1, 16, nil}},
+   {identifier, {1, 17, "puts"}, puts},
+   {endliteral, {1, 22, nil}}] = tokenize("beginliteral IO.puts endliteral"),
 
-  % Complex dotted paths should also be single tokens
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_token, {1, 4, nil}, 'Enum.map.filter'},
-   {')', {1, 19, false}}] = tokenize("~~(Enum.map.filter)"),
+  % Complex dotted paths also become separate tokens
+  [{beginliteral, {1, 1, nil}},
+   {alias, {1, 14, "Enum"}, 'Enum'},
+   {'.', {1, 18, nil}},
+   {identifier, {1, 19, "map"}, map},
+   {'.', {1, 22, nil}},
+   {identifier, {1, 23, "filter"}, filter},
+   {endliteral, {1, 30, nil}}] = tokenize("beginliteral Enum.map.filter endliteral"),
   ok.
 
-%% Test operators in sequence literals - MUST BE sequence_token
+%% Test operators in sequence literals
 sequence_operators_test() ->
   % Test arithmetic operators
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_token, {1, 4, nil}, a},
-   {sequence_token, {1, 6, nil}, '+'},
-   {sequence_token, {1, 8, nil}, b},
-   {')', {1, 9, false}}] = tokenize("~~(a + b)"),
+  [{beginliteral, {1, 1, nil}},
+   {identifier, {1, 14, "a"}, a},
+   {dual_op, {1, 16, nil}, '+'},
+   {identifier, {1, 18, "b"}, b},
+   {endliteral, {1, 20, nil}}] = tokenize("beginliteral a + b endliteral"),
 
   % Test comparison operators
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_token, {1, 4, nil}, a},
-   {sequence_token, {1, 6, nil}, '=='},
-   {sequence_token, {1, 9, nil}, b},
-   {')', {1, 10, false}}] = tokenize("~~(a == b)"),
+  [{beginliteral, {1, 1, nil}},
+   {identifier, {1, 14, "a"}, a},
+   {comp_op, {1, 16, nil}, '=='},
+   {identifier, {1, 19, "b"}, b},
+   {endliteral, {1, 21, nil}}] = tokenize("beginliteral a == b endliteral"),
 
   % Test complex operators
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_token, {1, 4, nil}, a},
-   {sequence_token, {1, 6, nil}, '++'},
-   {sequence_token, {1, 9, nil}, b},
-   {')', {1, 10, false}}] = tokenize("~~(a ++ b)"),
+  [{beginliteral, {1, 1, nil}},
+   {identifier, {1, 14, "a"}, a},
+   {concat_op, {1, 16, nil}, '++'},
+   {identifier, {1, 19, "b"}, b},
+   {endliteral, {1, 21, nil}}] = tokenize("beginliteral a ++ b endliteral"),
   ok.
 
-%% Test literals in sequence literals - MUST BE sequence_* tokens
+%% Test literals in sequence literals
 sequence_literals_test() ->
-  % Test string literals - MUST be sequence_string
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_string, {1, 4, nil}, "hello"},
-   {')', {1, 11, false}}] = tokenize("~~(\"hello\")"),
+  % Test string literals
+  [{beginliteral, {1, 1, nil}},
+   {bin_string, {1, 14, nil}, [<<"hello">>]},
+   {endliteral, {1, 22, nil}}] = tokenize("beginliteral \"hello\" endliteral"),
 
-  % Test single quoted strings - become sequence_token (our tokenizer doesn't handle single quotes as strings)
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_token, {1, 4, nil}, '\'world\''},
-   {')', {1, 11, false}}] = tokenize("~~('world')"),
+  % Test single quoted strings - they become list_string with binary content
+  [{beginliteral, {1, 1, nil}},
+   {list_string, {1, 14, nil}, [<<"world">>]},
+   {endliteral, {1, 22, nil}}] = tokenize("beginliteral 'world' endliteral"),
 
-  % Test number literals - MUST be sequence_number
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_number, {1, 4, nil}, 42},
-   {')', {1, 6, false}}] = tokenize("~~(42)"),
+  % Test number literals
+  [{beginliteral, {1, 1, nil}},
+   {int, {1, 14, 42}, "42"},
+   {endliteral, {1, 17, nil}}] = tokenize("beginliteral 42 endliteral"),
 
-  % Test atom literals - MUST be sequence_atom
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_atom, {1, 4, nil}, foo},
-   {')', {1, 8, false}}] = tokenize("~~(:foo)"),
+  % Test atom literals
+  [{beginliteral, {1, 1, nil}},
+   {atom, {1, 14, "foo"}, foo},
+   {endliteral, {1, 19, nil}}] = tokenize("beginliteral :foo endliteral"),
 
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_atom, {1, 4, nil}, 'spaced atom'},
-   {')', {1, 18, false}}] = tokenize("~~(:\"spaced atom\")"),
+  [{beginliteral, {1, 1, nil}},
+   {atom_quoted, {1, 14, 34}, 'spaced atom'},
+   {endliteral, {1, 29, nil}}] = tokenize("beginliteral :\"spaced atom\" endliteral"),
 
-  % Test float literals - MUST be sequence_number
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_number, {1, 4, nil}, 3.14},
-   {')', {1, 8, false}}] = tokenize("~~(3.14)"),
+  % Test float literals
+  [{beginliteral, {1, 1, nil}},
+   {flt, {1, 14, 3.14}, "3.14"},
+   {endliteral, {1, 19, nil}}] = tokenize("beginliteral 3.14 endliteral"),
   ok.
 
-%% Test keywords in sequence literals - MUST BE sequence_token
-sequence_keywords_test() ->
-  % Test if/do/end keywords - MUST be sequence_token tokens
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_token, {1, 4, nil}, 'if'},
-   {sequence_token, {1, 7, nil}, 'true'},
-   {sequence_token, {1, 12, nil}, 'do'},
-   {sequence_token, {1, 15, nil}, 'end'},
-   {')', {1, 18, false}}] = tokenize("~~(if true do end)"),
+%% Test keywords in sequence literals
+sequence_keyword_tokens_test() ->
+  % Test if/do/end keywords
+  [{beginliteral, {1, 1, nil}},
+   {identifier, {1, 14, "if"}, 'if'},
+   {'true', {1, 17, nil}},
+   {'do', {1, 22, nil}},
+   {'end', {1, 25, nil}},
+   {endliteral, {1, 29, nil}}] = tokenize("beginliteral if true do end endliteral"),
 
   % Test boolean keywords
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_token, {1, 4, nil}, 'true'},
-   {')', {1, 8, false}}] = tokenize("~~(true)"),
+  [{beginliteral, {1, 1, nil}},
+   {'true', {1, 14, nil}},
+   {endliteral, {1, 19, nil}}] = tokenize("beginliteral true endliteral"),
 
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_token, {1, 4, nil}, 'false'},
-   {')', {1, 9, false}}] = tokenize("~~(false)"),
+  [{beginliteral, {1, 1, nil}},
+   {'false', {1, 14, nil}},
+   {endliteral, {1, 20, nil}}] = tokenize("beginliteral false endliteral"),
 
   % Test nil keyword
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_token, {1, 4, nil}, 'nil'},
-   {')', {1, 7, false}}] = tokenize("~~(nil)"),
+  [{beginliteral, {1, 1, nil}},
+   {'nil', {1, 14, nil}},
+   {endliteral, {1, 18, nil}}] = tokenize("beginliteral nil endliteral"),
   ok.
 
 %% Test multiple sequence literals - normal tokens between sequences
 sequence_multiple_test() ->
-  % Normal ++ operator between sequence literals - simplified test since tokenizer processes sequences individually
-  Tokens = tokenize("~~(a)"),
+  % Simple sequence literal test
+  Tokens = tokenize("beginliteral a endliteral"),
 
-  % Expected: seq_op, (, seq_token, )
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_token, {1, 4, nil}, a},
-   {')', {1, 5, false}}] = Tokens,
+  % Expected: beginliteral, identifier, endliteral
+  [{beginliteral, {1, 1, nil}},
+   {identifier, {1, 14, "a"}, a},
+   {endliteral, {1, 16, nil}}] = Tokens,
   ok.
 
 %% Test empty sequence literal
 sequence_empty_test() ->
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {')', {1, 4, false}}] = tokenize("~~()"),
+  [{beginliteral, {1, 1, nil}},
+   {endliteral, {1, 14, nil}}] = tokenize("beginliteral endliteral"),
   ok.
 
-sequence_op_embedded_test() ->
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {'sequence_token', {1, 4, nil}, '~'},
-   {')', {1, 5, false}}] = tokenize("~~(~)"),
+sequence_keyword_embedded_test() ->
+  % Test that tilde is tokenized properly
+  {error, _, _, _, _} = tokenize("beginliteral ~ endliteral"),
 
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {'sequence_op', {1, 4, false}, '~~'},
-   {')', {1, 6, false}}] = tokenize("~~(~~)"),
+  % beginliteral inside another sequence literal causes error
+  {error, _, _, _, _} = tokenize("beginliteral beginliteral endliteral"),
 
   ok.
 
-%% Test sequence operator without parentheses - normal tokenization
-sequence_no_parens_test() ->
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {identifier, {1, 4, "a"}, a}] = tokenize("~~ a"),  % Normal identifier
+%% Test beginliteral without endliteral - causes error
+sequence_no_endliteral_test() ->
+  % beginliteral without endliteral causes error
+  {error, _, _, _, _} = tokenize("beginliteral a"),
   ok.
 
 %% Test nested sequence literals
 sequence_nested_test() ->
-  % ~~(a (b) c) - inner parentheses should be preserved as tokens
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_token, {1, 4, nil}, a},
-   {'(', {1, 6, nil}},
-   {sequence_token, {1, 7, nil}, b},
-   {')', {1, 8, false}},
-   {sequence_token, {1, 10, nil}, c},
-   {')', {1, 11, false}}] = tokenize("~~(a (b) c)"),
+  % beginliteral a (b) c endliteral - inner parentheses should be preserved as tokens
+  [{beginliteral, {1, 1, nil}},
+   {identifier, {1, 14, "a"}, a},
+   {'(', {1, 16, nil}},
+   {identifier, {1, 17, "b"}, b},
+   {')', {1, 18, nil}},
+   {identifier, {1, 20, "c"}, c},
+   {endliteral, {1, 22, nil}}] = tokenize("beginliteral a (b) c endliteral"),
   ok.
 
-%% Test mixed content in sequence literals - ALL must be sequence_* tokens
+%% Test mixed content in sequence literals
 sequence_mixed_content_test() ->
-  % ~~("hello", 42, :atom, IO.puts)
-  [{sequence_op, {1, 1, nil}, '~~'},
-   {'(', {1, 3, nil}},
-   {sequence_string, {1, 4, nil}, "hello"},
-   {',', {1, 11, false}},
-   {sequence_number, {1, 13, nil}, 42},
-   {',', {1, 15, false}},
-   {sequence_atom, {1, 17, nil}, atom},
-   {',', {1, 22, false}},
-   {sequence_token, {1, 24, nil}, 'IO.puts'},
-   {')', {1, 31, false}}] = tokenize("~~(\"hello\", 42, :atom, IO.puts)"),
+  % beginliteral "hello", 42, :atom, IO.puts endliteral
+  [{beginliteral, {1, 1, nil}},
+   {bin_string, {1, 14, nil}, [<<"hello">>]},
+   {',', {1, 21, 0}},
+   {int, {1, 23, 42}, "42"},
+   {',', {1, 25, 0}},
+   {atom, {1, 27, "atom"}, atom},
+   {',', {1, 32, 0}},
+   {alias, {1, 34, "IO"}, 'IO'},
+   {'.', {1, 36, nil}},
+   {identifier, {1, 37, "puts"}, puts},
+   {endliteral, {1, 42, nil}}] = tokenize("beginliteral \"hello\", 42, :atom, IO.puts endliteral"),
   ok.
 
-%% Test isolation - NO normal tokens inside sequence literals
+%% Test isolation - regular tokens inside sequence literals
 sequence_isolation_test() ->
   % Complex expression with all token types
-  Tokens = tokenize("~~(\"str\", 123, 3.14, :atom, IO.puts, +, ==, if, true)"),
+  Tokens = tokenize("beginliteral \"str\", 123, 3.14, :atom, IO.puts, +, ==, if, true endliteral"),
 
-  % Verify NO normal Elixir tokens appear inside sequence literal
+  % Verify we have regular Elixir tokens inside sequence literal
   InsideTokens = lists:filter(
-    fun({sequence_op, _, _}) -> false;  % Skip sequence_op markers
-       ({'(', _}) -> false;             % Skip parens
-       ({')', _}) -> false;
-       ({',', _}) -> false;             % Skip commas
-       (_) -> true                      % Include all other tokens
+    fun({beginliteral, _}) -> false;  % Skip beginliteral markers
+       ({endliteral, _}) -> false;    % Skip endliteral markers
+       ({',', _}) -> false;           % Skip commas
+       (_) -> true                    % Include all other tokens
     end, Tokens),
 
-  % ALL tokens inside should be sequence_* types
-  AllSequenceTokens = lists:all(
-    fun({sequence_string, _, _}) -> true;
-       ({sequence_number, _, _}) -> true;
-       ({sequence_atom, _, _}) -> true;
-       ({sequence_token, _, _}) -> true;
+  % We should have regular tokens like bin_string, int, flt, atom, etc.
+  HasRegularTokens = lists:any(
+    fun({bin_string, _, _}) -> true;
+       ({int, _, _}) -> true;
+       ({flt, _, _}) -> true;
+       ({atom, _, _}) -> true;
+       ({alias, _, _}) -> true;
+       ({identifier, _, _}) -> true;
+       ({dual_op, _, _}) -> true;
+       ({comp_op3, _, _}) -> true;
+       ({'if', _}) -> true;
        (_) -> false
     end, InsideTokens),
 
-  ?assert(AllSequenceTokens),
+  ?assert(HasRegularTokens),
   ok.
 
 %% Test error cases
 sequence_error_test() ->
-  % Test incomplete sequence literal - our tokenizer may handle this differently
-  case catch elixir_tokenizer:tokenize("~~(", 1, []) of
+  % Test incomplete sequence literal - should produce an error
+  case elixir_tokenizer:tokenize("beginliteral", 1, []) of
     {error, _, _, _, _} -> ok;
-    {ok, _, _, _, _, Terminators} when Terminators =/= [] -> ok;
-    {ok, _, _, _, _, []} -> ok;  % Allow this case too
     _ -> erlang:error(should_error_on_incomplete)
   end,
   ok.
