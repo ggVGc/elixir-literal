@@ -46,6 +46,7 @@ Terminals
   comp_op at_op unary_op and_op or_op arrow_op match_op in_op in_match_op ellipsis_op
   type_op dual_op mult_op power_op concat_op range_op xor_op pipe_op stab_op when_op
   capture_int capture_op assoc_op rel_op ternary_op dot_call_op sequence_op sequence_atom sequence_token sequence_number
+  sequence_begin sequence_end sequence_block
   'true' 'false' 'nil' 'do' eol ';' ',' '.'
   '(' ')' '[' ']' '{' '}' '<<' '>>' '%{}' '%'
   int flt char
@@ -307,7 +308,7 @@ parens_call -> dot_call_identifier call_args_parens : build_parens('$1', '$2', {
 parens_call -> dot_call_identifier call_args_parens call_args_parens : build_nested_parens('$1', '$2', '$3', {[], []}).
 
 %% Sequence expressions
-sequence_expr -> sequence_op open_paren sequence_args close_paren : build_sequence('$1', '$3', '$4').
+sequence_expr -> sequence_begin sequence_args sequence_end : build_sequence('$1', '$2', '$3').
 
 sequence_args -> sequence_token_list : '$1'.
 sequence_args -> '$empty' : [].
@@ -322,9 +323,7 @@ sequence_element -> sequence_number : element(3, '$1').
 sequence_element -> int : handle_number(number_value('$1'), '$1', ?exprs('$1')).
 sequence_element -> flt : handle_number(number_value('$1'), '$1', ?exprs('$1')).
 sequence_element -> bin_string : build_bin_string('$1', delimiter(<<$">>)).
-sequence_element -> open_paren sequence_args close_paren : {sequence_paren, meta_from_token('$1'), '$2'}.
-sequence_element -> '{' sequence_args '}' : {sequence_brace, meta_from_token('$1'), '$2'}.
-sequence_element -> '[' sequence_args ']' : {sequence_bracket, meta_from_token('$1'), '$2'}.
+sequence_element -> sequence_block : build_sequence_block('$1').
 sequence_element -> sequence_atom : build_sequence_op('$1').
 
 bracket_arg -> open_bracket kw_data close_bracket : build_access_arg('$1', '$2', '$3').
@@ -981,10 +980,19 @@ build_call({op_identifier, Location, Identifier}, [Arg]) ->
 build_call({_, Location, Identifier}, Args) ->
   {Identifier, meta_from_location(Location), Args}.
 
-build_sequence({sequence_op, Location, _}, Args, CloseParen) ->
-  Meta = newlines_pair({sequence_op, Location}, CloseParen) ++ meta_from_location(Location),
+build_sequence({sequence_begin, Location, _}, Args, {sequence_end, _EndLocation, _}) ->
+  Meta = meta_from_location(Location),
   TransformedArgs = transform_sequence_args(Args),
   {sequence_literal, Meta, TransformedArgs}.
+
+build_sequence_block({sequence_block, Location, BracketType, Args}) ->
+  Meta = meta_from_location(Location),
+  TransformedArgs = transform_sequence_args(Args),
+  case BracketType of
+    '()' -> {sequence_paren, Meta, TransformedArgs};
+    '[]' -> {sequence_bracket, Meta, TransformedArgs};
+    '{}' -> {sequence_brace, Meta, TransformedArgs}
+  end.
 
 
 %% Fn
@@ -1410,6 +1418,14 @@ transform_sequence_node({sequence_brace, Meta, Args}) ->
   {sequence_brace, Meta, transform_sequence_args(Args)};  
 transform_sequence_node({sequence_bracket, Meta, Args}) ->
   {sequence_bracket, Meta, transform_sequence_args(Args)};
+transform_sequence_node({sequence_token, Location, Value}) ->
+  {Value, meta_from_location(Location), nil};
+transform_sequence_node({sequence_number, Location, Value}) ->
+  Value;
+transform_sequence_node({sequence_string, Location, Value}) ->
+  Value;
+transform_sequence_node({sequence_atom, Location, Value}) ->
+  Value;
 transform_sequence_node(Other) ->
   Other.
 
