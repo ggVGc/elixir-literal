@@ -15,6 +15,28 @@ tokenize(String, Opts) ->
 %   {error, Error, _, _, _} = elixir_tokenizer:tokenize(String, 1, []),
 %   Error.
 
+
+quoted_test() ->
+
+[{do_identifier,{1,1,"quote"},quote},
+   {do,{1,7,nil}},
+   {sequence_op,{1,10,nil},'~~'},
+   {'(',{1,12,nil}},
+   {sequence_token,{1,13,nil},a},
+   {')',{1,14,false}}] = tokenize("quote do ~~(a) end"),
+
+[{do_identifier,{1,1,"quote"},quote},
+   {do,{1,7,nil}},
+   {sequence_op,{1,10,nil},'~~'},
+   {'(',{1,12,nil}},
+   {sequence_token,{1,13,nil},'+'},
+   {sequence_token,{1,15,nil},a},
+   {sequence_number,{1,17,nil},1},
+   {sequence_atom,{1,19,nil},yeo},
+   {sequence_string,{1,24,nil},"breo"},
+   {')',{1,30,false}}] = tokenize("quote do ~~(+ a 1 :yeo \"breo\") end"),
+  ok.
+
 %% Test basic sequence operator tokenization
 sequence_op_test() ->
   [{sequence_op, {1, 1, nil}, '~~'}] = tokenize("~~"),
