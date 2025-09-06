@@ -216,8 +216,9 @@ tokenize([$~, $~, $( | Rest], Line, Column, Scope, Tokens) ->
       % No remainder - return sequence tokenizer result directly
       {ok, FinalLine, FinalColumn, [], FinalTokens, FinalTerminators};
     {ok, FinalLine, FinalColumn, Remainder, FinalTokens, _FinalTerminators} ->
-      % Remainder exists - continue tokenizing with main tokenizer
-      tokenize(Remainder, FinalLine, FinalColumn, NewScope, FinalTokens);
+      % Remainder exists - continue tokenizing with main tokenizer using original scope
+      % since the sequence literal has ended
+      tokenize(Remainder, FinalLine, FinalColumn, Scope, FinalTokens);
     {error, Reason, ErrorRemainder, ErrorScope, ErrorTokens} ->
       % Forward error from sequence tokenizer
       {error, Reason, ErrorRemainder, ErrorScope, ErrorTokens}

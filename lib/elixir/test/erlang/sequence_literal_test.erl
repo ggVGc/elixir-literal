@@ -62,13 +62,14 @@ expression_after_seq_literal_test() ->
            {sequence_begin,{_,_,_},'~~('},
            {sequence_number,{_,_,nil},1},
            {sequence_end,{_,_,nil},')'},
+           {eol,{_,_,_}},
            {identifier,{_,_,"assert"},assert},
            {identifier,{_,_,"a"},a},
            {comp_op,{_,_,nil},'=='},
            {int,{_,_,_},"2"}] =
               tokenize("~~((+ 1 3))\n
                 ~~(1)\n
-                assert a == 2\n"),
+                assert a == 2"),
   ok.
 
 %% Test sequence literal with parentheses - ISOLATED TOKENIZATION
