@@ -36,7 +36,7 @@ defmodule Lipex.MixProject do
   defp description do
     """
     Lipex - An Elixir-like Lisp syntax implementation using sequence literals.
-    
+
     Provides a comprehensive Lisp-like syntax that closely resembles standard
     Elixir functionality, using the ~~(...) sequence literal syntax.
     """
