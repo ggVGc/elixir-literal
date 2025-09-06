@@ -112,6 +112,30 @@ Lipex uses a modular evaluator architecture where each feature is implemented in
 - `Lipex.Core.ControlFlow` - If, case, cond expressions
 - `Lipex.Functions.Calls` - Function calls and definitions
 
+## Example Applications
+
+Lipex includes example applications to demonstrate practical usage patterns:
+
+### Calculator Demo
+
+Interactive command-line calculator with variable storage and mathematical functions:
+
+```bash
+# Run the calculator demo
+../bin/elixir -S mix lipex.calculator
+
+# Or with aliases set up:
+mix lipex.calculator
+```
+
+Features:
+- Complex expressions: `(+ (* 2 3) (/ 8 4))`
+- Variable assignment: `(= x 42)`
+- Built-in functions: `(square 5)`, `(cube 3)`, `(power 2 8)`
+- History and error handling
+
+See `examples/` directory for more demos and detailed usage instructions.
+
 ## Development
 
 This project is part of the Elixir sequence literal implementation and serves as a demonstration of the macro capabilities enabled by the sequence literal syntax.
