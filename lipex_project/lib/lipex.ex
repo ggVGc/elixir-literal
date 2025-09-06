@@ -114,18 +114,70 @@ defmodule Lipex do
       string when is_binary(string) ->
         string
 
+      # Handle character lists from sequence_string tokens
+      charlist when is_list(charlist) and charlist != [] ->
+        # Check if it's a character list (all elements are valid characters)
+        if Enum.all?(charlist, &is_integer/1) do
+          List.to_string(charlist)
+        else
+          # Not a character list, let it fall through to module handling
+          try_modules(expr)
+        end
+
       # Handle bracket list syntax [a b c] as sugar for (list a b c)
       {:sequence_bracket, meta, items} ->
         list_expr = {:sequence_prefix, {:list, meta, nil}, items}
         eval_lipex_expr(list_expr)
 
+      # Handle brace syntax {:a :b :c} as sugar for (tuple :a :b :c)
+      {:sequence_brace, _meta, items} ->
+        # Evaluate all items to handle sequence tokens properly
+        elixir_args = Enum.map(items, &eval_lipex_expr/1)
+        # Create the tuple directly
+        case length(elixir_args) do
+          0 -> quote do: {}
+          1 -> 
+            [arg] = elixir_args
+            quote do: {unquote(arg)}
+          2 -> 
+            [a, b] = elixir_args
+            quote do: {unquote(a), unquote(b)}
+          3 -> 
+            [a, b, c] = elixir_args
+            quote do: {unquote(a), unquote(b), unquote(c)}
+          _ ->
+            # For larger tuples, use List.to_tuple
+            quote do: List.to_tuple(unquote(elixir_args))
+        end
+
       # Handle sequence_paren - extracts inner sequence_prefix and evaluates it
       {:sequence_paren, _meta, [inner_expr]} ->
         eval_lipex_expr(inner_expr)
 
+      # Handle sequence_block for nested parentheses from tokenizer
+      {:sequence_block, _meta, :"()", [{:sequence_token, op_meta, op} | args]} ->
+        # Convert to sequence_prefix format
+        prefix_expr = {:sequence_prefix, {op, op_meta, nil}, args}
+        eval_lipex_expr(prefix_expr)
+      
+      # Handle empty sequence_block
+      {:sequence_block, _meta, :"()", []} ->
+        nil
+
       # Handle sequence_prefix - the main expression form from current parser
       {:sequence_prefix, op_node, args} ->
         try_modules({:sequence_prefix, op_node, args})
+
+      # Handle raw sequence tokens from tokenizer
+      {:sequence_number, _meta, value} ->
+        value
+      
+      {:sequence_atom, _meta, value} ->
+        value
+      
+      {:sequence_token, meta, value} ->
+        # sequence_token can represent variables, keywords, or operators
+        {value, meta, nil}
 
       # Handle boolean literals that look like variables (must come BEFORE generic variable pattern)
       {true, _meta, nil} ->
