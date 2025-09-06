@@ -99,11 +99,6 @@ defmodule Lipex do
     eval_lipex_expr(expr)
   end
 
-  # Handle direct sequence literals
-  defmacro deflipex({:quote, _, nil}, do: {:sequence_literal, _meta, [expr]}) do
-    eval_lipex_expr(expr)
-  end
-
   @doc """
   Evaluates a single Lipex expression and returns the appropriate Elixir AST.
 
@@ -123,6 +118,10 @@ defmodule Lipex do
       {:sequence_bracket, meta, items} ->
         list_expr = {:sequence_prefix, {:list, meta, nil}, items}
         eval_lipex_expr(list_expr)
+
+      # Handle sequence_paren - extracts inner sequence_prefix and evaluates it
+      {:sequence_paren, _meta, [inner_expr]} ->
+        eval_lipex_expr(inner_expr)
 
       # Handle sequence_prefix - the main expression form from current parser
       {:sequence_prefix, op_node, args} ->

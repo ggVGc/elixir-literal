@@ -25,23 +25,11 @@ defmodule Lipex.Strings.Interpolation do
     end
   end
   
-  @doc """
-  Handles interpolated string expressions by processing each part.
-  
-  Elixir represents interpolated strings as `{:<<>>, meta, parts}` where
-  parts can be literal strings or interpolated expressions.
-  """
   defp handle_interpolated_string(meta, parts) do
     processed_parts = Enum.map(parts, &process_string_part/1)
     {:<<>>, meta, processed_parts}
   end
   
-  @doc """
-  Processes individual parts of an interpolated string.
-  
-  - Literal strings are passed through unchanged
-  - Interpolated expressions are processed through Lipex evaluation
-  """
   defp process_string_part(part) do
     case part do
       # Literal string part - pass through unchanged
@@ -60,9 +48,6 @@ defmodule Lipex.Strings.Interpolation do
     end
   end
   
-  @doc """
-  Processes expressions within string interpolation.
-  """
   defp process_interpolated_expr(expr) do
     case expr do
       # Kernel.to_string call with expression inside
