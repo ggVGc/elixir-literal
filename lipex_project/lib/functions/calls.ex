@@ -17,6 +17,10 @@ defmodule Lipex.Functions.Calls do
   """
   def try_eval(expr) do
     case expr do
+      # Function calls with sequence_block: (func arg1 arg2)
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, function} | _args]} when is_atom(function) ->
+        {:ok, eval_function_call(expr)}
+
       # Function calls with sequence_prefix: (func arg1 arg2)
       {:sequence_prefix, _meta, [function | _args]} when is_atom(function) ->
         {:ok, eval_function_call(expr)}
@@ -40,6 +44,14 @@ defmodule Lipex.Functions.Calls do
       (String.upcase "hello")      -> Module function call  
       (factorial 5)                -> Recursive call
   """
+  def eval_function_call({:sequence_block, _meta, :"()", [{:sequence_token, _, function} | args]}) when is_atom(function) do
+    elixir_function_name = function
+    elixir_args = Enum.map(args, &Lipex.eval_lipex_expr/1)
+
+    # For local calls, use module-scoped calls to support recursion
+    quote do: __MODULE__.unquote(elixir_function_name)(unquote_splicing(elixir_args))
+  end
+
   def eval_function_call({:sequence_prefix, _meta, [function | args]}) when is_atom(function) do
     elixir_function_name = function
     elixir_args = Enum.map(args, &Lipex.eval_lipex_expr/1)

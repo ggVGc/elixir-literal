@@ -18,9 +18,25 @@ defmodule Lipex.Functions.Definitions do
   """
   def try_eval(expr) do
     case expr do
+      # defmodule patterns in sequence_block format
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, :defmodule} | args]} ->
+        {:ok, eval_defmodule({:sequence_paren, [], [{:defmodule, [], nil} | args]})}
+
       # defmodule patterns
       {:sequence_paren, _meta, [{:defmodule, _, nil} | _args]} ->
         {:ok, eval_defmodule(expr)}
+
+      # def patterns in sequence_block format
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, :def} | args]} ->
+        {:ok, eval_def({:sequence_paren, [], [{:def, [], nil} | args]})}
+
+      # defp patterns in sequence_block format
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, :defp} | args]} ->
+        {:ok, eval_defp({:sequence_paren, [], [{:defp, [], nil} | args]})}
+
+      # defmacro patterns in sequence_block format
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, :defmacro} | args]} ->
+        {:ok, eval_defmacro({:sequence_paren, [], [{:defmacro, [], nil} | args]})}
 
       # def patterns - multiple formats due to AST variations
       # Handle sequence_prefix where def is the operator (e.g., (def square (x) ...))

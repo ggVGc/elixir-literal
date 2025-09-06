@@ -21,6 +21,13 @@ defmodule Lipex.Core.PatternMatching do
   """
   def try_eval(expr) do
     case expr do
+      # Pattern matching in sequence_block format: (= pattern value)
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, :=} | args]} ->
+        case args do
+          [pattern, value] -> {:ok, eval_pattern_match(pattern, value)}
+          _ -> raise "Pattern match (=) requires exactly 2 arguments"
+        end
+
       # Pattern matching with atom operator: (= pattern value)
       {:sequence_prefix, _meta, [:=, pattern, value]} ->
         {:ok, eval_pattern_match(pattern, value)}

@@ -19,6 +19,10 @@ defmodule Lipex.Core.DataStructures do
   """
   def try_eval(expr) do
     case expr do
+      # Maps in sequence_block format: (% key1 value1 key2 value2)
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, :%} | args]} ->
+        {:ok, eval_map({:sequence_prefix, [], [:% | args]})}
+
       # Maps with atom operator: (% key1 value1 key2 value2)
       {:sequence_prefix, _meta, [:% | _args]} ->
         {:ok, eval_map(expr)}
@@ -26,6 +30,22 @@ defmodule Lipex.Core.DataStructures do
       # Maps with AST node operator: (% key1 value1) where % is {:%, _, nil}
       {:sequence_prefix, {:%, _, nil}, args} ->
         {:ok, eval_map({:sequence_prefix, [], [:% | args]})}
+
+      # Tuples in sequence_block format: (tuple a b c)
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, :tuple} | args]} ->
+        {:ok, eval_tuple({:sequence_paren, [], [{:tuple, [], nil} | args]})}
+
+      # Structs in sequence_block format: (struct ModuleName :field1 val1 :field2 val2)
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, :struct} | args]} ->
+        {:ok, eval_struct({:sequence_paren, [], [{:struct, [], nil} | args]})}
+
+      # Keyword Lists in sequence_block format: (kwlist :key1 val1 :key2 val2)
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, :kwlist} | args]} ->
+        {:ok, eval_kwlist({:sequence_paren, [], [{:kwlist, [], nil} | args]})}
+
+      # Lists in sequence_block format: (list 1 2 3)
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, :list} | args]} ->
+        {:ok, eval_list({:sequence_paren, [], [{:list, [], nil} | args]})}
 
       # Tuples: (tuple a b c)
       {:sequence_paren, _meta, [{:tuple, _, nil} | _args]} ->
