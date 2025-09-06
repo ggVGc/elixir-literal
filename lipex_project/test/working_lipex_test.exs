@@ -113,25 +113,25 @@ defmodule WorkingLipexTest do
 
   describe "map operations" do
     test "simple map creation works" do
-      result = deflipex ~~((% name john age 30))
+      result = deflipex ~~((% :name :john :age 30))
       expected = %{name: :john, age: 30}
       assert result == expected
     end
 
     test "map with different data types works" do
-      result = deflipex ~~((% active true count 5))
+      result = deflipex ~~((% :active true :count 5))
       expected = %{active: true, count: 5}
       assert result == expected
     end
 
     test "nested map creation works" do
-      result = deflipex ~~((% outer (% inner 42)))
+      result = deflipex ~~((% :outer (% :inner 42)))
       expected = %{outer: %{inner: 42}}
       assert result == expected
     end
 
     test "map with computed values works" do
-      result = deflipex ~~((% sum (+ 10 20) product (* 3 4)))
+      result = deflipex ~~((% :sum (+ 10 20) :product (* 3 4)))
       expected = %{sum: 30, product: 12}
       assert result == expected
     end
@@ -139,22 +139,22 @@ defmodule WorkingLipexTest do
 
   describe "conditional expressions" do
     test "if true condition works" do
-      assert deflipex(~~((if true yes no))) == :yes
+      assert deflipex(~~((if true :yes :no))) == :yes
     end
 
     test "if false condition works" do
-      assert deflipex(~~((if false yes no))) == :no
+      assert deflipex(~~((if false :yes :no))) == :no
     end
 
     test "if with comparison works" do
-      assert deflipex(~~((if (> 5 3) greater lesser))) == :greater
-      assert deflipex(~~((if (< 5 3) greater lesser))) == :lesser
+      assert deflipex(~~((if (> 5 3) :greater :lesser))) == :greater
+      assert deflipex(~~((if (< 5 3) :greater :lesser))) == :lesser
     end
 
     test "nested if expressions work" do
       result = deflipex ~~((if (> 10 5) 
-        (if (< 3 7) both_true first_true)
-        first_false))
+        (if (< 3 7) :both_true :first_true)
+        :first_false))
       assert result == :both_true
     end
   end
