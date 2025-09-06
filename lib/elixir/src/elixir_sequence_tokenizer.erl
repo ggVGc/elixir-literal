@@ -68,6 +68,10 @@ tokenize(String, Line, Column, Scope, Tokens) ->
     [$" | Rest] ->
       tokenize_string(Rest, Line, Column + 1, $", Scope, Tokens);
 
+    % Handle single-quoted strings - become sequence_chars
+    [$' | Rest] ->
+      tokenize_chars(Rest, Line, Column + 1, $', Scope, Tokens);
+
     % Handle atoms with colon prefix
     [$: | Rest] ->
       tokenize_atom(Rest, Line, Column + 1, Scope, Tokens);
@@ -114,6 +118,16 @@ tokenize_string(String, Line, Column, Quote, Scope, Tokens) ->
   case extract_string(String, Quote, Line, Column, []) of
     {ok, Value, Rest, NewLine, NewColumn} ->
       Token = {sequence_string, {Line, Column - 1, nil}, Value},
+      tokenize(Rest, NewLine, NewColumn, Scope, [Token | Tokens]);
+    {error, Reason} ->
+      {error, Reason, String, [], Tokens}
+  end.
+
+%% Chars tokenization - '...' becomes sequence_chars
+tokenize_chars(String, Line, Column, Quote, Scope, Tokens) ->
+  case extract_string(String, Quote, Line, Column, []) of
+    {ok, Value, Rest, NewLine, NewColumn} ->
+      Token = {sequence_chars, {Line, Column - 1, nil}, Value},
       tokenize(Rest, NewLine, NewColumn, Scope, [Token | Tokens]);
     {error, Reason} ->
       {error, Reason, String, [], Tokens}
@@ -242,7 +256,7 @@ tokenize_sequence_token(String, Line, Column, Scope, Tokens) ->
 extract_sequence_token([], Acc) when Acc =/= [] ->
   {ok, lists:reverse(Acc), [], length(Acc)};
 extract_sequence_token([H | Rest], Acc) when ?is_space(H); H =:= $(; H =:= $); H =:= ${; 
-                                              H =:= $}; H =:= $[; H =:= $]; H =:= $,; H =:= $; ->
+                                              H =:= $}; H =:= $[; H =:= $]; H =:= $,; H =:= $;; H =:= $"; H =:= $' ->
   case Acc of
     [] -> {error, "no token found"};
     _ -> {ok, lists:reverse(Acc), [H | Rest], length(Acc)}
@@ -311,6 +325,16 @@ tokenize_single_item(String, Line, Column, Scope) ->
       case extract_string(Rest, $", Line, Column + 1, []) of
         {ok, Value, NewRest, NewLine, NewColumn} ->
           Token = {sequence_string, {Line, Column, nil}, Value},
+          {ok, Token, NewRest, NewLine, NewColumn, Scope};
+        {error, Reason} ->
+          {error, Reason}
+      end;
+    
+    % Handle single-quoted strings
+    [$' | Rest] ->
+      case extract_string(Rest, $', Line, Column + 1, []) of
+        {ok, Value, NewRest, NewLine, NewColumn} ->
+          Token = {sequence_chars, {Line, Column, nil}, Value},
           {ok, Token, NewRest, NewLine, NewColumn, Scope};
         {error, Reason} ->
           {error, Reason}

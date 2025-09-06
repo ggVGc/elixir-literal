@@ -138,9 +138,9 @@ sequence_literals_test() ->
    {sequence_string, {1, 4, nil}, "hello"},
    {sequence_end, {1, 11, nil}, ')'}] = tokenize("~~(\"hello\")"),
 
-  % Test single quoted strings - become sequence_token (our tokenizer doesn't handle single quotes as strings)
+  % Test single quoted strings - become sequence_chars (character lists)
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, '\'world\''},
+   {sequence_chars, {1, 4, nil}, "world"},
    {sequence_end, {1, 11, nil}, ')'}] = tokenize("~~('world')"),
 
   % Test number literals - MUST be sequence_number
