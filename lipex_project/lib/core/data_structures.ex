@@ -39,9 +39,13 @@ defmodule Lipex.Core.DataStructures do
       {:sequence_paren, _meta, [{:kwlist, _, nil} | _args]} ->
         {:ok, eval_kwlist(expr)}
 
-      # Lists: (list 1 2 3)
+      # Lists: (list 1 2 3) - sequence_paren format
       {:sequence_paren, _meta, [{:list, _, nil} | _args]} ->
         {:ok, eval_list(expr)}
+
+      # Lists: (list 1 2 3) - sequence_prefix format
+      {:sequence_prefix, {:list, _, nil}, args} ->
+        {:ok, eval_list_prefix({:sequence_prefix, {:list, [], nil}, args})}
 
       # Not a data structure expression
       _ ->
@@ -195,6 +199,19 @@ defmodule Lipex.Core.DataStructures do
       (list (+ 1 2) (* 3 4)) -> [3, 12]
   """
   def eval_list({:sequence_paren, _meta, [{:list, _, nil} | args]}) do
+    elixir_args = Enum.map(args, &Lipex.eval_lipex_expr/1)
+    quote do: unquote(elixir_args)
+  end
+
+  @doc """
+  Evaluates list construction expressions in sequence_prefix format.
+
+  ## Examples
+
+      (list 1 2 3)         -> [1, 2, 3]
+      (list)               -> []
+  """
+  def eval_list_prefix({:sequence_prefix, {:list, _, nil}, args}) do
     elixir_args = Enum.map(args, &Lipex.eval_lipex_expr/1)
     quote do: unquote(elixir_args)
   end

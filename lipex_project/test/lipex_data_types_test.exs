@@ -2,7 +2,38 @@ defmodule LipexDataTypesTest do
   use ExUnit.Case, async: true
   import Lipex
 
+  # Identity function for testing bare data types
+  def id(x), do: x
+
   describe "comprehensive data type testing" do
+    test "all basic data types work with identity function" do
+      # Integer
+      assert deflipex(~~((id 42))) == 42
+      assert deflipex(~~((id 0))) == 0
+      assert deflipex(~~((id 123456))) == 123456
+
+      # Float
+      assert deflipex(~~((id 3.14))) == 3.14
+      assert deflipex(~~((id 0.0))) == 0.0
+      assert deflipex(~~((id 999.999))) == 999.999
+
+      # String
+      assert deflipex(~~((id "hello"))) == "hello"
+      assert deflipex(~~((id ""))) == ""
+      assert deflipex(~~((id "with spaces"))) == "with spaces"
+
+      # Atom
+      assert deflipex(~~((id :atom))) == :atom
+      assert deflipex(~~((id :underscore_atom))) == :underscore_atom
+
+      # Booleans
+      assert deflipex(~~((id true))) == true
+      assert deflipex(~~((id false))) == false
+
+      # Nil
+      assert deflipex(~~((id nil))) == nil
+    end
+
     test "integers work in arithmetic" do
       result = deflipex ~~((+ 42 8))
       assert result == 50
