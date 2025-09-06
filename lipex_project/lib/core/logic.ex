@@ -38,6 +38,10 @@ defmodule Lipex.Core.Logic do
   """
   def try_eval(expr) do
     case expr do
+      # sequence_block format: (and arg1 arg2)
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, op} | _args]} when op in @operators ->
+        {:ok, eval_logic(expr)}
+
       # sequence_prefix format with atom operator: (and arg1 arg2)
       {:sequence_prefix, _meta, [op | _args]} when op in @operators ->
         {:ok, eval_logic(expr)}
@@ -65,6 +69,11 @@ defmodule Lipex.Core.Logic do
       (and true true true)  -> true
       (and)                 -> true
   """
+  def eval_logic({:sequence_block, _meta, :"()", [{:sequence_token, _, op} | args]}) when op in @operators do
+    # Convert sequence_block to sequence_prefix format and delegate
+    eval_logic({:sequence_prefix, [], [op | args]})
+  end
+
   def eval_logic({:sequence_prefix, _meta, [:and | args]}) do
     elixir_args = Enum.map(args, &Lipex.eval_lipex_expr/1)
 

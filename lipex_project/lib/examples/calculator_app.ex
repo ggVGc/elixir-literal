@@ -10,8 +10,8 @@ defmodule Lipex.Examples.CalculatorApp do
   
   # Define mathematical functions using regular Elixir syntax
   # These functions can be called from within Lipex expressions
-  def square(x), do: x * x
-  def cube(x), do: x * x * x
+  deflipex ~~((def square (x) (* x x))
+    (def cube (x) (* (square x) x)))
   def abs_val(x), do: if x < 0, do: -x, else: x
   def power(base, exp) when exp == 0, do: 1
   def power(base, exp) when exp == 1, do: base

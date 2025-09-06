@@ -155,14 +155,8 @@ defmodule Lipex do
         eval_lipex_expr(inner_expr)
 
       # Handle sequence_block for nested parentheses from tokenizer
-      {:sequence_block, _meta, :"()", [{:sequence_token, op_meta, op} | args]} ->
-        # Convert to sequence_prefix format
-        prefix_expr = {:sequence_prefix, {op, op_meta, nil}, args}
-        eval_lipex_expr(prefix_expr)
-      
-      # Handle empty sequence_block
-      {:sequence_block, _meta, :"()", []} ->
-        nil
+      {:sequence_block, meta, :"()", contents} ->
+        try_modules({:sequence_block, meta, :"()", contents})
 
       # Handle sequence_prefix - the main expression form from current parser
       {:sequence_prefix, op_node, args} ->

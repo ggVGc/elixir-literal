@@ -4,18 +4,18 @@ defmodule Lipex.Functions.DefinitionsTest do
 
   @moduledoc """
   Tests for function and module definitions in Lipex syntax.
-  
-  This test suite demonstrates comprehensive Lipex functionality and serves as 
+
+  This test suite demonstrates comprehensive Lipex functionality and serves as
   unit tests for the expression evaluation system, including basic syntax,
   data structures, control flow, and functional programming features.
-  
+
   Note: Run with ../bin/elixir -S mix test to support sequence_literal syntax
   """
 
   describe "core Lipex syntax and evaluation" do
     test "basic arithmetic operations work correctly" do
       assert deflipex(~~((+ 1 2 3))) == 6
-      assert deflipex(~~((* 2 3 4))) == 24  
+      assert deflipex(~~((* 2 3 4))) == 24
       assert deflipex(~~((- 10 3))) == 7
       assert deflipex(~~((/ 12 4))) == 3.0
     end
@@ -42,7 +42,7 @@ defmodule Lipex.Functions.DefinitionsTest do
       # Complex nested expressions
       result = deflipex ~~((+ (* 2 3) (/ 12 4) (- 10 5)))
       assert result == 14.0  # 6 + 3.0 + 5 = 14.0
-      
+
       # Deeply nested
       result2 = deflipex ~~((* (+ 1 2) (- 10 (* 2 3))))
       assert result2 == 12  # 3 * (10 - 6) = 12
@@ -55,11 +55,11 @@ defmodule Lipex.Functions.DefinitionsTest do
     #   map_result = deflipex ~~((% :name :john :age 30 :active true))
     #   expected_map = %{name: :john, age: 30, active: true}
     #   assert map_result == expected_map
-      
-    #   # Access map values  
+
+    #   # Access map values
     #   name = deflipex ~~((map_result :name))
     #   assert name == :john
-      
+
     #   age = deflipex ~~((map_result :age))
     #   assert age == 30
     # end
@@ -68,11 +68,11 @@ defmodule Lipex.Functions.DefinitionsTest do
     #   # Test simple atoms and literals
     #   atom_result = deflipex ~~(:hello)
     #   assert atom_result == :hello
-      
+
     #   # Test simple variables if possible
     #   number_result = deflipex ~~(42)
     #   assert number_result == 42
-      
+
     #   boolean_result = deflipex ~~(true)
     #   assert boolean_result == true
     # end
@@ -89,7 +89,7 @@ defmodule Lipex.Functions.DefinitionsTest do
     test "if expressions work correctly" do
       assert deflipex(~~((if true :yes :no))) == :yes
       assert deflipex(~~((if false :yes :no))) == :no
-      
+
       # With comparisons
       assert deflipex(~~((if (> 5 3) :greater :lesser))) == :greater
       assert deflipex(~~((if (< 5 3) :greater :lesser))) == :lesser
@@ -97,11 +97,11 @@ defmodule Lipex.Functions.DefinitionsTest do
 
     test "nested conditional expressions work" do
       # Nested if statements
-      result = deflipex ~~((if (> 10 5) 
+      result = deflipex ~~((if (> 10 5)
         (if (< 3 7) :both_true :first_true)
         :first_false))
       assert result == :both_true
-      
+
       # Complex nested conditionals
       complex_result = deflipex ~~((if (== (+ 2 3) 5)
         (if (and true (> 10 5)) :all_conditions_met :some_false)
@@ -114,7 +114,7 @@ defmodule Lipex.Functions.DefinitionsTest do
     test "basic type checking predicates work" do
       assert deflipex(~~((atom? :hello))) == true
       assert deflipex(~~((atom? 42))) == false
-      
+
       assert deflipex(~~((number? 42))) == true
       assert deflipex(~~((number? :atom))) == false
     end
@@ -139,9 +139,9 @@ defmodule Lipex.Functions.DefinitionsTest do
     test "complex arithmetic expressions work" do
       # Very complex nested expression using only working features
       complex_expr = deflipex ~~((+ (* (+ 2 3) (- 10 6)) (/ 100 (+ 20 5))))
-      
+
       # (2+3) * (10-6) = 5 * 4 = 20
-      # 100 / (20+5) = 100 / 25 = 4.0  
+      # 100 / (20+5) = 100 / 25 = 4.0
       # Total: 20 + 4.0 = 24.0
       assert complex_expr == 24.0
     end
@@ -152,7 +152,7 @@ defmodule Lipex.Functions.DefinitionsTest do
         :number (+ 10 20)
         :boolean (> 5 3)
         :atom :test_value))
-      
+
       expected = %{
         number: 30,
         boolean: true,

@@ -16,6 +16,10 @@ defmodule Lipex.Core.ControlFlow do
   """
   def try_eval(expr) do
     case expr do
+      # sequence_block format: (if condition then else)
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, :if} | _args]} ->
+        {:ok, eval_if(expr)}
+
       # if patterns with AST node operator
       {:sequence_prefix, {:if, _, nil}, args} ->
         {:ok, eval_if({:sequence_paren, [], [{:if, [], nil} | args]})}
@@ -70,6 +74,11 @@ defmodule Lipex.Core.ControlFlow do
     elixir_then = Lipex.eval_lipex_expr(then_expr)
 
     {:if, [], [elixir_condition, [do: elixir_then]]}
+  end
+
+  def eval_if({:sequence_block, _meta, :"()", [{:sequence_token, _, :if} | args]}) do
+    # Convert sequence_block to sequence_prefix format and delegate
+    eval_if({:sequence_prefix, [], [:if | args]})
   end
 
   def eval_if({:sequence_prefix, _meta, [:if, condition, then_expr, else_expr]}) do

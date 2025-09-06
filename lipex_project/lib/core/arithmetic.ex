@@ -19,6 +19,10 @@ defmodule Lipex.Core.Arithmetic do
   """
   def try_eval(expr) do
     case expr do
+      # Handle operators in sequence_block format: (+ 1 2 3)
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, op} | _args]} when op in @operators ->
+        {:ok, eval_arithmetic(expr)}
+
       # Handle operators as atoms
       {:sequence_prefix, _meta, [op | _args]} when op in @operators ->
         {:ok, eval_arithmetic(expr)}
@@ -42,6 +46,11 @@ defmodule Lipex.Core.Arithmetic do
       (* 2 3 4)         -> 24
       (/ 12 4)          -> 3.0
   """
+  def eval_arithmetic({:sequence_block, _meta, :"()", [{:sequence_token, _, op} | args]}) when op in @operators do
+    # Convert sequence_block to sequence_prefix format and delegate
+    eval_arithmetic({:sequence_prefix, [], [op | args]})
+  end
+
   def eval_arithmetic({:sequence_prefix, _meta, [:+ | args]}) do
     elixir_args = Enum.map(args, &Lipex.eval_lipex_expr/1)
 
