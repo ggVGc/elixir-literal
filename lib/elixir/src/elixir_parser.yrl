@@ -1423,6 +1423,8 @@ transform_sequence_node({sequence_token, Location, Value}) ->
 transform_sequence_node({sequence_number, Location, Value}) ->
   Value;
 transform_sequence_node({sequence_string, Location, Value}) ->
+  list_to_binary(Value);
+transform_sequence_node({sequence_chars, Location, Value}) ->
   Value;
 transform_sequence_node({sequence_atom, Location, Value}) ->
   Value;

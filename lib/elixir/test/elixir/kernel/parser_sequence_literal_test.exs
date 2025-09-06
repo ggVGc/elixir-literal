@@ -28,18 +28,18 @@ defmodule Kernel.ParserSequenceLiteralTest do
   test "sequence literals work in direct parsing" do
     # Direct parsing should work and produce sequence_literal AST
     result = parse!("~~(+ 1 2 3)")
-    
-    assert {:sequence_literal, [line: 1], 
-            [{:sequence_prefix, {:+, [line: 1], nil}, [1, 2, 3]}]} = result
+
+    assert {:sequence_literal, [line: 1], [{:sequence_prefix, {:+, [line: 1], nil}, [1, 2, 3]}]} =
+             result
   end
 
   test "sequence literals work within quote blocks" do
     # Quote block parsing should work and wrap sequence_literal in quote AST
     result = parse!("quote do ~~(+ 1 2 3) end")
-    
-    expected_inner = {:sequence_literal, [line: 1], 
-                      [{:sequence_prefix, {:+, [line: 1], nil}, [1, 2, 3]}]}
-    
+
+    expected_inner =
+      {:sequence_literal, [line: 1], [{:sequence_prefix, {:+, [line: 1], nil}, [1, 2, 3]}]}
+
     assert {:quote, [line: 1], [[do: ^expected_inner]]} = result
   end
 
