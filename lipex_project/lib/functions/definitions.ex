@@ -152,11 +152,11 @@ defmodule Lipex.Functions.Definitions do
     # Convert arguments
     args_ast = convert_args(args)
 
-    # Process body
+    # Process body - convert directly to AST without evaluation
     body_ast =
       case actual_body do
-        [single] -> Lipex.eval_lipex_expr(single)
-        multiple -> {:__block__, [], Enum.map(multiple, &Lipex.eval_lipex_expr/1)}
+        [single] -> convert_to_ast(single)
+        multiple -> {:__block__, [], Enum.map(multiple, &convert_to_ast/1)}
       end
 
     # Extract function name atom from AST
@@ -194,6 +194,10 @@ defmodule Lipex.Functions.Definitions do
     {args, body}
   end
 
+  defp parse_function_parts([{:sequence_block, _, :"()", args} | body]) do
+    {args, body}
+  end
+
   defp parse_function_parts([args | body]) when is_list(args) do
     {args, body}
   end
@@ -218,12 +222,74 @@ defmodule Lipex.Functions.Definitions do
     arg
   end
 
-  defp convert_arg({:sequence_paren, _, pattern}) do
-    # Handle pattern matching in arguments
-    convert_pattern(pattern)
+  defp convert_arg({:sequence_paren, _, args}) do
+    # Handle parenthesized arguments like (x) -> x
+    # Extract the arguments from within the parentheses
+    case args do
+      [single_arg] -> convert_arg(single_arg)  # Recursive call for the inner arg
+      multiple_args -> Enum.map(multiple_args, &convert_arg/1)
+    end
+  end
+
+  defp convert_arg({:sequence_token, meta, arg_name}) when is_atom(arg_name) do
+    # Handle sequence_token arguments from sequence_block
+    # This is how variables appear within (...) in sequence literals
+    {arg_name, normalize_meta(meta), nil}
+  end
+
+  defp convert_arg({:sequence_prefix, {arg_name, meta, nil}, []}) when is_atom(arg_name) do
+    # Handle parenthesized single arguments like (x) -> x
+    # This occurs when sequence literals parse (x) as {:sequence_prefix, {:x, meta, nil}, []}
+    {arg_name, meta, nil}
   end
 
   defp convert_arg(other) do
+    Lipex.eval_lipex_expr(other)
+  end
+
+  # Convert sequence structures directly to Elixir AST without evaluation
+  defp convert_to_ast({:sequence_block, _meta, :"()", [{:sequence_token, op_meta, op} | args]}) do
+    # Convert (op arg1 arg2) directly to {op, [], [arg1_ast, arg2_ast]}
+    ast_args = Enum.map(args, &convert_to_ast/1)
+    {op, normalize_meta(op_meta), ast_args}
+  end
+
+  defp convert_to_ast({:sequence_block, _meta, :"()", []}) do
+    # Empty parentheses
+    nil
+  end
+
+  defp convert_to_ast({:sequence_token, meta, value}) do
+    # Convert sequence tokens to AST variables or literals
+    case value do
+      nil -> nil
+      true -> true
+      false -> false
+      atom when is_atom(atom) -> {atom, normalize_meta(meta), nil}
+    end
+  end
+
+  defp convert_to_ast({:sequence_number, _meta, value}) do
+    # Numbers are literals
+    value
+  end
+
+  defp convert_to_ast({:sequence_atom, _meta, value}) do
+    # Atoms are literals
+    value
+  end
+
+  defp convert_to_ast({:sequence_string, _meta, value}) do
+    # Strings are literals
+    if is_list(value) do
+      List.to_string(value)
+    else
+      value
+    end
+  end
+
+  defp convert_to_ast(other) do
+    # For anything else, fall back to the main evaluator
     Lipex.eval_lipex_expr(other)
   end
 
@@ -234,5 +300,18 @@ defmodule Lipex.Functions.Definitions do
 
   defp convert_pattern(pattern) do
     Lipex.eval_lipex_expr(pattern)
+  end
+
+  # Convert sequence tokenizer metadata to Elixir AST format
+  defp normalize_meta({line, _column, _}) when is_integer(line) do
+    [line: line]
+  end
+
+  defp normalize_meta(meta) when is_list(meta) do
+    meta
+  end
+
+  defp normalize_meta(_) do
+    []
   end
 end
