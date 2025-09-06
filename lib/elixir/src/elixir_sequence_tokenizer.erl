@@ -89,13 +89,16 @@ tokenize(String, Line, Column, Scope, Tokens) ->
     [H | Rest] when ?is_space(H) ->
       case H of
         $\n ->
-          tokenize(Rest, Line + 1, 1, Scope, reset_eol(Tokens));
+          EolTokens = eol(Line, Column, Tokens),
+          tokenize(Rest, Line + 1, 1, Scope, reset_eol(EolTokens));
         $\r ->
           case Rest of
             [$\n | RestAfterCRLF] ->
-              tokenize(RestAfterCRLF, Line + 1, 1, Scope, reset_eol(Tokens));
+              EolTokens = eol(Line, Column, Tokens),
+              tokenize(RestAfterCRLF, Line + 1, 1, Scope, reset_eol(EolTokens));
             _ ->
-              tokenize(Rest, Line + 1, 1, Scope, reset_eol(Tokens))
+              EolTokens = eol(Line, Column, Tokens),
+              tokenize(Rest, Line + 1, 1, Scope, reset_eol(EolTokens))
           end;
         _ ->
           tokenize(Rest, Line, Column + 1, Scope, Tokens)
@@ -429,7 +432,14 @@ previous_was_eol([{_, {_, _, _}} | _]) -> false;
 previous_was_eol([{_, _} | _]) -> false;
 previous_was_eol(_) -> false.
 
-reset_eol(Tokens) ->
-  % This is a simplified version - in real implementation,
-  % this would properly handle end-of-line tracking
-  Tokens.
+eol(_Line, _Column, [{',', {Line, Column, Count}} | Tokens]) ->
+  [{',', {Line, Column, Count + 1}} | Tokens];
+eol(_Line, _Column, [{';', {Line, Column, Count}} | Tokens]) ->
+  [{';', {Line, Column, Count + 1}} | Tokens];
+eol(_Line, _Column, [{eol, {Line, Column, Count}} | Tokens]) ->
+  [{eol, {Line, Column, Count + 1}} | Tokens];
+eol(Line, Column, Tokens) ->
+  [{eol, {Line, Column, 1}} | Tokens].
+
+reset_eol([{eol, {Line, Column, _}} | Rest]) -> [{eol, {Line, Column, 0}} | Rest];
+reset_eol(Rest) -> Rest.
