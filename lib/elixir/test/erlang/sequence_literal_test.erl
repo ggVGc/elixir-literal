@@ -45,6 +45,32 @@ sequence_op_test() ->
    {identifier, {1, 6, "b"}, b}] = tokenize("a ~~ b"),
   ok.
 
+expression_after_seq_literal_test() ->
+[{identifier,{_,_,"assert"},assert},
+   {identifier,{_,_,"a"},a},
+   {comp_op,{_,_,nil},'=='},
+   {int,{_,_,_},"2"}] = tokenize("assert a == 2"),
+
+[{sequence_begin,{_,_,nil},'~~('},
+  {sequence_block,{_,_,nil},
+                           '()',
+                           [{sequence_token,{_,_,nil},'+'},
+                            {sequence_number,{_,_,nil},1},
+                            {sequence_number,{_,_,nil},3}]},
+           {sequence_end,{_,_,nil},')'},
+           {eol,{_,_,_}},
+           {sequence_begin,{_,_,_},'~~('},
+           {sequence_number,{_,_,nil},1},
+           {sequence_end,{_,_,nil},')'},
+           {identifier,{_,_,"assert"},assert},
+           {identifier,{_,_,"a"},a},
+           {comp_op,{_,_,nil},'=='},
+           {int,{_,_,_},"2"}] =
+              tokenize("~~((+ 1 3))\n
+                ~~(1)\n
+                assert a == 2\n"),
+  ok.
+
 %% Test sequence literal with parentheses - ISOLATED TOKENIZATION
 sequence_literal_parens_test() ->
   [{sequence_begin, {1, 1, nil}, '~~('},
