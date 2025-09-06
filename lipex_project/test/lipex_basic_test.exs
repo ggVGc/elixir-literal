@@ -53,6 +53,9 @@ defmodule LipexBasicTest do
     test "tuples work" do
       tuple_result = deflipex ~~((tuple :ok :success))
       assert tuple_result == {:ok, :success}
+
+      tuple_result = deflipex ~~({:ok :success})
+      assert tuple_result == {:ok, :success}
     end
 
     test "lists work" do
