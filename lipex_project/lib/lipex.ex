@@ -114,11 +114,11 @@ defmodule Lipex do
       string when is_binary(string) ->
         string
 
-      # Handle character lists from sequence_string tokens
+      # Handle raw character lists (preserve them as-is)
       charlist when is_list(charlist) and charlist != [] ->
-        # Check if it's a character list (all elements are valid characters)
+        # Only handle if it's a valid character list
         if Enum.all?(charlist, &is_integer/1) do
-          List.to_string(charlist)
+          charlist  # Keep as charlist, don't convert to string
         else
           # Not a character list, let it fall through to module handling
           try_modules(expr)
