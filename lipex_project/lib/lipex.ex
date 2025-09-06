@@ -177,7 +177,27 @@ defmodule Lipex do
       
       {:sequence_token, meta, value} ->
         # sequence_token can represent variables, keywords, or operators
-        {value, meta, nil}
+        # Handle special literal values directly
+        case value do
+          nil -> nil
+          true -> true
+          false -> false
+          _ -> {value, meta, nil}
+        end
+
+      # Handle sequence string tokens (double quotes)
+      {:sequence_string, _meta, value} ->
+        # Convert character list to binary string if needed
+        if is_list(value) do
+          List.to_string(value)
+        else
+          value
+        end
+
+      # Handle sequence character list tokens (single quotes)
+      {:sequence_chars, _meta, value} ->
+        # Keep as character list
+        value
 
       # Handle boolean literals that look like variables (must come BEFORE generic variable pattern)
       {true, _meta, nil} ->
@@ -189,19 +209,9 @@ defmodule Lipex do
       {nil, _meta, nil} ->
         nil
 
-      # Variables - convert to Elixir variables
-      {var, meta, nil} when is_atom(var) ->
+      # Variables - convert to Elixir variables (but not nil, true, false which are handled above)
+      {var, meta, nil} when is_atom(var) and var not in [nil, true, false] ->
         {var, meta, nil}
-
-      # Special atoms with : prefix
-      {nil, _meta, nil} ->
-        nil
-
-      {true, _meta, nil} ->
-        true
-
-      {false, _meta, nil} ->
-        false
 
       # Handle bare atoms
       true ->
