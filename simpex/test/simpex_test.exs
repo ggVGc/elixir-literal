@@ -19,10 +19,11 @@ defmodule SimpexTest do
   defsimpex ~~((def get_bool () true))
   defsimpex ~~((def echo (value) value))
   defsimpex ~~((def pick_first (a _b _c) a))
-  defsimpex ~~((def pick_nth ({a _b} 0) a))
-  defsimpex ~~((def pick_nth ({_a b} 1) b))
-  defsimpex ~~((def pick_nth ([a _b] 0) a))
-  defsimpex ~~((def pick_nth ([_ b] 1) b))
+  defsimpex ~~(
+    (def pick_nth ({a _b} 0) a)
+    (def pick_nth ({_a b} 1) b)
+    (def pick_nth ([a _b] 0) a)
+    (def pick_nth ([_ b] 1) b))
 
   describe "data types" do
     test "numbers work" do
@@ -86,6 +87,15 @@ defmodule SimpexTest do
       
       result2 = defsimpex ~~((pick_nth [7 14] 1))
       assert result2 == 14
+    end
+
+    test "tuple pattern matching works from multi-def block" do
+      # Test the functions defined in the multi-expression block
+      result1 = defsimpex ~~((pick_nth {3 6} 0))
+      assert result1 == 3
+      
+      result2 = defsimpex ~~((pick_nth {3 6} 1))
+      assert result2 == 6
     end
   end
 end
