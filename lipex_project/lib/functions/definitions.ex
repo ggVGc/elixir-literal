@@ -211,7 +211,7 @@ defmodule Lipex.Functions.Definitions do
     case body do
       [:when, guard_expr | actual_body] ->
         {args, [:when, guard_expr | actual_body]}
-      
+
       [{:when, _, nil} | rest] ->
         # Handle when as AST node
         case rest do
@@ -220,7 +220,7 @@ defmodule Lipex.Functions.Definitions do
           _ ->
             {args, body}
         end
-      
+
       _ ->
         {args, body}
     end
@@ -231,7 +231,7 @@ defmodule Lipex.Functions.Definitions do
     case body do
       [:when, guard_expr | actual_body] ->
         {args, [:when, guard_expr | actual_body]}
-      
+
       [{:when, _, nil} | rest] ->
         # Handle when as AST node
         case rest do
@@ -240,7 +240,7 @@ defmodule Lipex.Functions.Definitions do
           _ ->
             {args, body}
         end
-      
+
       _ ->
         {args, body}
     end
@@ -251,7 +251,7 @@ defmodule Lipex.Functions.Definitions do
     case body do
       [:when, guard_expr | actual_body] ->
         {args, [:when, guard_expr | actual_body]}
-      
+
       [{:when, _, nil} | rest] ->
         # Handle when as AST node
         case rest do
@@ -260,7 +260,7 @@ defmodule Lipex.Functions.Definitions do
           _ ->
             {args, body}
         end
-      
+
       _ ->
         {args, body}
     end
@@ -272,7 +272,7 @@ defmodule Lipex.Functions.Definitions do
     case parts do
       [:when, guard_expr | actual_body] ->
         {[], [:when, guard_expr | actual_body]}
-      
+
       [{:when, _, nil} | rest] ->
         # Handle when as AST node
         case rest do
@@ -281,7 +281,7 @@ defmodule Lipex.Functions.Definitions do
           _ ->
             {[], parts}
         end
-      
+
       _ ->
         {[], parts}
     end
@@ -297,11 +297,11 @@ defmodule Lipex.Functions.Definitions do
   defp convert_arg(arg) when is_atom(arg) do
     # Validate that the atom is a valid Elixir variable name
     arg_string = Atom.to_string(arg)
-    
+
     unless valid_elixir_variable_name?(arg_string) do
       raise ArgumentError, "Invalid parameter name: '#{arg}' is not a valid Elixir variable name"
     end
-    
+
     Lipex.lipex_to_elixir_var(arg)
   end
 
@@ -323,11 +323,11 @@ defmodule Lipex.Functions.Definitions do
     # This is how variables appear within (...) in sequence literals
     # Validate that the atom is a valid Elixir variable name
     arg_string = Atom.to_string(arg_name)
-    
+
     unless valid_elixir_variable_name?(arg_string) do
       raise ArgumentError, "Invalid parameter name: '#{arg_name}' is not a valid Elixir variable name"
     end
-    
+
     {arg_name, normalize_meta(meta), nil}
   end
 
@@ -387,15 +387,6 @@ defmodule Lipex.Functions.Definitions do
     Lipex.eval_lipex_expr(other)
   end
 
-  # Convert patterns for pattern matching
-  defp convert_pattern(pattern) when is_list(pattern) do
-    pattern
-  end
-
-  defp convert_pattern(pattern) do
-    Lipex.eval_lipex_expr(pattern)
-  end
-
   # Convert sequence tokenizer metadata to Elixir AST format
   defp normalize_meta({line, _column, _}) when is_integer(line) do
     [line: line]
@@ -408,12 +399,12 @@ defmodule Lipex.Functions.Definitions do
   defp normalize_meta(_) do
     []
   end
-  
+
   # Helper function to validate Elixir variable names
   defp valid_elixir_variable_name?(name) do
     # Elixir variable names must:
     # - Start with lowercase letter or underscore
-    # - Contain only letters, digits, and underscores  
+    # - Contain only letters, digits, and underscores
     # - Can optionally end with ? or !
     case name do
       "_" -> true  # Single underscore is valid

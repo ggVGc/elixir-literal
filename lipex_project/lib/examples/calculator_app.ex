@@ -136,7 +136,7 @@ defmodule Lipex.Examples.CalculatorApp do
   defp extract_variable_assignment(expression) do
     # Simple pattern matching to detect variable assignments like (= x 5)
     case Regex.run(~r/^\s*\(\s*=\s+(\w+)\s+(.+)\)\s*$/, expression) do
-      [_, var_name, _var_expression] ->
+      [_, _var_name, _var_expression] ->
         # We can't easily evaluate just the value part, so we'll return nil
         # and let the full evaluation handle it
         nil
