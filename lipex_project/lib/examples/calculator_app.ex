@@ -50,8 +50,11 @@ defmodule Lipex.Examples.CalculatorApp do
     calculator_loop(%__MODULE__{})
   end
 
+
   defp calculator_loop(state) do
-    input = IO.gets("> ") |> String.trim()
+    deflipex ~~(
+      (= input (String.trim (IO.gets "> ")))
+    )
 
     case input do
       "" ->

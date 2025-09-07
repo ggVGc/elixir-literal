@@ -35,6 +35,10 @@ defmodule Lipex.Core.ControlFlow do
       {:sequence_paren, _meta, [{:cond, _, nil} | _clauses]} ->
         {:ok, eval_cond(expr)}
 
+      # case patterns - handle direct AST nodes from new tokenizer
+      {:sequence_prefix, {:case, _, nil}, args} ->
+        {:ok, eval_case({:sequence_prefix, {:case, [], nil}, args})}
+
       # case patterns
       {:sequence_paren, _meta, [{:case, _, nil} | _args]} ->
         {:ok, eval_case(expr)}
@@ -133,6 +137,15 @@ defmodule Lipex.Core.ControlFlow do
         {:error reason} reason
         _ :unknown)
   """
+  def eval_case({:sequence_prefix, {:case, _, nil}, [value | clauses]}) do
+    elixir_value = Lipex.eval_lipex_expr(value)
+
+    # Convert clauses to case format - handle pairs of pattern and result
+    elixir_clauses = convert_case_clauses(clauses)
+
+    {:case, [], [elixir_value, [do: elixir_clauses]]}
+  end
+
   def eval_case({:sequence_paren, _meta, [{:case, _, nil}, value | clauses]}) do
     elixir_value = Lipex.eval_lipex_expr(value)
 
@@ -224,6 +237,22 @@ defmodule Lipex.Core.ControlFlow do
     {clauses, do_block}
   end
 
+  defp convert_case_clauses(clauses) do
+    # Handle case clauses as pairs: pattern1 result1 pattern2 result2 ...
+    # Group them into pairs and convert to case clause format
+    clauses
+    |> Enum.chunk_every(2)
+    |> Enum.map(fn
+      [pattern, result] ->
+        elixir_pattern = convert_pattern(pattern)
+        elixir_result = Lipex.eval_lipex_expr(result)
+        {:->, [], [[elixir_pattern], elixir_result]}
+
+      [_single] ->
+        raise "Case clauses must come in pairs: pattern result"
+    end)
+  end
+
   defp convert_pattern(expr) do
     case expr do
       # Atoms, numbers, strings - literal patterns
@@ -253,7 +282,10 @@ defmodule Lipex.Core.ControlFlow do
       list when is_list(list) ->
         Enum.map(list, &convert_pattern/1)
 
-      # Special patterns
+      # Special patterns - underscore wildcard
+      :_ ->
+        {:_, [], nil}
+
       {:_, _meta, nil} ->
         {:_, [], nil}
 
