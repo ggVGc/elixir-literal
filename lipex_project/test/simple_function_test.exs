@@ -4,7 +4,7 @@ defmodule SimpleFunctionTest do
 
   # Define test functions at module level using the same syntax as calculator examples
   deflipex ~~((def double (x) (* x 2)))
-  deflipex ~~((def abs_val (x) (* x (- 0 1))))
+  deflipex ~~((def abs_val (x) (* x -1)))
 
   test "simple function call" do
     result = deflipex ~~((double 5))
