@@ -360,6 +360,29 @@ do_quote({unquote, Meta, [Expr]}, #elixir_quote{unquote=true, shallow_validate=V
     false -> Expr
   end;
 
+%% Sequence literals
+
+do_quote({sequence_literal, Meta, Args}, Q) when is_list(Meta) ->
+  TArgs = do_quote(Args, Q),
+  {'{}', [], [sequence_literal, meta(Meta, Q), TArgs]};
+
+do_quote({sequence_prefix, {Name, Meta, Context}, Args}, Q) when is_list(Meta) ->
+  TName = do_quote({Name, Meta, Context}, Q),
+  TArgs = do_quote(Args, Q),
+  {'{}', [], [sequence_prefix, TName, TArgs]};
+
+do_quote({sequence_paren, Meta, Args}, Q) when is_list(Meta) ->
+  TArgs = do_quote(Args, Q),
+  {'{}', [], [sequence_paren, meta(Meta, Q), TArgs]};
+
+do_quote({sequence_bracket, Meta, Args}, Q) when is_list(Meta) ->
+  TArgs = do_quote(Args, Q),
+  {'{}', [], [sequence_bracket, meta(Meta, Q), TArgs]};
+
+do_quote({sequence_brace, Meta, Args}, Q) when is_list(Meta) ->
+  TArgs = do_quote(Args, Q),
+  {'{}', [], [sequence_brace, meta(Meta, Q), TArgs]};
+
 %% Aliases
 
 do_quote({'__aliases__', Meta, [H | T]}, #elixir_quote{aliases_hygiene=(#{}=E)} = Q)
