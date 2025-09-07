@@ -110,7 +110,7 @@ defmodule Lipex.Examples.CalculatorApp do
       {result, _binding} = Code.eval_string(code, [], __ENV__)
 
       # Check if this is a variable assignment
-      new_variables = case extract_variable_assignment(expression) do
+      new_variables = case extract_variable_assignment(expression, result) do
         {var_name, var_value} ->
           IO.puts("📝 #{var_name} = #{inspect(var_value)}")
           Map.put(state.variables, var_name, var_value)
@@ -133,13 +133,12 @@ defmodule Lipex.Examples.CalculatorApp do
     end
   end
 
-  defp extract_variable_assignment(expression) do
+  defp extract_variable_assignment(expression, result) do
     # Simple pattern matching to detect variable assignments like (= x 5)
     case Regex.run(~r/^\s*\(\s*=\s+(\w+)\s+(.+)\)\s*$/, expression) do
-      [_, _var_name, _var_expression] ->
-        # We can't easily evaluate just the value part, so we'll return nil
-        # and let the full evaluation handle it
-        nil
+      [_, var_name, _var_expression] ->
+        # Return the variable name and the computed result
+        {String.to_atom(var_name), result}
       _ ->
         nil
     end

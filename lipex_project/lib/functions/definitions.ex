@@ -217,6 +217,7 @@ defmodule Lipex.Functions.Definitions do
         case rest do
           [guard_expr | actual_body] ->
             {args, [:when, guard_expr | actual_body]}
+
           _ ->
             {args, body}
         end
@@ -237,6 +238,7 @@ defmodule Lipex.Functions.Definitions do
         case rest do
           [guard_expr | actual_body] ->
             {args, [:when, guard_expr | actual_body]}
+
           _ ->
             {args, body}
         end
@@ -257,6 +259,7 @@ defmodule Lipex.Functions.Definitions do
         case rest do
           [guard_expr | actual_body] ->
             {args, [:when, guard_expr | actual_body]}
+
           _ ->
             {args, body}
         end
@@ -278,6 +281,7 @@ defmodule Lipex.Functions.Definitions do
         case rest do
           [guard_expr | actual_body] ->
             {[], [:when, guard_expr | actual_body]}
+
           _ ->
             {[], parts}
         end
@@ -313,7 +317,8 @@ defmodule Lipex.Functions.Definitions do
     # Handle parenthesized arguments like (x) -> x
     # Extract the arguments from within the parentheses
     case args do
-      [single_arg] -> convert_arg(single_arg)  # Recursive call for the inner arg
+      # Recursive call for the inner arg
+      [single_arg] -> convert_arg(single_arg)
       multiple_args -> Enum.map(multiple_args, &convert_arg/1)
     end
   end
@@ -325,7 +330,8 @@ defmodule Lipex.Functions.Definitions do
     arg_string = Atom.to_string(arg_name)
 
     unless valid_elixir_variable_name?(arg_string) do
-      raise ArgumentError, "Invalid parameter name: '#{arg_name}' is not a valid Elixir variable name"
+      raise ArgumentError,
+            "Invalid parameter name: '#{arg_name}' is not a valid Elixir variable name"
     end
 
     {arg_name, normalize_meta(meta), nil}
@@ -407,7 +413,10 @@ defmodule Lipex.Functions.Definitions do
     # - Contain only letters, digits, and underscores
     # - Can optionally end with ? or !
     case name do
-      "_" -> true  # Single underscore is valid
+      # Single underscore is valid
+      "_" ->
+        true
+
       _ ->
         Regex.match?(~r/^[a-z_][a-zA-Z0-9_]*[?!]?$/, name)
     end

@@ -22,7 +22,7 @@ defmodule LipexDataTypesTest do
       assert deflipex(~~((id ""))) == ""
       assert deflipex(~~((id "with spaces"))) == "with spaces"
 
-      assert deflipex(~~((id 'hello'))) == 'hello'
+      assert deflipex(~~((id 'hello'))) == ~c"hello"
 
       # Atom
       assert deflipex(~~((id :atom))) == :atom
