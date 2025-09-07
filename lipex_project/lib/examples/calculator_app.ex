@@ -8,9 +8,11 @@ defmodule Lipex.Examples.CalculatorApp do
 
   import Lipex
 
-  deflipex ~~((def square (x) (* x x))
+  deflipex ~~(
+    (def square (x) (* x x))
     (def cube (x) (* x (square x)))
-    (def abs_val (x) (* x -1)))
+    (def abs_val (x) (* x -1))
+  )
 
   # deflipex ~~((def power (base, exp) :when (== exp 0) 1)
   #   (def power (base, exp) :when (== exp 1) base)

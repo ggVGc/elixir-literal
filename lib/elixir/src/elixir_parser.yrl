@@ -312,10 +312,13 @@ sequence_expr -> sequence_begin sequence_args sequence_end : build_sequence('$1'
 
 sequence_args -> sequence_token_list : '$1'.
 sequence_args -> '$empty' : [].
+sequence_args -> eol sequence_token_list : '$2'.
+sequence_args -> eol : [].
 
 sequence_token_list -> sequence_element : ['$1'].
 sequence_token_list -> sequence_token_list sequence_element : '$1' ++ ['$2'].
 sequence_token_list -> sequence_token_list eol sequence_element : '$1' ++ ['$3'].
+sequence_token_list -> sequence_token_list eol : '$1'.
 
 % Accept various token types inside sequences  
 sequence_element -> sequence_token : build_sequence_token('$1').
