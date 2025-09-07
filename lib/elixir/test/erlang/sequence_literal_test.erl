@@ -17,24 +17,23 @@ tokenize(String, Opts) ->
 
 
 quoted_test() ->
+  [{do_identifier,{1,1,"quote"},quote},
+     {do,{1,7,nil}},
+     {sequence_begin,{1,10,nil},'~~('},
+     {sequence_token,{1,13,nil},a},
+     {sequence_end,{1,14,nil},')'},
+     {'end',{1,16,nil}}] = tokenize("quote do ~~(a) end"),
 
-[{do_identifier,{1,1,"quote"},quote},
-   {do,{1,7,nil}},
-   {sequence_begin,{1,10,nil},'~~('},
-   {sequence_token,{1,13,nil},a},
-   {sequence_end,{1,14,nil},')'},
-   {'end',{1,16,nil}}] = tokenize("quote do ~~(a) end"),
-
-[{do_identifier,{1,1,"quote"},quote},
-   {do,{1,7,nil}},
-   {sequence_begin,{1,10,nil},'~~('},
-   {sequence_token,{1,13,nil},'+'},
-   {sequence_token,{1,15,nil},a},
-   {sequence_number,{1,17,nil},1},
-   {sequence_atom,{1,19,nil},yeo},
-   {sequence_string,{1,24,nil},"breo"},
-   {sequence_end,{1,30,nil},')'},
-   {'end',{1,32,nil}}] = tokenize("quote do ~~(+ a 1 :yeo \"breo\") end"),
+  [{do_identifier,{1,1,"quote"},quote},
+     {do,{1,7,nil}},
+     {sequence_begin,{1,10,nil},'~~('},
+     {sequence_token,{1,13,nil},'+'},
+     {sequence_token,{1,15,nil},a},
+     {sequence_number,{1,17,nil},1},
+     {sequence_atom,{1,19,nil},yeo},
+     {sequence_string,{1,24,nil},"breo"},
+     {sequence_end,{1,30,nil},')'},
+     {'end',{1,32,nil}}] = tokenize("quote do ~~(+ a 1 :yeo \"breo\") end"),
   ok.
 
 %% Test basic sequence operator tokenization
@@ -189,14 +188,13 @@ sequence_keywords_test() ->
   ok.
 
 %% Test multiple sequence literals - normal tokens between sequences
-sequence_multiple_test() ->
-  % Normal ++ operator between sequence literals - simplified test since tokenizer processes sequences individually
-  Tokens = tokenize("~~(a)"),
-
+sequence_multline_test() ->
   % Expected: sequence_begin, seq_token, sequence_end
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, a},
-   {sequence_end, {1, 5, nil}, ')'}] = Tokens,
+   {eol,{_,_,_}},
+   {sequence_token, {2, 1, nil}, a},
+   {eol,{_,_,_}},
+   {sequence_end, {3, 1, nil}, ')'} ] = tokenize("~~(\na\n)"),
   ok.
 
 %% Test empty sequence literal
