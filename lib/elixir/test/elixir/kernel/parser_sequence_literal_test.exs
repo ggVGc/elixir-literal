@@ -264,6 +264,12 @@ defmodule Kernel.ParserSequenceLiteralTest do
                 [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil}]}
     end
 
+    test "multiline" do
+      # Multiline sequence literals should work correctly
+      assert parse!("~~(\na\n)") ==
+               {:sequence_literal, [line: 1], [{:a, [line: 2], nil}]}
+    end
+
     test "long sequences work" do
       # Test longer sequences
       assert parse!("~~(a b c d e f g h i j k l m n o p)") ==
