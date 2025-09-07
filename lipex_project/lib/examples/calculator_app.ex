@@ -14,15 +14,13 @@ defmodule Lipex.Examples.CalculatorApp do
     (def abs_val (x) (* x -1))
   )
 
-  # deflipex ~~((def power (base, exp) :when (== exp 0) 1)
-  #   (def power (base, exp) :when (== exp 1) base)
-  #   (def power (base, exp) :when (== exp 0)
-  #     (* base
-  #       (power base (- exp 1)))))
-
-  def power(base, exp) when exp == 0, do: 1
-  def power(base, exp) when exp == 1, do: base
-  def power(base, exp) when exp > 1, do: base * power(base, exp - 1)
+  deflipex ~~(
+  (def power (base, exp) when (== exp 0) 1)
+    (def power (base exp) when (== exp 1) base)
+    (def power (base exp) when (> exp 1)
+      (* base
+        (power base (- exp 1))))
+  )
 
   # Calculator state
   defstruct variables: %{}, history: [], running: true
