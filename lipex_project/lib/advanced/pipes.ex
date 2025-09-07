@@ -165,8 +165,8 @@ defmodule Lipex.Advanced.Pipes do
       # Generate proper module call using dot notation (no arguments, pipe will provide them)
       {{:., [], [module_alias, func_atom]}, [], []}
     else
-      # Regular function reference
-      {func, [], []}
+      # Regular local function reference - use __MODULE__ for proper scoping
+      {{:., [], [{:__MODULE__, [], Elixir}, func]}, [], []}
     end
   end
 
@@ -187,8 +187,29 @@ defmodule Lipex.Advanced.Pipes do
       # Generate proper module call using dot notation (no arguments, pipe will provide them)
       {{:., [], [module_alias, func_atom]}, [], []}
     else
-      # Regular function reference
-      {func, [], []}
+      # Regular local function reference - use __MODULE__ for proper scoping
+      {{:., [], [{:__MODULE__, [], Elixir}, func]}, [], []}
+    end
+  end
+
+  defp eval_pipe_operation({func_atom, _, nil}) when is_atom(func_atom) do
+    # Handle AST variable nodes - check if it's a module function
+    string = Atom.to_string(func_atom)
+
+    if String.contains?(string, ".") do
+      # This is a module.function call - create proper module alias
+      parts = String.split(string, ".")
+      {module_parts, [func_name]} = Enum.split(parts, -1)
+
+      # Convert module parts to proper module alias
+      module_atoms = Enum.map(module_parts, &String.to_atom/1)
+      module_alias = {:__aliases__, [], module_atoms}
+      func_atom_name = String.to_atom(func_name)
+
+      {{:., [], [module_alias, func_atom_name]}, [], []}
+    else
+      # Regular local function reference - use __MODULE__ for proper scoping
+      {{:., [], [{:__MODULE__, [], Elixir}, func_atom]}, [], []}
     end
   end
 
