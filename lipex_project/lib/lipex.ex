@@ -57,6 +57,8 @@ defmodule Lipex do
     Lipex.Core.PatternMatching,
     # Control flow - handle if, cond, case before other evaluations
     Lipex.Core.ControlFlow,
+    # Pipeline operations - handle before function calls to intercept |>
+    Lipex.Advanced.Pipes,
     # Mathematical operations
     Lipex.Core.Arithmetic,
     # Logical operations and type checks
@@ -66,7 +68,6 @@ defmodule Lipex do
 
     # TODO: Add these modules as they get migrated:
     # Lipex.Functions.Anonymous,
-    # Lipex.Advanced.Pipes,
     # Lipex.Advanced.Comprehensions,
     # Lipex.Concurrency.Processes,
     # Lipex.ErrorHandling.TryRescue
