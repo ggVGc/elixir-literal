@@ -67,6 +67,19 @@ unquoted_atom_test() ->
 quoted_atom_test() ->
   [{atom_quoted, {1, 1, $"}, 'foo bar'}] = tokenize(":\"foo bar\"").
 
+
+quoted_case_test() ->
+  [{do_identifier,{1,1,"quote"},quote},
+     {do,{1,7,nil}},
+     {identifier,{1,10,"case"},'case'},
+     {atom,{1,15,"test"},test},
+     {do,{1,21,nil}},
+     {atom,{1,24,"ok"},ok},
+     {stab_op,{1,28,nil},'->'},
+     {atom,{1,31,"success"},success},
+     {'end',{1,40,nil}},
+     {'end',{1,44,nil}}] = tokenize("quote do case :test do :ok -> :success end end").
+
 oversized_atom_test() ->
   OversizedAtom = string:copies("a", 256),
   {[{line, 1}, {column, 1}], "atom length must be less than system limit: ", OversizedAtom} =

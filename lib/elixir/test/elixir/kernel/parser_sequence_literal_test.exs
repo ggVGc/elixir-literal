@@ -33,14 +33,35 @@ defmodule Kernel.ParserSequenceLiteralTest do
              result
   end
 
-  test "sequence literals work within quote blocks" do
-    # Quote block parsing should work and wrap sequence_literal in quote AST
-    result = parse!("quote do ~~(+ 1 2 3) end")
+  describe "sequence literals work within quote blocks" do
+    test "in a simple situation" do
+      # Quote block parsing should work and wrap sequence_literal in quote AST
+      result = parse!("quote do ~~(+ 1 2 3) end")
 
-    expected_inner =
-      {:sequence_literal, [line: 1], [{:sequence_prefix, {:+, [line: 1], nil}, [1, 2, 3]}]}
+      expected_inner =
+        {:sequence_literal, [line: 1], [{:sequence_prefix, {:+, [line: 1], nil}, [1, 2, 3]}]}
 
-    assert {:quote, [line: 1], [[do: ^expected_inner]]} = result
+      assert {:quote, [line: 1], [[do: ^expected_inner]]} = result
+    end
+
+    test "in case expression" do
+      expected_inner = {
+        :sequence_literal,
+        [line: 1],
+        [{:sequence_prefix, {:case, [line: 1], nil}, [1, 2, 3]}]
+      }
+
+      assert {:quote, [line: 1], [[do: ^expected_inner]]} = parse!("quote do ~~(case 1 2 3) end")
+
+      elixir_equivalent =
+        quote do
+          case 1 do
+            2 -> 3
+          end
+        end
+
+      assert {:case, [], [1, [do: [{:->, [], [[2], 3]}]]]} == elixir_equivalent
+    end
   end
 
   describe "sequence literals with simplified tokenizer" do
