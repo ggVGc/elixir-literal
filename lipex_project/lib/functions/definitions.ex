@@ -159,7 +159,7 @@ defmodule Lipex.Functions.Definitions do
     {guard, actual_body} =
       case body_parts do
         [:when, guard_expr | body] ->
-          {Lipex.eval_lipex_expr(guard_expr), body}
+          {convert_to_ast(guard_expr), body}
 
         body ->
           {nil, body}
@@ -207,20 +207,84 @@ defmodule Lipex.Functions.Definitions do
 
   # Parse function arguments and body
   defp parse_function_parts([{:sequence_paren, _, args} | body]) do
-    {args, body}
+    # Check for inline when syntax: (args) when guard_expr body
+    case body do
+      [:when, guard_expr | actual_body] ->
+        {args, [:when, guard_expr | actual_body]}
+      
+      [{:when, _, nil} | rest] ->
+        # Handle when as AST node
+        case rest do
+          [guard_expr | actual_body] ->
+            {args, [:when, guard_expr | actual_body]}
+          _ ->
+            {args, body}
+        end
+      
+      _ ->
+        {args, body}
+    end
   end
 
   defp parse_function_parts([{:sequence_block, _, :"()", args} | body]) do
-    {args, body}
+    # Check for inline when syntax: (args) when guard_expr body
+    case body do
+      [:when, guard_expr | actual_body] ->
+        {args, [:when, guard_expr | actual_body]}
+      
+      [{:when, _, nil} | rest] ->
+        # Handle when as AST node
+        case rest do
+          [guard_expr | actual_body] ->
+            {args, [:when, guard_expr | actual_body]}
+          _ ->
+            {args, body}
+        end
+      
+      _ ->
+        {args, body}
+    end
   end
 
   defp parse_function_parts([args | body]) when is_list(args) do
-    {args, body}
+    # Check for inline when syntax when args is a plain list
+    case body do
+      [:when, guard_expr | actual_body] ->
+        {args, [:when, guard_expr | actual_body]}
+      
+      [{:when, _, nil} | rest] ->
+        # Handle when as AST node
+        case rest do
+          [guard_expr | actual_body] ->
+            {args, [:when, guard_expr | actual_body]}
+          _ ->
+            {args, body}
+        end
+      
+      _ ->
+        {args, body}
+    end
   end
 
   defp parse_function_parts(parts) do
     # If no explicit args list, treat as zero-arity function
-    {[], parts}
+    # Check if first element is 'when' for zero-arity functions with guards
+    case parts do
+      [:when, guard_expr | actual_body] ->
+        {[], [:when, guard_expr | actual_body]}
+      
+      [{:when, _, nil} | rest] ->
+        # Handle when as AST node
+        case rest do
+          [guard_expr | actual_body] ->
+            {[], [:when, guard_expr | actual_body]}
+          _ ->
+            {[], parts}
+        end
+      
+      _ ->
+        {[], parts}
+    end
   end
 
   # Convert argument list to AST
