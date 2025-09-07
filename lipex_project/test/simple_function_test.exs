@@ -36,4 +36,55 @@ defmodule SimpleFunctionTest do
     assert factorial(5) == 120
     assert factorial(6) == 720
   end
+
+  test "only valid elixir variable names accepted in def parameter list" do
+    # Test case 1: comma should be rejected
+    lipex_expr_comma = {:sequence_block, [], :"()", [
+      {:sequence_token, [], :def},
+      {:sequence_token, [], :test_func}, 
+      {:sequence_paren, [], [
+        {:sequence_token, [], :_a},
+        {:sequence_token, [], :","},  # Invalid: comma
+        {:sequence_token, [], :_b}
+      ]},
+      {:sequence_token, [], :body}
+    ]}
+    
+    assert_raise ArgumentError, ~r/Invalid parameter name/, fn ->
+      Lipex.eval_lipex_expr(lipex_expr_comma)
+    end
+    
+    # Test case 2: operators should be rejected  
+    lipex_expr_operator = {:sequence_block, [], :"()", [
+      {:sequence_token, [], :def},
+      {:sequence_token, [], :test_func2}, 
+      {:sequence_paren, [], [
+        {:sequence_token, [], :x},
+        {:sequence_token, [], :+}  # Invalid: operator
+      ]},
+      {:sequence_token, [], :body}
+    ]}
+    
+    assert_raise ArgumentError, ~r/Invalid parameter name/, fn ->
+      Lipex.eval_lipex_expr(lipex_expr_operator)
+    end
+    
+    # Test case 3: valid variable names should work (including reserved keywords)
+    lipex_expr_valid = {:sequence_block, [], :"()", [
+      {:sequence_token, [], :def},
+      {:sequence_token, [], :test_func3}, 
+      {:sequence_paren, [], [
+        {:sequence_token, [], :x},
+        {:sequence_token, [], :_valid_var},
+        {:sequence_token, [], :and},  # Reserved keywords are OK as variable names
+        {:sequence_token, [], :when}
+      ]},
+      {:sequence_token, [], :body}
+    ]}
+    
+    # This should work - no assertion, just shouldn't raise
+    result = Lipex.eval_lipex_expr(lipex_expr_valid)
+    # Verify it produces a function definition AST
+    assert match?({:def, _, [{{:sequence_token, _, :test_func3}, _, [_, _, _, _]}, _]}, result)
+  end
 end

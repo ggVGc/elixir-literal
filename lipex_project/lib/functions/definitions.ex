@@ -295,6 +295,13 @@ defmodule Lipex.Functions.Definitions do
   defp convert_args(args), do: [convert_arg(args)]
 
   defp convert_arg(arg) when is_atom(arg) do
+    # Validate that the atom is a valid Elixir variable name
+    arg_string = Atom.to_string(arg)
+    
+    unless valid_elixir_variable_name?(arg_string) do
+      raise ArgumentError, "Invalid parameter name: '#{arg}' is not a valid Elixir variable name"
+    end
+    
     Lipex.lipex_to_elixir_var(arg)
   end
 
@@ -314,6 +321,13 @@ defmodule Lipex.Functions.Definitions do
   defp convert_arg({:sequence_token, meta, arg_name}) when is_atom(arg_name) do
     # Handle sequence_token arguments from sequence_block
     # This is how variables appear within (...) in sequence literals
+    # Validate that the atom is a valid Elixir variable name
+    arg_string = Atom.to_string(arg_name)
+    
+    unless valid_elixir_variable_name?(arg_string) do
+      raise ArgumentError, "Invalid parameter name: '#{arg_name}' is not a valid Elixir variable name"
+    end
+    
     {arg_name, normalize_meta(meta), nil}
   end
 
@@ -393,5 +407,18 @@ defmodule Lipex.Functions.Definitions do
 
   defp normalize_meta(_) do
     []
+  end
+  
+  # Helper function to validate Elixir variable names
+  defp valid_elixir_variable_name?(name) do
+    # Elixir variable names must:
+    # - Start with lowercase letter or underscore
+    # - Contain only letters, digits, and underscores  
+    # - Can optionally end with ? or !
+    case name do
+      "_" -> true  # Single underscore is valid
+      _ ->
+        Regex.match?(~r/^[a-z_][a-zA-Z0-9_]*[?!]?$/, name)
+    end
   end
 end
