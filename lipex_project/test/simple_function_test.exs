@@ -15,4 +15,12 @@ defmodule SimpleFunctionTest do
     result = deflipex ~~((abs_val (- 5 (double 5))))
     assert result == 5
   end
+
+  deflipex ~~((def when_over_5 (a) when (> a 5) true))
+  deflipex ~~((def when_over_5 (_) false))
+
+  test "when clauses" do
+    assert when_over_5(6) == true
+    assert when_over_5(2) == false
+  end
 end
