@@ -87,4 +87,15 @@ defmodule SimpleFunctionTest do
     # Verify it produces a function definition AST
     assert match?({:def, _, [{{:sequence_token, _, :test_func3}, _, [_, _, _, _]}, _]}, result)
   end
+
+  test "case expression" do
+    result = deflipex ~~(
+      (= a 123)
+      (case a
+        2 :nope
+        _ :yep)
+    )
+
+    assert result == :yep
+  end
 end
