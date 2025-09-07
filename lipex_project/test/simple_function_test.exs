@@ -23,4 +23,17 @@ defmodule SimpleFunctionTest do
     assert when_over_5(6) == true
     assert when_over_5(2) == false
   end
+
+  # Define recursive factorial function
+  deflipex ~~(
+    (def factorial (0) 1)
+    (def factorial (n) (* n (factorial (- n 1))))
+  )
+
+  test "recursive function" do
+    assert factorial(0) == 1
+    assert factorial(1) == 1
+    assert factorial(5) == 120
+    assert factorial(6) == 720
+  end
 end
