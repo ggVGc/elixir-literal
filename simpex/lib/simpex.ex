@@ -28,139 +28,94 @@ defmodule Simpex do
   """
   def eval_simpex_expr(expr) do
     case expr do
-      # Handle literals directly
-      number when is_number(number) -> number
-      string when is_binary(string) -> string
-      true -> true
-      false -> false
-      nil -> nil
+      # Handle literals directly - let Elixir handle basic types
+      literal when is_number(literal) or is_binary(literal) or literal in [true, false, nil] ->
+        literal
+
       atom when is_atom(atom) -> atom
 
-      # Handle sequence tokens from tokenizer
-      {:sequence_number, _meta, value} -> value
-      {:sequence_atom, _meta, value} -> value
-      {:sequence_string, _meta, value} -> 
-        if is_list(value), do: List.to_string(value), else: value
-      {:sequence_chars, _meta, value} -> value
-      {:sequence_token, meta, value} ->
-        case value do
-          nil -> nil
-          true -> true
-          false -> false
-          _ -> {value, meta, nil}
-        end
-
-      # Handle boolean literals first (before generic variables)
+      # Handle boolean and nil literals in AST form  
       {true, _meta, nil} -> true
       {false, _meta, nil} -> false
       {nil, _meta, nil} -> nil
-
-      # Handle variables  
-      {var, meta, nil} when is_atom(var) and var not in [nil, true, false] ->
+      
+      # Handle Elixir AST variables (excluding special literals)
+      {var, meta, nil} when is_atom(var) and var not in [true, false, nil] ->
         {var, meta, nil}
 
-      # Handle sequence_prefix - the main expression form
+      # Handle structured expressions - sequence_prefix for def, sequence_paren for calls
       {:sequence_prefix, op_node, args} ->
         eval_function_expr(op_node, args)
 
-      # Handle sequence_paren
-      {:sequence_paren, _meta, [inner_expr]} ->
-        eval_simpex_expr(inner_expr)
-      
-      # Handle sequence_paren with function calls like (func arg1 arg2)
-      {:sequence_paren, _meta, [func_node | args]} when args != [] ->
-        func_name = extract_atom(func_node)
-        elixir_args = Enum.map(args, &eval_simpex_expr/1)
-        
-        quote do
-          unquote(func_name)(unquote_splicing(elixir_args))
+      # Handle function calls: (func arg1 arg2...)
+      {:sequence_paren, _meta, [func_node | args]} ->
+        case func_node do
+          # Handle nested sequence_prefix in paren (like function definitions)
+          {:sequence_prefix, op_node, nested_args} ->
+            eval_function_expr(op_node, nested_args)
+          # Handle direct function calls
+          _ ->
+            func_name = extract_atom(func_node)
+            elixir_args = Enum.map(args, &eval_simpex_expr/1)
+            
+            quote do
+              unquote(func_name)(unquote_splicing(elixir_args))
+            end
         end
 
-      # Handle sequence_block for parameter lists
-      {:sequence_block, _meta, :"()", contents} ->
-        # This is likely a parameter list or grouped expression
-        case contents do
-          [single_expr] -> eval_simpex_expr(single_expr)
-          _ -> contents  # Return as-is for parameter parsing
-        end
+      # Handle parameter blocks - return as-is for parameter parsing
+      {:sequence_block, _meta, :"()", contents} -> contents
 
       _ ->
         raise "Unsupported Simpex expression: #{inspect(expr)}"
     end
   end
 
-  defp eval_function_expr(op_node, args) do
-    case op_node do
-      # Function definition: (def name (params) body) - def parsed as bare atom
-      {:def, _meta, nil} ->
-        case args do
-          [name_node, params_node, body_node] ->
-            name = extract_atom(name_node)
-            params = extract_params(params_node)
-            body = eval_simpex_expr(body_node)
-            
-            quote do
-              def unquote(name)(unquote_splicing(params)) do
-                unquote(body)
-              end
-            end
-
-          _ ->
-            raise "Invalid def syntax. Expected: (def name (params) body). Got: #{inspect(args)}"
-        end
-
-      # Function call: (function-name arg1 arg2 ...)
-      func_name_node ->
-        func_name = extract_atom(func_name_node)
-        elixir_args = Enum.map(args, &eval_simpex_expr/1)
-        
-        quote do
-          unquote(func_name)(unquote_splicing(elixir_args))
-        end
+  # Simplified function expression handling
+  defp eval_function_expr({:def, _meta, nil}, [name_node, params_node, body_node]) do
+    name = extract_atom(name_node)
+    params = extract_params(params_node)
+    body = eval_simpex_expr(body_node)
+    
+    quote do
+      def unquote(name)(unquote_splicing(params)) do
+        unquote(body)
+      end
     end
   end
 
-  defp extract_atom({:sequence_token, _meta, atom}) when is_atom(atom), do: atom
-  defp extract_atom({:sequence_atom, _meta, atom}) when is_atom(atom), do: atom
+  defp eval_function_expr(func_name_node, args) do
+    func_name = extract_atom(func_name_node)
+    elixir_args = Enum.map(args, &eval_simpex_expr/1)
+    
+    quote do
+      unquote(func_name)(unquote_splicing(elixir_args))
+    end
+  end
+
+  # Simplified atom extraction - let Elixir handle most cases
   defp extract_atom({atom, _meta, nil}) when is_atom(atom), do: atom
   defp extract_atom(atom) when is_atom(atom), do: atom
   defp extract_atom(expr), do: raise("Expected atom, got: #{inspect(expr)}")
 
-  defp extract_params({:sequence_paren, _meta, [inner]}) do
-    extract_params(inner)
-  end
+  # Parameter extraction with minimal sequence token handling
   defp extract_params({:sequence_block, _meta, :"()", params}) do
-    Enum.map(params, &extract_param/1)
-  end
-  defp extract_params({:sequence_prefix, _op, params}) do
-    Enum.map(params, &extract_param/1)
+    Enum.map(params, &to_elixir_param/1)
   end
   defp extract_params([]), do: []
   defp extract_params(params) when is_list(params) do
-    Enum.map(params, &extract_param/1)
+    Enum.map(params, &to_elixir_param/1)
   end
   defp extract_params(_), do: []
 
-  defp extract_param({:sequence_token, meta, name}) when is_atom(name) do
-    {name, normalize_meta(meta), nil}
+  # Convert sequence tokens to proper Elixir AST for parameters
+  defp to_elixir_param({:sequence_token, {line, column, _}, name}) when is_atom(name) do
+    {name, [line: line, column: column], nil}
   end
-  defp extract_param({:sequence_atom, meta, name}) when is_atom(name) do
-    {name, normalize_meta(meta), nil}
+  defp to_elixir_param({name, meta, nil}) when is_atom(name) do
+    {name, meta, nil}
   end
-  defp extract_param({name, meta, nil}) when is_atom(name) do
-    {name, normalize_meta(meta), nil}
-  end
-  defp extract_param(name) when is_atom(name) do
+  defp to_elixir_param(name) when is_atom(name) do
     {name, [], nil}
   end
-  defp extract_param(expr) do
-    raise "Expected parameter name, got: #{inspect(expr)}"
-  end
-
-  # Convert tuple metadata format to keyword list format
-  defp normalize_meta({line, column, _}) when is_integer(line) and is_integer(column) do
-    [line: line, column: column]
-  end
-  defp normalize_meta(meta) when is_list(meta), do: meta
-  defp normalize_meta(_), do: []
 end
