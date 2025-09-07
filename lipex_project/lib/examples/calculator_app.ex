@@ -15,7 +15,7 @@ defmodule Lipex.Examples.CalculatorApp do
   )
 
   deflipex ~~(
-  (def power (base, exp) when (== exp 0) 1)
+  (def power (_base exp) when (== exp 0) 1)
     (def power (base exp) when (== exp 1) base)
     (def power (base exp) when (> exp 1)
       (* base
