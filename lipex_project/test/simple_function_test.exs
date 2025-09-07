@@ -103,4 +103,15 @@ defmodule SimpleFunctionTest do
     deflipex ~~((= result (String.upcase "a")))
     assert result == "A"
   end
+
+  test "pipeline" do
+    deflipex ~~((= result (|> "a" String.upcase)))
+    assert result == "A"
+
+    deflipex ~~((= result (|> "b" (String.contains? "a"))))
+    assert result == false
+
+    deflipex ~~((= result (|> "b" String.upcase (String.contains? "B"))))
+    assert result == true
+  end
 end
