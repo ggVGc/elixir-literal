@@ -19,8 +19,20 @@ defmodule Simpex do
   @doc """
   Main macro for defining and evaluating Simpex expressions.
   """
+  # Handle empty sequence literal
+  defmacro defsimpex({:sequence_literal, _meta, []}) do
+    nil
+  end
+
+  # Handle single expression
   defmacro defsimpex({:sequence_literal, _meta, [expr]}) do
     eval_simpex_expr(expr)
+  end
+
+  # Handle multiple expressions
+  defmacro defsimpex({:sequence_literal, _meta, exprs}) when is_list(exprs) do
+    elixir_exprs = Enum.map(exprs, &eval_simpex_expr/1)
+    {:__block__, [], elixir_exprs}
   end
 
   @doc """
