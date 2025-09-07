@@ -97,5 +97,16 @@ defmodule SimpexTest do
       result2 = defsimpex ~~((pick_nth {3 6} 1))
       assert result2 == 6
     end
+
+    test "assignment with pattern matching works" do
+      defsimpex ~~((= a 123))
+      assert a == 123
+
+      defsimpex ~~((= [_fst x] [50 99]))
+      assert x == 99
+
+      defsimpex ~~((= {fst _} {50 99}))
+      assert fst == 50
+    end
   end
 end
