@@ -19,6 +19,7 @@ defmodule SimpexTest do
   defsimpex ~~((def get_bool () true))
   defsimpex ~~((def echo (value) value))
   defsimpex ~~((def pick_first (a _b _c) a))
+  defsimpex ~~((def pick_nth ({a _b} 0) a))
 
   describe "data types" do
     test "numbers work" do
@@ -69,6 +70,11 @@ defmodule SimpexTest do
     test "calling with multiple arguments" do
       result = defsimpex ~~((pick_first 1 2 3))
       assert result == 1
+    end
+
+    test "calling with tuple pattern matching" do
+      result = defsimpex ~~((pick_nth {5 10} 0))
+      assert result == 5
     end
   end
 end
