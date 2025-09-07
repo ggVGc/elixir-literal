@@ -20,6 +20,9 @@ defmodule SimpexTest do
   defsimpex ~~((def echo (value) value))
   defsimpex ~~((def pick_first (a _b _c) a))
   defsimpex ~~((def pick_nth ({a _b} 0) a))
+  defsimpex ~~((def pick_nth ({_a b} 1) b))
+  defsimpex ~~((def pick_nth ([a _b] 0) a))
+  defsimpex ~~((def pick_nth ([_ b] 1) b))
 
   describe "data types" do
     test "numbers work" do
@@ -75,6 +78,14 @@ defmodule SimpexTest do
     test "calling with tuple pattern matching" do
       result = defsimpex ~~((pick_nth {5 10} 0))
       assert result == 5
+    end
+
+    test "calling with list pattern matching" do
+      result1 = defsimpex ~~((pick_nth [7 14] 0))
+      assert result1 == 7
+      
+      result2 = defsimpex ~~((pick_nth [7 14] 1))
+      assert result2 == 14
     end
   end
 end

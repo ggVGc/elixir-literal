@@ -90,6 +90,10 @@ defmodule Simpex do
         elixir_items = Enum.map(items, &eval_simpex_expr/1)
         {:{}, [], elixir_items}
 
+      # Handle list syntax [a b c] -> [a, b, c]
+      {:sequence_block, _meta, :"[]", items} ->
+        Enum.map(items, &eval_simpex_expr/1)
+
       # Also handle sequence_brace if it appears
       {:sequence_brace, _meta, items} ->
         elixir_items = Enum.map(items, &eval_simpex_expr/1)
