@@ -34,11 +34,30 @@ defmodule Simpex do
 
       atom when is_atom(atom) -> atom
 
+      # Handle sequence numbers  
+      {:sequence_number, _meta, value} -> value
+
       # Handle boolean and nil literals in AST form  
       {true, _meta, nil} -> true
       {false, _meta, nil} -> false
       {nil, _meta, nil} -> nil
       
+      # Handle sequence tokens that represent variables
+      {:sequence_token, meta, name} when is_atom(name) ->
+        # Convert to proper Elixir AST variable
+        case name do
+          n when n in [true, false, nil] -> n
+          _ -> 
+            # Normalize metadata format
+            normalized_meta = case meta do
+              {line, column, _} when is_integer(line) and is_integer(column) ->
+                [line: line, column: column]
+              m when is_list(m) -> m
+              _ -> []
+            end
+            {name, normalized_meta, nil}
+        end
+
       # Handle Elixir AST variables (excluding special literals)
       {var, meta, nil} when is_atom(var) and var not in [true, false, nil] ->
         {var, meta, nil}
@@ -65,6 +84,16 @@ defmodule Simpex do
 
       # Handle parameter blocks - return as-is for parameter parsing
       {:sequence_block, _meta, :"()", contents} -> contents
+      
+      # Handle tuple syntax {a b c} -> {a, b, c}
+      {:sequence_block, _meta, :{}, items} ->
+        elixir_items = Enum.map(items, &eval_simpex_expr/1)
+        {:{}, [], elixir_items}
+
+      # Also handle sequence_brace if it appears
+      {:sequence_brace, _meta, items} ->
+        elixir_items = Enum.map(items, &eval_simpex_expr/1)
+        {:{}, [], elixir_items}
 
       _ ->
         raise "Unsupported Simpex expression: #{inspect(expr)}"
@@ -117,5 +146,9 @@ defmodule Simpex do
   end
   defp to_elixir_param(name) when is_atom(name) do
     {name, [], nil}
+  end
+  # For complex patterns (tuples, etc.), use the main expression evaluator
+  defp to_elixir_param(expr) do
+    eval_simpex_expr(expr)
   end
 end
