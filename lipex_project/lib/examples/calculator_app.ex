@@ -53,7 +53,7 @@ defmodule Lipex.Examples.CalculatorApp do
 
   defp calculator_loop(state) do
     deflipex ~~(
-      (= input (String.trim (IO.gets "> ")))
+      (= input (|> "> " IO.gets String.trim))
     )
 
     case input do
