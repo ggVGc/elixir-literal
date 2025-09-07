@@ -67,8 +67,8 @@ defmodule Lipex.Functions.Calls do
         unquote(module_alias).unquote(func_atom)(unquote_splicing(elixir_args))
       end
     else
-      # Regular local function call
-      quote do: __MODULE__.unquote(function)(unquote_splicing(elixir_args))
+      # Regular function call - let Elixir resolve it
+      quote do: unquote(function)(unquote_splicing(elixir_args))
     end
   end
 
@@ -93,8 +93,8 @@ defmodule Lipex.Functions.Calls do
         unquote(module_alias).unquote(func_atom)(unquote_splicing(elixir_args))
       end
     else
-      # Regular local function call
-      quote do: __MODULE__.unquote(function)(unquote_splicing(elixir_args))
+      # Regular function call - let Elixir resolve it
+      quote do: unquote(function)(unquote_splicing(elixir_args))
     end
   end
 
@@ -126,8 +126,8 @@ defmodule Lipex.Functions.Calls do
             unquote(module_alias).unquote(func_atom)(unquote_splicing(elixir_args))
           end
         else
-          # Regular local function call
-          quote do: __MODULE__.unquote(module_func)(unquote_splicing(elixir_args))
+          # Regular function call - let Elixir resolve it
+          quote do: unquote(module_func)(unquote_splicing(elixir_args))
         end
 
       # Function variable or complex expression
