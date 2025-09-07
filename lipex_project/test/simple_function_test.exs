@@ -100,13 +100,14 @@ defmodule SimpleFunctionTest do
   end
 
   test "assign function result" do
+    assert "A" == deflipex ~~((String.upcase "a"))
+
     deflipex ~~((= result (String.upcase "a")))
     assert result == "A"
   end
 
   test "pipeline" do
-    deflipex ~~((= result (|> "a" String.upcase)))
-    assert result == "A"
+    assert "A" == deflipex ~~((|> "a" String.upcase))
 
     deflipex ~~((= result (|> "b" (String.contains? "a"))))
     assert result == false
