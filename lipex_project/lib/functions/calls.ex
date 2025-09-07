@@ -47,19 +47,55 @@ defmodule Lipex.Functions.Calls do
   """
   def eval_function_call({:sequence_block, _meta, :"()", [{:sequence_token, _, function} | args]})
       when is_atom(function) do
-    elixir_function_name = function
     elixir_args = Enum.map(args, &Lipex.eval_lipex_expr/1)
+    
+    # Check if this is a module function call (contains dot)
+    string = Atom.to_string(function)
+    
+    if String.contains?(string, ".") do
+      # This is a module.function call - create proper module alias
+      parts = String.split(string, ".")
+      {module_parts, [func_name]} = Enum.split(parts, -1)
 
-    # For local calls, use module-scoped calls to support recursion
-    quote do: __MODULE__.unquote(elixir_function_name)(unquote_splicing(elixir_args))
+      # Convert module parts to proper module alias
+      module_atoms = Enum.map(module_parts, &String.to_atom/1)
+      module_alias = {:__aliases__, [], module_atoms}
+      func_atom = String.to_atom(func_name)
+
+      # Generate proper module call using dot notation
+      quote do
+        unquote(module_alias).unquote(func_atom)(unquote_splicing(elixir_args))
+      end
+    else
+      # Regular local function call
+      quote do: __MODULE__.unquote(function)(unquote_splicing(elixir_args))
+    end
   end
 
   def eval_function_call({:sequence_prefix, _meta, [function | args]}) when is_atom(function) do
-    elixir_function_name = function
     elixir_args = Enum.map(args, &Lipex.eval_lipex_expr/1)
+    
+    # Check if this is a module function call (contains dot)
+    string = Atom.to_string(function)
+    
+    if String.contains?(string, ".") do
+      # This is a module.function call - create proper module alias
+      parts = String.split(string, ".")
+      {module_parts, [func_name]} = Enum.split(parts, -1)
 
-    # For local calls, use module-scoped calls to support recursion
-    quote do: __MODULE__.unquote(elixir_function_name)(unquote_splicing(elixir_args))
+      # Convert module parts to proper module alias
+      module_atoms = Enum.map(module_parts, &String.to_atom/1)
+      module_alias = {:__aliases__, [], module_atoms}
+      func_atom = String.to_atom(func_name)
+
+      # Generate proper module call using dot notation
+      quote do
+        unquote(module_alias).unquote(func_atom)(unquote_splicing(elixir_args))
+      end
+    else
+      # Regular local function call
+      quote do: __MODULE__.unquote(function)(unquote_splicing(elixir_args))
+    end
   end
 
   def eval_function_call({:sequence_paren, _meta, [function | args]}) do
