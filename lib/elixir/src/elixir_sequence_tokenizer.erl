@@ -76,8 +76,12 @@ tokenize(String, Line, Column, Scope, Tokens) ->
     [$: | Rest] ->
       tokenize_atom(Rest, Line, Column + 1, Scope, Tokens);
 
-    % Handle numbers
+    % Handle numbers (including negative numbers)
     [H | _] when ?is_digit(H) ->
+      tokenize_number(String, Line, Column, Scope, Tokens);
+    
+    % Handle minus sign followed by digit (negative number)
+    [$-, D | _] when ?is_digit(D) ->
       tokenize_number(String, Line, Column, Scope, Tokens);
 
     % Handle punctuation
@@ -196,8 +200,48 @@ tokenize_number(String, Line, Column, Scope, Tokens) ->
       {error, Reason, String, [], Tokens}
   end.
 
-%% Extract number (integer or float)
+%% Extract number (integer or float, including negative)
+extract_number([$- | Rest], Line, Column) ->
+  % Handle negative numbers
+  case extract_integer(Rest, []) of
+    {ok, IntStr, RestAfterInt} ->
+      case RestAfterInt of
+        [$. | DecimalRest] ->
+          % Potential negative float
+          case extract_integer(DecimalRest, []) of
+            {ok, FracStr, FinalRest} ->
+              FullStr = "-" ++ IntStr ++ "." ++ FracStr,
+              case catch list_to_float(FullStr) of
+                {'EXIT', _} ->
+                  {error, {?LOC(Line, Column), "invalid float: ", FullStr}};
+                Float ->
+                  {ok, Float, FinalRest, length(FullStr)}
+              end;
+            _ ->
+              % Not a valid float, treat as negative integer
+              NegIntStr = "-" ++ IntStr,
+              case catch list_to_integer(NegIntStr) of
+                {'EXIT', _} ->
+                  {error, {?LOC(Line, Column), "invalid integer: ", NegIntStr}};
+                Int ->
+                  {ok, Int, [$. | DecimalRest], length(NegIntStr)}
+              end
+          end;
+        _ ->
+          % Negative integer
+          NegIntStr = "-" ++ IntStr,
+          case catch list_to_integer(NegIntStr) of
+            {'EXIT', _} ->
+              {error, {?LOC(Line, Column), "invalid integer: ", NegIntStr}};
+            Int ->
+              {ok, Int, RestAfterInt, length(NegIntStr)}
+          end
+      end;
+    {error, Reason} ->
+      {error, Reason}
+  end;
 extract_number(String, Line, Column) ->
+  % Handle positive numbers
   case extract_integer(String, []) of
     {ok, IntStr, [$. | Rest]} ->
       % Potential float
@@ -360,8 +404,18 @@ tokenize_single_item(String, Line, Column, Scope) ->
           end
       end;
     
-    % Handle numbers
+    % Handle numbers (including negative)
     [H | _] when ?is_digit(H) ->
+      case extract_number(String, Line, Column) of
+        {ok, Value, Rest, Length} ->
+          Token = {sequence_number, {Line, Column, nil}, Value},
+          {ok, Token, Rest, Line, Column + Length, Scope};
+        {error, Reason} ->
+          {error, Reason}
+      end;
+    
+    % Handle minus sign followed by digit (negative number)
+    [$-, D | _] when ?is_digit(D) ->
       case extract_number(String, Line, Column) of
         {ok, Value, Rest, Length} ->
           Token = {sequence_number, {Line, Column, nil}, Value},

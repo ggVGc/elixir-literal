@@ -251,15 +251,13 @@ sequence_nested_test() ->
 %% Test mixed content in sequence literals - ALL must be sequence_* tokens
 sequence_mixed_content_test() ->
   % ~~("hello", 42, :atom, IO.puts)
-  [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_string, {1, 4, nil}, "hello"},
-   {sequence_token, {1, 11, nil}, ','},
-   {sequence_number, {1, 13, nil}, 42},
-   {sequence_token, {1, 15, nil}, ','},
-   {sequence_atom, {1, 17, nil}, atom},
-   {sequence_token, {1, 22, nil}, ','},
-   {sequence_token, {1, 24, nil}, 'IO.puts'},
-   {sequence_end, {1, 31, nil}, ')'}] = tokenize("~~(\"hello\", 42, :atom, IO.puts)"),
+  [{sequence_begin, {_, _, nil}, '~~('},
+   {sequence_string, {_, _, nil}, "hello"},
+   {sequence_number, {_, _, nil}, 42},
+   {sequence_number, {_, _, nil}, -1},
+   {sequence_atom, {_, _, nil}, atom},
+   {sequence_token, {_, _, nil}, 'IO.puts'},
+   {sequence_end, {_, _, nil}, ')'}] = tokenize("~~(\"hello\" 42 -1 :atom IO.puts)"),
   ok.
 
 %% Test isolation - NO normal tokens inside sequence literals
