@@ -98,4 +98,9 @@ defmodule SimpleFunctionTest do
 
     assert result == :yep
   end
+
+  test "assign function result" do
+    deflipex ~~((= result (String.upcase "a")))
+    assert result == "A"
+  end
 end
