@@ -245,6 +245,7 @@ defmodule Lipex.Core.ControlFlow do
     |> Enum.map(fn
       [pattern, result] ->
         elixir_pattern = convert_pattern(pattern)
+        # Preserve AST instead of evaluating - let Elixir handle lazy evaluation
         elixir_result = Lipex.eval_lipex_expr(result)
         {:->, [], [[elixir_pattern], elixir_result]}
 

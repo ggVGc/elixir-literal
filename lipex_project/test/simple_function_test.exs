@@ -89,14 +89,27 @@ defmodule SimpleFunctionTest do
   end
 
   test "case expression" do
-    result = deflipex ~~(
+    assert :yep == deflipex ~~(
       (= a 123)
       (case a
         2 :nope
+        3 (+ 1 2)
         _ :yep)
     )
 
-    assert result == :yep
+    assert "x" == deflipex ~~(
+      (case "x"
+        "y" :nope
+        3 (+ 1 2)
+        fallthrough fallthrough)
+    )
+
+    assert :fail == deflipex ~~(
+      (case "x"
+        "y" :nope
+        3 (+ 1 2)
+        fallthrough fallthrough)
+    )
   end
 
   test "assign function result" do
