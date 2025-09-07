@@ -46,7 +46,8 @@ defmodule Lipex.Core.Arithmetic do
       (* 2 3 4)         -> 24
       (/ 12 4)          -> 3.0
   """
-  def eval_arithmetic({:sequence_block, _meta, :"()", [{:sequence_token, _, op} | args]}) when op in @operators do
+  def eval_arithmetic({:sequence_block, _meta, :"()", [{:sequence_token, _, op} | args]})
+      when op in @operators do
     # Convert sequence_block to sequence_prefix format and delegate
     eval_arithmetic({:sequence_prefix, [], [op | args]})
   end

@@ -69,7 +69,8 @@ defmodule Lipex.Core.Logic do
       (and true true true)  -> true
       (and)                 -> true
   """
-  def eval_logic({:sequence_block, _meta, :"()", [{:sequence_token, _, op} | args]}) when op in @operators do
+  def eval_logic({:sequence_block, _meta, :"()", [{:sequence_token, _, op} | args]})
+      when op in @operators do
     # Convert sequence_block to sequence_prefix format and delegate
     eval_logic({:sequence_prefix, [], [op | args]})
   end

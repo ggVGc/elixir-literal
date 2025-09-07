@@ -118,7 +118,8 @@ defmodule Lipex do
       charlist when is_list(charlist) and charlist != [] ->
         # Only handle if it's a valid character list
         if Enum.all?(charlist, &is_integer/1) do
-          charlist  # Keep as charlist, don't convert to string
+          # Keep as charlist, don't convert to string
+          charlist
         else
           # Not a character list, let it fall through to module handling
           try_modules(expr)
@@ -135,16 +136,21 @@ defmodule Lipex do
         elixir_args = Enum.map(items, &eval_lipex_expr/1)
         # Create the tuple directly
         case length(elixir_args) do
-          0 -> quote do: {}
-          1 -> 
+          0 ->
+            quote do: {}
+
+          1 ->
             [arg] = elixir_args
             quote do: {unquote(arg)}
-          2 -> 
+
+          2 ->
             [a, b] = elixir_args
             quote do: {unquote(a), unquote(b)}
-          3 -> 
+
+          3 ->
             [a, b, c] = elixir_args
             quote do: {unquote(a), unquote(b), unquote(c)}
+
           _ ->
             # For larger tuples, use List.to_tuple
             quote do: List.to_tuple(unquote(elixir_args))
@@ -165,10 +171,10 @@ defmodule Lipex do
       # Handle raw sequence tokens from tokenizer
       {:sequence_number, _meta, value} ->
         value
-      
+
       {:sequence_atom, _meta, value} ->
         value
-      
+
       {:sequence_token, meta, value} ->
         # sequence_token can represent variables, keywords, or operators
         # Handle special literal values directly
