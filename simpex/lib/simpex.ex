@@ -159,6 +159,40 @@ defmodule Simpex do
     end
   end
 
+  # Handle function definition with guard clause (def name (params) when guard body)
+  defp eval_function_expr({:def, _meta, nil}, [name_node, params_node, {:when, _, nil}, guard_node, body_node]) do
+    name = extract_atom(name_node)
+    params = extract_params(params_node)
+    guard = eval_simpex_expr(guard_node)
+    body = eval_simpex_expr(body_node)
+    
+    # Create the when clause AST: def name(params) when guard do body end
+    when_clause = {:when, [], [{name, [], params}, guard]}
+    
+    quote do
+      def unquote(when_clause) do
+        unquote(body)
+      end
+    end
+  end
+
+  # Handle function definition with guard clause using sequence tokens
+  defp eval_function_expr({:def, _meta, nil}, [name_node, params_node, {:sequence_token, _, :when}, guard_node, body_node]) do
+    name = extract_atom(name_node)
+    params = extract_params(params_node)
+    guard = eval_simpex_expr(guard_node)
+    body = eval_simpex_expr(body_node)
+    
+    # Create the when clause AST: def name(params) when guard do body end
+    when_clause = {:when, [], [{name, [], params}, guard]}
+    
+    quote do
+      def unquote(when_clause) do
+        unquote(body)
+      end
+    end
+  end
+
   # Handle map syntax (% key1 val1 key2 val2) -> %{key1: val1, key2: val2}
   defp eval_function_expr({:%, _meta, nil}, args) do
     pairs = build_map_pairs(args)

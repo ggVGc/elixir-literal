@@ -26,9 +26,9 @@ defmodule SimpexTest do
     (def pick_nth ([_ b] 1) b)
     (def get_map_value ((% :x val)) val)
 
+    (def is_five (x) when (> x 5) true)
+    (def is_five (_) false)
   )
-    # (def is_five (x) when (> x 5) true)
-    # (def is_five (_) false)
 
   describe "data types" do
     test "numbers work" do
@@ -167,6 +167,14 @@ defmodule SimpexTest do
         
       # Test with nil (falsy in Elixir)
       assert :falsy == defsimpex ~~((if nil :truthy :falsy))
+    end
+
+    test "function with guard clauses" do
+      # Test the is_five function which uses guards
+      assert is_five(10) == true   # > 5, should match first clause
+      assert is_five(3) == false   # <= 5, should match second clause
+      assert is_five(5) == false   # == 5, should match second clause
+      assert is_five(6) == true    # > 5, should match first clause
     end
   end
 end
