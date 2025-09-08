@@ -495,6 +495,14 @@ tokenize_single_item(String, Line, Column, Scope) ->
       Token = {sequence_op, {Line, Column, false}, '~~'},
       {ok, Token, Rest, Line, Column + 2, Scope};
     
+    % Handle closing brackets - signal end of tokenization for this level
+    [$) | _] ->
+      {end_of_input, String, Line, Column, Scope};
+    [$} | _] ->
+      {end_of_input, String, Line, Column, Scope};
+    [$] | _] ->
+      {end_of_input, String, Line, Column, Scope};
+    
     % Handle sequence tokens
     _ ->
       case extract_sequence_token(String, []) of
