@@ -113,5 +113,12 @@ defmodule SimpexTest do
       assert 3 == defsimpex ~~((abs -3))
       assert "YEO" == defsimpex ~~((String.upcase "yeo"))
     end
+
+    test "assert inside simpex" do
+      defsimpex ~~(
+        (= a 1)
+        (= b 1)
+        (assert (== a b)))
+    end
   end
 end
