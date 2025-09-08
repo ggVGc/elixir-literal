@@ -544,13 +544,9 @@ reset_eol([{eol, {Line, Column, _}} | Rest]) -> [{eol, {Line, Column, 0}} | Rest
 reset_eol(Rest) -> Rest.
 
 %% Comments handling - adapted from main tokenizer
-%% Modified to stop at structural characters like ) in sequence literals
 tokenize_comment("\r\n" ++ _ = Rest, Acc) ->
   {Rest, lists:reverse(Acc)};
 tokenize_comment("\n" ++ _ = Rest, Acc) ->
-  {Rest, lists:reverse(Acc)};
-tokenize_comment([$) | _] = Rest, Acc) ->
-  % Stop at closing paren to let sequence tokenizer handle it
   {Rest, lists:reverse(Acc)};
 tokenize_comment([H | _Rest], _) when ?bidi(H) ->
   {error, H};
