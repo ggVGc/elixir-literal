@@ -4,7 +4,7 @@ defmodule SimpexTest do
 
   @moduledoc """
   Basic tests for the Simpex implementation.
-  
+
   Tests core functionality including:
   - Data types (numbers, booleans, atoms)
   - Function definition
@@ -26,7 +26,9 @@ defmodule SimpexTest do
     (def pick_nth ([_ b] 1) b)
     (def get_map_value ((% :x val)) val)
 
-    (def is_five (x) when (> x 5) true)
+    # Comment for testing
+
+    (def is_five (x) when (== x 5) true)
     (def is_five (_) false)
   )
 
@@ -55,7 +57,7 @@ defmodule SimpexTest do
       assert identity(123) == 123
     end
 
-    test "function with multiple parameters works" do  
+    test "function with multiple parameters works" do
       assert second(1, 2) == 2
     end
 
@@ -89,7 +91,7 @@ defmodule SimpexTest do
     test "calling with list pattern matching" do
       result1 = defsimpex ~~((pick_nth [7 14] 0))
       assert result1 == 7
-      
+
       result2 = defsimpex ~~((pick_nth [7 14] 1))
       assert result2 == 14
     end
@@ -98,7 +100,7 @@ defmodule SimpexTest do
       # Test the functions defined in the multi-expression block
       result1 = defsimpex ~~((pick_nth {3 6} 0))
       assert result1 == 3
-      
+
       result2 = defsimpex ~~((pick_nth {3 6} 1))
       assert result2 == 6
     end
@@ -159,22 +161,22 @@ defmodule SimpexTest do
     test "if expression" do
       assert :yep == defsimpex ~~((if true :yep :nope))
       assert :nope == defsimpex ~~((if false :yep :nope))
-      
+
       # Test with variable conditions
       assert :positive == defsimpex ~~(
         (= x 5)
         (if (> x 0) :positive :negative))
-        
+
       # Test with nil (falsy in Elixir)
       assert :falsy == defsimpex ~~((if nil :truthy :falsy))
     end
 
     test "function with guard clauses" do
       # Test the is_five function which uses guards
-      assert is_five(10) == true   # > 5, should match first clause
-      assert is_five(3) == false   # <= 5, should match second clause
-      assert is_five(5) == false   # == 5, should match second clause
-      assert is_five(6) == true    # > 5, should match first clause
+      assert is_five(10) == false
+      assert is_five(3) == false
+      assert is_five(5) == true
+      assert is_five(6) == false
     end
   end
 end

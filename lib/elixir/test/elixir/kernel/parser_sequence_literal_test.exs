@@ -412,6 +412,48 @@ defmodule Kernel.ParserSequenceLiteralTest do
       assert result_with_comment == result_without_comment
       # Don't check exact structure, just that they're equal (avoid formatter issues)
     end
+
+    test "comments with parentheses in multiline sequence literals - BUG TO BE FIXED" do
+      # This test documents the parsing bug found in simpex that needs to be fixed
+      # Comments containing parentheses in multiline sequence literals cause parsing errors
+      
+      # When the bug is fixed, these should work instead of raising errors:
+      # result = parse!("~~(\n# (def test (x) x)\n(valid code)\n)")
+      # assert {:sequence_literal, [line: 1], _} = result
+      
+      # For now, document that this fails:
+      assert_raise SyntaxError, fn ->
+        parse!("~~(\n# (def test (x) x)\n(valid code)\n)")
+      end
+    end
+
+    test "comments with various brackets - some work, some dont" do
+      # Test various bracket types - only parentheses cause issues
+      
+      # These work fine (square brackets and braces in comments)
+      result1 = parse!("~~(\n# [array syntax]\n42\n)")
+      assert {:sequence_literal, [line: 1], [42]} = result1
+      
+      result2 = parse!("~~(\n# {map syntax}\n:atom\n)")
+      assert {:sequence_literal, [line: 1], [{:atom, [line: 3], nil}]} = result2
+      
+      # But parentheses in comments cause parsing errors:
+      assert_raise SyntaxError, fn ->
+        parse!("~~(\n# ((nested parentheses))\n\"string\"\n)")
+      end
+    end
+
+    test "comments at different positions in multiline sequence literals" do
+      # Test comments at various positions to isolate the issue
+      
+      # Comment at the beginning - this might work
+      result1 = parse!("# comment before\n~~(valid code)")
+      assert {:sequence_literal, [line: 2], _} = result1
+      
+      # Comment at the end - this might work  
+      result2 = parse!("~~(valid code)\n# comment after")
+      assert {:sequence_literal, [line: 1], _} = result2
+    end
   end
 
   describe "tokenizer behavior verification" do
