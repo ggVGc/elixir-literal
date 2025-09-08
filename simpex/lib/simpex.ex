@@ -94,7 +94,15 @@ defmodule Simpex do
             end
         end
 
-      # Handle parameter blocks - return as-is for parameter parsing
+      # Handle parenthesized expressions that look like function calls
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, _} = func | args]} ->
+        func_name = extract_atom(func)
+        elixir_args = Enum.map(args, &eval_simpex_expr/1)
+        quote do
+          unquote(func_name)(unquote_splicing(elixir_args))
+        end
+
+      # Handle parameter blocks and other parenthesized content
       {:sequence_block, _meta, :"()", contents} -> contents
       
       # Handle tuple syntax {a b c} -> {a, b, c}
@@ -139,6 +147,9 @@ defmodule Simpex do
   end
 
   # Simplified atom extraction - let Elixir handle most cases
+  defp extract_atom({:sequence_token, _meta, atom}) when is_atom(atom) do
+    handle_atom(atom)
+  end
   defp extract_atom({atom, _meta, nil}) when is_atom(atom) do
     handle_atom(atom)
   end
