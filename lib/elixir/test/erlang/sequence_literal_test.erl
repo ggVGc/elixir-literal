@@ -297,6 +297,44 @@ sequence_isolation_test() ->
   ok.
 
 %% Test error cases
+%% Test line-wise comments starting with # in sequence literals
+sequence_comments_test() ->
+  % Test basic comment handling - comment should be ignored
+  [{sequence_begin, {1, 1, nil}, '~~('},
+   {sequence_token, {1, 4, nil}, a},
+   {eol, {_, _, _}},
+   {sequence_token, {2, 1, nil}, b},
+   {sequence_end, {2, 2, nil}, ')'}] = tokenize("~~(a # this is a comment\nb)"),
+
+  % Test comment at end of line
+  [{sequence_begin, {1, 1, nil}, '~~('},
+   {sequence_token, {1, 4, nil}, hello},
+   {sequence_end, {1, 10, nil}, ')'}] = tokenize("~~(hello # comment)"),
+
+  % Test full line comment within sequence
+  [{sequence_begin, {1, 1, nil}, '~~('},
+   {eol, {_, _, _}},
+   {sequence_token, {3, 1, nil}, world},
+   {sequence_end, {3, 6, nil}, ')'}] = tokenize("~~(\n# full line comment\nworld)"),
+
+  % Test multiple comments
+  [{sequence_begin, {1, 1, nil}, '~~('},
+   {sequence_token, {1, 4, nil}, a},
+   {eol, {_, _, _}},
+   {sequence_token, {2, 1, nil}, b},
+   {eol, {_, _, _}},
+   {sequence_token, {3, 1, nil}, c},
+   {sequence_end, {3, 2, nil}, ')'}] = tokenize("~~(a # comment1\nb # comment2\nc)"),
+
+  % Test mixed content with comments
+  [{sequence_begin, {1, 1, nil}, '~~('},
+   {sequence_string, {1, 4, nil}, "hello"},
+   {sequence_number, {1, 12, nil}, 42},
+   {eol, {_, _, _}},
+   {sequence_atom, {2, 1, nil}, atom},
+   {sequence_end, {2, 6, nil}, ')'}] = tokenize("~~(\"hello\" 42 # comment\n:atom)"),
+  ok.
+
 sequence_error_test() ->
   % Test incomplete sequence literal - our tokenizer may handle this differently
   case catch elixir_tokenizer:tokenize("~~(", 1, []) of
