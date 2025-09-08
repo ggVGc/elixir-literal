@@ -148,7 +148,7 @@ defmodule SimpexTest do
 
         assert :original = defsimpex ~~(
           (case :original
-            (:other :not_this)
+            ("other" :not_this)
             (fallback fallback)))
     end
   end
