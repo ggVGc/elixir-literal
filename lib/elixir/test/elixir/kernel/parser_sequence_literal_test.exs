@@ -322,6 +322,98 @@ defmodule Kernel.ParserSequenceLiteralTest do
     end
   end
 
+  describe "sequence literals with comments" do
+    # Test that comments are properly handled during parsing and completely ignored
+    # These tests verify that comments don't affect the resulting AST structure
+
+    test "basic comment handling - inline comments are ignored" do
+      # Comments should be completely ignored during parsing
+      result_with_comment = parse!("~~(a # this is a comment\nb)")
+      result_without_comment = parse!("~~(a\nb)")
+      
+      assert result_with_comment == result_without_comment
+      assert result_with_comment == {:sequence_literal, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 2], nil}]}
+    end
+
+    test "end-of-line comments are ignored" do
+      # Comment at end of sequence should be ignored
+      result_with_comment = parse!("~~(hello # comment)")
+      result_without_comment = parse!("~~(hello)")
+      
+      assert result_with_comment == result_without_comment  
+      assert result_with_comment == {:sequence_literal, [line: 1], [{:hello, [line: 1], nil}]}
+    end
+
+    test "full line comments within sequences" do
+      # Full line comments should be completely ignored
+      result_with_comment = parse!("~~(\n# full line comment\nworld)")
+      result_without_comment = parse!("~~(\nworld)")
+      
+      # Line numbers will be different because the comment line affects counting
+      # Just check that both are valid sequence literals with world token
+      assert {:sequence_literal, [line: 1], [{:world, [line: _], nil}]} = result_with_comment
+      assert {:sequence_literal, [line: 1], [{:world, [line: _], nil}]} = result_without_comment
+    end
+
+    test "multiple comments are ignored" do
+      # Multiple comments should all be ignored
+      result_with_comments = parse!("~~(a # comment1\nb # comment2\nc)")
+      result_without_comments = parse!("~~(a\nb\nc)")
+      
+      assert result_with_comments == result_without_comments
+      assert result_with_comments == {:sequence_literal, [line: 1], 
+        [{:a, [line: 1], nil}, {:b, [line: 2], nil}, {:c, [line: 3], nil}]}
+    end
+
+    test "comments with different token types" do
+      # Comments should work with numbers and atoms  
+      result_with_comment = parse!("~~(42 # comment\n:atom)")
+      result_without_comment = parse!("~~(42\n:atom)")
+      
+      assert result_with_comment == result_without_comment
+      expected = {:sequence_literal, [line: 1], [
+        42,
+        {:atom, [line: 2], nil}
+      ]}
+      assert result_with_comment == expected
+    end
+
+    test "comments within structural elements" do
+      # Comments should work inside brackets
+      result_with_comment = parse!("~~([a # comment\nb])")
+      result_without_comment = parse!("~~([a\nb])")
+      
+      # Just verify both parse successfully and have similar structure
+      assert {:sequence_literal, [line: 1], [bracket]} = result_with_comment
+      assert {:sequence_bracket, [line: 1], _} = bracket
+      
+      assert {:sequence_literal, [line: 1], [bracket2]} = result_without_comment  
+      assert {:sequence_bracket, [line: 1], _} = bracket2
+    end
+
+    test "comments in complex expressions with sequence literals" do
+      # Comments should work in sequence literals within larger expressions
+      result_with_comment = parse!("x = ~~(foo # comment\nbar)")
+      result_without_comment = parse!("x = ~~(foo\nbar)")
+      
+      assert result_with_comment == result_without_comment
+      expected = {:=, [line: 1], [
+        {:x, [line: 1], nil},
+        {:sequence_literal, [line: 1], [{:foo, [line: 1], nil}, {:bar, [line: 2], nil}]}
+      ]}
+      assert result_with_comment == expected
+    end
+
+    test "comments with operator prefixes" do
+      # Comments should work with sequence prefixes (operators at start)
+      result_with_comment = parse!("~~(+ a # comment\nb)")
+      result_without_comment = parse!("~~(+ a\nb)")
+      
+      assert result_with_comment == result_without_comment
+      # Don't check exact structure, just that they're equal (avoid formatter issues)
+    end
+  end
+
   describe "tokenizer behavior verification" do
     # These tests verify that our tokenizer produces the expected token types
 

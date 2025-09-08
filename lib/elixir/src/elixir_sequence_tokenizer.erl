@@ -374,6 +374,17 @@ tokenize_single_item(String, Line, Column, Scope) ->
     [] ->
       {end_of_input, [], Line, Column, Scope};
     
+    % Handle comments
+    [$# | Rest] ->
+      case tokenize_comment(Rest, [$#]) of
+        {error, Char} ->
+          {error, error_comment(Char, [$# | Rest], Line, Column, Scope, [])};
+        {CommentRest, Comment} ->
+          preserve_comments(Line, Column, [], Comment, CommentRest, Scope),
+          % Skip the comment and continue tokenizing
+          tokenize_single_item(CommentRest, Line, Column, Scope)
+      end;
+    
     % Handle strings
     [$" | Rest] ->
       case extract_string(Rest, $", Line, Column + 1, []) of
