@@ -139,6 +139,17 @@ defmodule SimpexTest do
           (2 :nope)
           (10 :yep))
       )
+
+        assert_raise CaseClauseError, fn ->
+          defsimpex ~~(
+            (case 123
+              (0 :no_match)))
+        end
+
+        assert :original = defsimpex ~~(
+          (case :original
+            (:other :not_this)
+            (fallback fallback)))
     end
   end
 end
