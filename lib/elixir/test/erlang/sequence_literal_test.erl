@@ -308,8 +308,7 @@ sequence_comments_test() ->
 
   % Test comment at end of line
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, hello},
-   {sequence_end, {1, 10, nil}, ')'}] = tokenize("~~(hello # comment)"),
+   {sequence_token, {1, 4, nil}, hello}] = tokenize("~~(hello # comment)"),
 
   % Test full line comment within sequence
   [{sequence_begin, {1, 1, nil}, '~~('},
