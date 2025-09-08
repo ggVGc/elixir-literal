@@ -49,6 +49,9 @@ defmodule Simpex do
       # Handle sequence numbers  
       {:sequence_number, _meta, value} -> value
 
+      # Handle sequence atoms (like :x, :key, etc.)
+      {:sequence_atom, _meta, atom} -> atom
+
       # Handle boolean and nil literals in AST form  
       {true, _meta, nil} -> true
       {false, _meta, nil} -> false
@@ -95,6 +98,11 @@ defmodule Simpex do
         end
 
       # Handle parenthesized expressions that look like function calls
+      {:sequence_block, _meta, :"()", [{:sequence_token, _, func_atom} | args]} when func_atom == :% ->
+        # Handle map syntax
+        pairs = build_map_pairs(args)
+        {:%{}, [], pairs}
+
       {:sequence_block, _meta, :"()", [{:sequence_token, _, _} = func | args]} ->
         func_name = extract_atom(func)
         elixir_args = Enum.map(args, &eval_simpex_expr/1)
@@ -135,6 +143,12 @@ defmodule Simpex do
         unquote(body)
       end
     end
+  end
+
+  # Handle map syntax (% key1 val1 key2 val2) -> %{key1: val1, key2: val2}
+  defp eval_function_expr({:%, _meta, nil}, args) do
+    pairs = build_map_pairs(args)
+    {:%{}, [], pairs}
   end
 
   defp eval_function_expr(func_name_node, args) do
@@ -201,5 +215,16 @@ defmodule Simpex do
   # For complex patterns (tuples, etc.), use the main expression evaluator
   defp to_elixir_param(expr) do
     eval_simpex_expr(expr)
+  end
+
+  # Build map key-value pairs
+  defp build_map_pairs([]), do: []
+  defp build_map_pairs([key, value | rest]) do
+    key_ast = eval_simpex_expr(key)
+    value_ast = eval_simpex_expr(value)
+    [{key_ast, value_ast} | build_map_pairs(rest)]
+  end
+  defp build_map_pairs([_single]) do
+    raise "Map requires even number of arguments (key-value pairs)"
   end
 end

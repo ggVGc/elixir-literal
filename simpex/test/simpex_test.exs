@@ -23,7 +23,8 @@ defmodule SimpexTest do
     (def pick_nth ({a _b} 0) a)
     (def pick_nth ({_a b} 1) b)
     (def pick_nth ([a _b] 0) a)
-    (def pick_nth ([_ b] 1) b))
+    (def pick_nth ([_ b] 1) b)
+    (def get_map_value ((% :x val)) val))
 
   describe "data types" do
     test "numbers work" do
@@ -119,6 +120,16 @@ defmodule SimpexTest do
         (= a 1)
         (= b 1)
         (assert (== a b)))
+    end
+
+    test "elixir maps" do
+      assert get_map_value(%{x: 123}) == 123
+
+      assert (defsimpex ~~((% :x 12 :y "test"))) == %{x: 12, y: "test"}
+
+      key = "yeo"
+      value = :yep
+      assert (defsimpex ~~((% key value))) == %{"yeo" => :yep}
     end
   end
 end
