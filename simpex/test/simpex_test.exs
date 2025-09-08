@@ -12,19 +12,23 @@ defmodule SimpexTest do
   """
 
   # Define functions at module level
-  defsimpex ~~((def identity (x) x))
-  defsimpex ~~((def second (_a b) b))
-  defsimpex ~~((def get_number () 42))
-  defsimpex ~~((def get_atom () :success))
-  defsimpex ~~((def get_bool () true))
-  defsimpex ~~((def echo (value) value))
-  defsimpex ~~((def pick_first (a _b _c) a))
   defsimpex ~~(
+    (def identity (x) x)
+    (def second (_a b) b)
+    (def get_number () 42)
+    (def get_atom () :success)
+    (def get_bool () true)
+    (def echo (value) value)
+    (def pick_first (a _b _c) a)
     (def pick_nth ({a _b} 0) a)
     (def pick_nth ({_a b} 1) b)
     (def pick_nth ([a _b] 0) a)
     (def pick_nth ([_ b] 1) b)
-    (def get_map_value ((% :x val)) val))
+    (def get_map_value ((% :x val)) val)
+
+  )
+    # (def is_five (x) when (> x 5) true)
+    # (def is_five (_) false)
 
   describe "data types" do
     test "numbers work" do
@@ -150,6 +154,19 @@ defmodule SimpexTest do
           (case :original
             ("other" :not_this)
             (fallback fallback)))
+    end
+
+    test "if expression" do
+      assert :yep == defsimpex ~~((if true :yep :nope))
+      assert :nope == defsimpex ~~((if false :yep :nope))
+      
+      # Test with variable conditions
+      assert :positive == defsimpex ~~(
+        (= x 5)
+        (if (> x 0) :positive :negative))
+        
+      # Test with nil (falsy in Elixir)
+      assert :falsy == defsimpex ~~((if nil :truthy :falsy))
     end
   end
 end
