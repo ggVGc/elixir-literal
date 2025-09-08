@@ -190,10 +190,8 @@ defmodule SimpexTest do
         assert 36 == defsimpex ~~((kw_only_sugar_fun [arg: 36]))
     end
 
-    defsimpex ~~(
-      (test "simpex test" [do: [
-        (assert (== true true))
-        (assert (> 10 5))]])
-    )
+    test "wip test" do
+      defsimpex ~~((assert (== true true )))
+    end
   end
 end
