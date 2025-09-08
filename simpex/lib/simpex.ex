@@ -173,6 +173,15 @@ defmodule Simpex do
     {:case, [], [elixir_expr, [do: elixir_clauses]]}
   end
 
+  # Handle if expression (if condition true_branch false_branch)
+  defp eval_function_expr({:if, _meta, nil}, [condition, true_branch, false_branch]) do
+    condition_ast = eval_simpex_expr(condition)
+    true_ast = eval_simpex_expr(true_branch)
+    false_ast = eval_simpex_expr(false_branch)
+    
+    {:if, [], [condition_ast, [do: true_ast, else: false_ast]]}
+  end
+
   defp eval_function_expr(func_name_node, args) do
     func_name = extract_atom(func_name_node)
     elixir_args = Enum.map(args, &eval_simpex_expr/1)
