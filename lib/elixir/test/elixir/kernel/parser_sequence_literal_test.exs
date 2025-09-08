@@ -336,8 +336,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
     end
 
     test "end-of-line comments are ignored" do
-      # Comment at end of sequence should be ignored
-      result_with_comment = parse!("~~(hello # comment)")
+      result_with_comment = parse!("~~(hello # comment\n)")
       result_without_comment = parse!("~~(hello)")
       
       assert result_with_comment == result_without_comment  
@@ -413,18 +412,9 @@ defmodule Kernel.ParserSequenceLiteralTest do
       # Don't check exact structure, just that they're equal (avoid formatter issues)
     end
 
-    test "comments with parentheses in multiline sequence literals - BUG TO BE FIXED" do
-      # This test documents the parsing bug found in simpex that needs to be fixed
-      # Comments containing parentheses in multiline sequence literals cause parsing errors
-      
-      # When the bug is fixed, these should work instead of raising errors:
-      # result = parse!("~~(\n# (def test (x) x)\n(valid code)\n)")
-      # assert {:sequence_literal, [line: 1], _} = result
-      
-      # For now, document that this fails:
-      assert_raise SyntaxError, fn ->
+    test "comments with parentheses in multiline sequence literals" do
+      assert {:sequence_literal, _, _} =
         parse!("~~(\n# (def test (x) x)\n(valid code)\n)")
-      end
     end
 
     test "comments with various brackets - some work, some dont" do
