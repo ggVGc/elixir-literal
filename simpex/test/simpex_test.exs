@@ -184,6 +184,16 @@ defmodule SimpexTest do
         assert kw_fun(arg: 99) == 99
         assert kw_sugar_fun(:dummy, arg: 99, other: 123) == 99
         assert kw_only_sugar_fun(arg: 55) == 55
+
+        assert 36 == defsimpex ~~((kw_fun [arg: 36]))
+        assert 36 == defsimpex ~~((kw_sugar_fun :ignored [arg: 36 other: :also_ignored]))
+        assert 36 == defsimpex ~~((kw_only_sugar_fun [arg: 36]))
     end
+
+    defsimpex ~~(
+      (test "simpex test" [do: [
+        (assert (== true true))
+        (assert (> 10 5))]])
+    )
   end
 end
