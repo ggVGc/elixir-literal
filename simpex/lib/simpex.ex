@@ -52,6 +52,20 @@ defmodule Simpex do
       # Handle sequence atoms (like :x, :key, etc.)
       {:sequence_atom, _meta, atom} -> atom
 
+      # Handle sequence string tokens (double quotes)
+      {:sequence_string, _meta, value} ->
+        # Convert character list to binary string if needed
+        if is_list(value) do
+          List.to_string(value)
+        else
+          value
+        end
+
+      # Handle sequence character list tokens (single quotes)
+      {:sequence_chars, _meta, value} ->
+        # Keep as character list
+        value
+
       # Handle boolean and nil literals in AST form  
       {true, _meta, nil} -> true
       {false, _meta, nil} -> false
