@@ -343,3 +343,47 @@ sequence_error_test() ->
     _ -> erlang:error(should_error_on_incomplete)
   end,
   ok.
+
+%% Test case for extra space before closing parentheses issue
+%% This test expects the tokenizer to handle trailing spaces gracefully
+%% Currently fails due to a bug, but demonstrates the desired behavior
+sequence_trailing_space_error_test() ->
+  % Test case without extra space - this should work fine
+  [{sequence_begin, {1, 1, nil}, '~~('},
+   {sequence_block, {1, 4, nil}, '()', 
+    [{sequence_token, {1, 5, nil}, assert},
+     {sequence_block, {1, 12, nil}, '()', 
+      [{sequence_token, {1, 13, nil}, '=='},
+       {sequence_token, {1, 16, nil}, 'true'},
+       {sequence_token, {1, 21, nil}, 'true'}]}]},
+   {sequence_end, {1, 27, nil}, ')'}] = tokenize("~~((assert (== true true)))"),
+  
+  % Test case with extra space before closing parentheses
+  % The expression "~~((assert (== true true )))" has a space after the last "true"
+  % This SHOULD tokenize successfully, ignoring the trailing space
+  % NOTE: Currently fails, but this is the expected behavior once fixed
+  [{sequence_begin, {1, 1, nil}, '~~('},
+   {sequence_block, {1, 4, nil}, '()', 
+    [{sequence_token, {1, 5, nil}, assert},
+     {sequence_block, {1, 12, nil}, '()', 
+      [{sequence_token, {1, 13, nil}, '=='},
+       {sequence_token, {1, 16, nil}, 'true'},
+       {sequence_token, {1, 21, nil}, 'true'}]}]},
+   {sequence_end, {1, 29, nil}, ')'}] = tokenize("~~((assert (== true true )))"),
+  
+  % Additional test: single level with trailing space
+  % Should tokenize successfully
+  [{sequence_begin, {1, 1, nil}, '~~('},
+   {sequence_block, {1, 4, nil}, '()', 
+    [{sequence_token, {1, 5, nil}, foo},
+     {sequence_token, {1, 9, nil}, bar}]},
+   {sequence_end, {1, 15, nil}, ')'}] = tokenize("~~((foo bar ))"),
+  
+  % Test: space at the outermost level
+  % Should tokenize successfully
+  [{sequence_begin, {1, 1, nil}, '~~('},
+   {sequence_token, {1, 4, nil}, foo},
+   {sequence_token, {1, 8, nil}, bar},
+   {sequence_end, {1, 13, nil}, ')'}] = tokenize("~~(foo bar )"),
+  
+  ok.
