@@ -63,6 +63,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
       assert {:case, [], [1, [do: [{:->, [], [[2], 3]}]]]} == elixir_equivalent
     end
 
+    # TODO: This breaks formatter, currently.
     # test "in source-level quote block" do
     #   result = quote do ~~((+ 1 2)) end
     #   # Test that it returns a valid sequence literal AST structure
