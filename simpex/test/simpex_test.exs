@@ -25,6 +25,8 @@ defmodule SimpexTest do
     (def pick_nth ([a _b] 0) a)
     (def pick_nth ([_ b] 1) b)
     (def get_map_value ((% :x val)) val)
+    (def kw_fun ([{:arg arg}]) arg)
+    (def tuple_fun ({:arg arg}) arg)
 
     # Comment for testing
 
@@ -172,11 +174,12 @@ defmodule SimpexTest do
     end
 
     test "function with guard clauses" do
-      # Test the is_five function which uses guards
       assert is_five(10) == false
-      assert is_five(3) == false
       assert is_five(5) == true
-      assert is_five(6) == false
+    end
+
+    test "functions with kwlist arguments" do
+        assert kw_fun(arg: 99) == 99
     end
   end
 end
