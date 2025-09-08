@@ -93,6 +93,16 @@ tokenize(String, Line, Column, Scope, Tokens) ->
       Token = {';', {Line, Column, previous_was_eol(Tokens)}},
       tokenize(Rest, Line, Column + 1, Scope, [Token | Tokens]);
 
+    % Handle comments
+    [$# | Rest] ->
+      case tokenize_comment(Rest, [$#]) of
+        {error, Char} ->
+          error_comment(Char, [$# | Rest], Line, Column, Scope, Tokens);
+        {CommentRest, Comment} ->
+          preserve_comments(Line, Column, Tokens, Comment, CommentRest, Scope),
+          tokenize(CommentRest, Line, Column, Scope, reset_eol(Tokens))
+      end;
+
     % Handle whitespace
     [H | Rest] when ?is_space(H) ->
       case H of
@@ -300,7 +310,7 @@ tokenize_sequence_token(String, Line, Column, Scope, Tokens) ->
 extract_sequence_token([], Acc) when Acc =/= [] ->
   {ok, lists:reverse(Acc), [], length(Acc)};
 extract_sequence_token([H | Rest], Acc) when ?is_space(H); H =:= $(; H =:= $); H =:= ${; 
-                                              H =:= $}; H =:= $[; H =:= $]; H =:= $,; H =:= $;; H =:= $"; H =:= $' ->
+                                              H =:= $}; H =:= $[; H =:= $]; H =:= $,; H =:= $;; H =:= $"; H =:= $'; H =:= $# ->
   case Acc of
     [] -> {error, "no token found"};
     _ -> {ok, lists:reverse(Acc), [H | Rest], length(Acc)}
@@ -521,3 +531,32 @@ eol(Line, Column, Tokens) ->
 
 reset_eol([{eol, {Line, Column, _}} | Rest]) -> [{eol, {Line, Column, 0}} | Rest];
 reset_eol(Rest) -> Rest.
+
+%% Comments handling - adapted from main tokenizer
+%% Modified to stop at structural characters like ) in sequence literals
+tokenize_comment("\r\n" ++ _ = Rest, Acc) ->
+  {Rest, lists:reverse(Acc)};
+tokenize_comment("\n" ++ _ = Rest, Acc) ->
+  {Rest, lists:reverse(Acc)};
+tokenize_comment([$) | _] = Rest, Acc) ->
+  % Stop at closing paren to let sequence tokenizer handle it
+  {Rest, lists:reverse(Acc)};
+tokenize_comment([H | _Rest], _) when ?bidi(H) ->
+  {error, H};
+tokenize_comment([H | Rest], Acc) ->
+  tokenize_comment(Rest, [H | Acc]);
+tokenize_comment([], Acc) ->
+  {[], lists:reverse(Acc)}.
+
+error_comment(H, Comment, Line, Column, Scope, Tokens) ->
+  Token = io_lib:format("\\u~4.16.0B", [H]),
+  Reason = {?LOC(Line, Column), "invalid bidirectional formatting character in comment: ", Token},
+  {error, Reason, Comment, Scope, Tokens}.
+
+preserve_comments(Line, Column, Tokens, Comment, Rest, Scope) ->
+  case Scope#elixir_tokenizer.preserve_comments of
+    Fun when is_function(Fun) ->
+      Fun(Line, Column, Tokens, Comment, Rest);
+    _ ->
+      ok
+  end.
