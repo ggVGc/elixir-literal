@@ -139,9 +139,33 @@ defmodule Simpex do
   end
 
   # Simplified atom extraction - let Elixir handle most cases
-  defp extract_atom({atom, _meta, nil}) when is_atom(atom), do: atom
-  defp extract_atom(atom) when is_atom(atom), do: atom
+  defp extract_atom({atom, _meta, nil}) when is_atom(atom) do
+    handle_atom(atom)
+  end
+  defp extract_atom(atom) when is_atom(atom) do
+    handle_atom(atom)
+  end
   defp extract_atom(expr), do: raise("Expected atom, got: #{inspect(expr)}")
+
+  # Handle module calls like String.upcase
+  defp handle_atom(atom) do
+    atom_str = Atom.to_string(atom)
+    if String.contains?(atom_str, ".") do
+      # Split "String.upcase" into module and function
+      case String.split(atom_str, ".") do
+        [module_str, func_str] ->
+          # Build proper module call AST
+          module = String.to_atom("Elixir." <> module_str)
+          func = String.to_atom(func_str)
+          {:., [], [module, func]}
+        _ ->
+          # Multiple dots or other cases - just return the atom
+          atom
+      end
+    else
+      atom
+    end
+  end
 
   # Parameter extraction with minimal sequence token handling
   defp extract_params({:sequence_block, _meta, :"()", params}) do

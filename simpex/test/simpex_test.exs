@@ -108,5 +108,10 @@ defmodule SimpexTest do
       defsimpex ~~((= {fst _} {50 99}))
       assert fst == 50
     end
+
+    test "call global functions" do
+      assert 3 == defsimpex ~~((abs -3))
+      assert "YEO" == defsimpex ~~((String.upcase "yeo"))
+    end
   end
 end
