@@ -151,6 +151,14 @@ defmodule Simpex do
     {:%{}, [], pairs}
   end
 
+  # Handle case expression (case expr (pattern1 result1) (pattern2 result2))
+  defp eval_function_expr({:case, _meta, nil}, [expr | clauses]) do
+    elixir_expr = eval_simpex_expr(expr)
+    elixir_clauses = Enum.map(clauses, &build_case_clause/1)
+    
+    {:case, [], [elixir_expr, [do: elixir_clauses]]}
+  end
+
   defp eval_function_expr(func_name_node, args) do
     func_name = extract_atom(func_name_node)
     elixir_args = Enum.map(args, &eval_simpex_expr/1)
@@ -226,5 +234,21 @@ defmodule Simpex do
   end
   defp build_map_pairs([_single]) do
     raise "Map requires even number of arguments (key-value pairs)"
+  end
+
+  # Build case clause from (pattern result) -> pattern -> result
+  defp build_case_clause({:sequence_paren, _meta, [pattern, result]}) do
+    pattern_ast = eval_simpex_expr(pattern)
+    result_ast = eval_simpex_expr(result)
+    {:->, [], [[pattern_ast], result_ast]}
+  end
+  # Handle sequence_block format for case clauses
+  defp build_case_clause({:sequence_block, _meta, :"()", [pattern, result]}) do
+    pattern_ast = eval_simpex_expr(pattern)
+    result_ast = eval_simpex_expr(result)
+    {:->, [], [[pattern_ast], result_ast]}
+  end
+  defp build_case_clause(clause) do
+    raise "Invalid case clause, expected (pattern result), got: #{inspect(clause)}"
   end
 end

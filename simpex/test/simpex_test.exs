@@ -131,5 +131,14 @@ defmodule SimpexTest do
       value = :yep
       assert (defsimpex ~~((% key value))) == %{"yeo" => :yep}
     end
+
+    test "case expression" do
+      assert :yep  = defsimpex ~~(
+        (= x 10)
+        (case x
+          (2 :nope)
+          (10 :yep))
+      )
+    end
   end
 end
