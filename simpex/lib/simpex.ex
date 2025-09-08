@@ -132,9 +132,16 @@ defmodule Simpex do
         elixir_items = Enum.map(items, &eval_simpex_expr/1)
         {:{}, [], elixir_items}
 
-      # Handle list syntax [a b c] -> [a, b, c]
+      # Handle list syntax [a b c] -> [a, b, c] or keyword list [key: value] -> [{:key, value}]
       {:sequence_block, _meta, :"[]", items} ->
-        Enum.map(items, &eval_simpex_expr/1)
+        case detect_keyword_syntax(items) do
+          {:keywords, _} ->
+            # Convert to keyword list using general expression evaluation
+            build_keyword_pairs_general(items)
+          :no_keywords ->
+            # Regular list handling
+            Enum.map(items, &eval_simpex_expr/1)
+        end
 
       # Also handle sequence_brace if it appears
       {:sequence_brace, _meta, items} ->
@@ -149,13 +156,29 @@ defmodule Simpex do
   # Simplified function expression handling
   defp eval_function_expr({:def, _meta, nil}, [name_node, params_node, body_node]) do
     name = extract_atom(name_node)
-    params = extract_params(params_node)
-    body = eval_simpex_expr(body_node)
     
-    quote do
-      def unquote(name)(unquote_splicing(params)) do
-        unquote(body)
-      end
+    case params_node do
+      # Keyword-only function: (def name [keywords] body)  
+      {:sequence_block, _meta, :"[]", _items} ->
+        keyword_params = extract_keyword_list_params(params_node)
+        body = eval_simpex_expr(body_node)
+        
+        quote do
+          def unquote(name)(unquote(keyword_params)) do
+            unquote(body)
+          end
+        end
+        
+      # Normal function: (def name (params) body)
+      _ ->
+        params = extract_params(params_node)
+        body = eval_simpex_expr(body_node)
+        
+        quote do
+          def unquote(name)(unquote_splicing(params)) do
+            unquote(body)
+          end
+        end
     end
   end
 
@@ -188,6 +211,24 @@ defmodule Simpex do
     
     quote do
       def unquote(when_clause) do
+        unquote(body)
+      end
+    end
+  end
+
+  # Handle function definition with both normal params and keyword list: (def name (params) [keywords] body)
+  defp eval_function_expr({:def, _meta, nil}, [name_node, normal_params_node, keyword_params_node, body_node]) do
+    name = extract_atom(name_node)
+    normal_params = extract_params(normal_params_node)
+    keyword_list_pattern = extract_keyword_list_params(keyword_params_node)
+    body = eval_simpex_expr(body_node)
+    
+    # Create a function that matches: name(normal_params, keyword_list_pattern)
+    # where keyword_list_pattern is the expected keyword list structure
+    all_params = normal_params ++ [keyword_list_pattern]
+    
+    quote do
+      def unquote(name)(unquote_splicing(all_params)) do
         unquote(body)
       end
     end
@@ -259,13 +300,30 @@ defmodule Simpex do
 
   # Parameter extraction with minimal sequence token handling
   defp extract_params({:sequence_block, _meta, :"()", params}) do
-    Enum.map(params, &to_elixir_param/1)
+    # Check if we have keyword syntax and convert to proper keyword list parameter
+    case detect_keyword_syntax(params) do
+      {:keywords, keyword_pairs} ->
+        # Convert to a single keyword list parameter
+        [keyword_pairs]
+      :no_keywords ->
+        # Normal parameter handling
+        Enum.map(params, &to_elixir_param/1)
+    end
   end
   defp extract_params([]), do: []
   defp extract_params(params) when is_list(params) do
     Enum.map(params, &to_elixir_param/1)
   end
   defp extract_params(_), do: []
+
+  # Extract keyword list parameters from bracket syntax [key: value, ...]
+  defp extract_keyword_list_params({:sequence_block, _meta, :"[]", params}) do
+    # Convert keyword syntax to proper keyword list
+    build_keyword_pairs_from_list(params)
+  end
+  defp extract_keyword_list_params(other) do
+    raise "Expected keyword list in brackets, got: #{inspect(other)}"
+  end
 
   # Convert sequence tokens to proper Elixir AST for parameters
   defp to_elixir_param({:sequence_token, {line, column, _}, name}) when is_atom(name) do
@@ -280,6 +338,121 @@ defmodule Simpex do
   # For complex patterns (tuples, etc.), use the main expression evaluator
   defp to_elixir_param(expr) do
     eval_simpex_expr(expr)
+  end
+
+  # Detect if parameters contain keyword syntax (key: value patterns)
+  defp detect_keyword_syntax(params) do
+    if has_keyword_syntax?(params) do
+      keyword_pairs = build_keyword_pairs(params)
+      {:keywords, keyword_pairs}
+    else
+      :no_keywords
+    end
+  end
+
+  # Check if any parameter looks like keyword syntax
+  defp has_keyword_syntax?(params) do
+    Enum.any?(params, fn param ->
+      case param do
+        {:sequence_atom, _, atom} ->
+          atom_str = Atom.to_string(atom)
+          String.ends_with?(atom_str, ":")
+        {:sequence_token, _, atom} ->
+          atom_str = Atom.to_string(atom)
+          String.ends_with?(atom_str, ":")
+        _ -> false
+      end
+    end)
+  end
+
+  # Build keyword list from parameters containing key: value pairs
+  defp build_keyword_pairs(params) do
+    pairs = params
+    |> Enum.chunk_every(2)
+    |> Enum.map(fn
+      [{:sequence_atom, _, key_atom}, value] ->
+        # Remove trailing colon from key
+        key_str = Atom.to_string(key_atom)
+        key = if String.ends_with?(key_str, ":") do
+          key_str |> String.trim_trailing(":") |> String.to_atom()
+        else
+          key_atom
+        end
+        {key, to_elixir_param(value)}
+      [{:sequence_token, _, key_atom}, value] ->
+        # Remove trailing colon from key
+        key_str = Atom.to_string(key_atom)
+        key = if String.ends_with?(key_str, ":") do
+          key_str |> String.trim_trailing(":") |> String.to_atom()
+        else
+          key_atom
+        end
+        {key, to_elixir_param(value)}
+      other -> 
+        raise "Invalid keyword syntax in parameters: #{inspect(other)}"
+    end)
+    
+    pairs
+  end
+
+  # Build keyword list from bracket syntax [key: value, key2: value2]
+  defp build_keyword_pairs_from_list(params) do
+    pairs = params
+    |> Enum.chunk_every(2)
+    |> Enum.map(fn
+      [{:sequence_atom, _, key_atom}, value] ->
+        # Remove trailing colon from key
+        key_str = Atom.to_string(key_atom)
+        key = if String.ends_with?(key_str, ":") do
+          key_str |> String.trim_trailing(":") |> String.to_atom()
+        else
+          key_atom
+        end
+        {key, to_elixir_param(value)}
+      [{:sequence_token, _, key_atom}, value] ->
+        # Remove trailing colon from key
+        key_str = Atom.to_string(key_atom)
+        key = if String.ends_with?(key_str, ":") do
+          key_str |> String.trim_trailing(":") |> String.to_atom()
+        else
+          key_atom
+        end
+        {key, to_elixir_param(value)}
+      other -> 
+        raise "Invalid keyword syntax in bracket list: #{inspect(other)}"
+    end)
+    
+    pairs
+  end
+
+  # Build keyword list from general expressions (not function parameters)
+  defp build_keyword_pairs_general(items) do
+    pairs = items
+    |> Enum.chunk_every(2)
+    |> Enum.map(fn
+      [{:sequence_atom, _, key_atom}, value] ->
+        # Remove trailing colon from key
+        key_str = Atom.to_string(key_atom)
+        key = if String.ends_with?(key_str, ":") do
+          key_str |> String.trim_trailing(":") |> String.to_atom()
+        else
+          key_atom
+        end
+        {key, eval_simpex_expr(value)}
+      [{:sequence_token, _, key_atom}, value] ->
+        # Remove trailing colon from key
+        key_str = Atom.to_string(key_atom)
+        key = if String.ends_with?(key_str, ":") do
+          key_str |> String.trim_trailing(":") |> String.to_atom()
+        else
+          key_atom
+        end
+        {key, eval_simpex_expr(value)}
+      other -> 
+        raise "Invalid keyword syntax in list: #{inspect(other)}"
+    end)
+    
+    pairs
   end
 
   # Build map key-value pairs
