@@ -26,6 +26,8 @@ defmodule SimpexTest do
     (def pick_nth ([_ b] 1) b)
     (def get_map_value ((% :x val)) val)
     (def kw_fun ([{:arg arg}]) arg)
+    (def kw_sugar_fun (_ignored) [arg: arg other: _other] arg)
+    (def kw_only_sugar_fun  [arg: arg] arg)
     (def tuple_fun ({:arg arg}) arg)
 
     # Comment for testing
@@ -180,6 +182,8 @@ defmodule SimpexTest do
 
     test "functions with kwlist arguments" do
         assert kw_fun(arg: 99) == 99
+        assert kw_sugar_fun(:dummy, arg: 99, other: 123) == 99
+        assert kw_only_sugar_fun(arg: 55) == 55
     end
   end
 end
