@@ -337,6 +337,23 @@ extract_bracket_content(String, ClosingChar, Line, Column, Scope, Acc) ->
     _ ->
       % Not empty, proceed with normal tokenization
       case tokenize_single_item(String, Line, Column, Scope) of
+    {closing_bracket, Char, String2, NewLine, NewColumn, NewScope} ->
+      % Handle closing bracket found after whitespace
+      case String2 of
+        [ClosingChar | Rest] when Char =:= ClosingChar, ClosingChar =/= $) ->
+          % Found matching closing bracket (but not closing paren which ends sequence)
+          {ok, Acc, Rest, NewLine, NewColumn + 1, NewScope};
+        [ClosingChar | _] when Char =:= ClosingChar, ClosingChar =:= $), NewScope#elixir_tokenizer.sequence_depth =:= 1 ->
+          % This is the final closing paren of the sequence literal - don't consume it
+          {ok, Acc, String2, NewLine, NewColumn, NewScope};
+        [ClosingChar | Rest] when Char =:= ClosingChar, ClosingChar =:= $) ->
+          % This is a closing paren but we're still nested
+          FinalScope = NewScope#elixir_tokenizer{sequence_depth = NewScope#elixir_tokenizer.sequence_depth - 1},
+          {ok, Acc, Rest, NewLine, NewColumn + 1, FinalScope};
+        _ ->
+          % Mismatch or different bracket - this is an error
+          {error, {?LOC(NewLine, NewColumn), "unexpected closing bracket: ", [Char]}}
+      end;
     {ok, Token, Rest, NewLine, NewColumn, NewScope} ->
       case Rest of
         [ClosingChar | FinalRest] when ClosingChar =/= $) ->
@@ -490,18 +507,20 @@ tokenize_single_item(String, Line, Column, Scope) ->
           tokenize_single_item(Rest, Line, Column + 1, Scope)
       end;
     
+    % Handle closing brackets - return special indicator
+    [$) | _] = String ->
+      {closing_bracket, $), String, Line, Column, Scope};
+    
+    [$} | _] = String ->
+      {closing_bracket, $}, String, Line, Column, Scope};
+    
+    [$] | _] = String ->
+      {closing_bracket, $], String, Line, Column, Scope};
+    
     % Handle sequence operator ~~
     [$~, $~ | Rest] ->
       Token = {sequence_op, {Line, Column, false}, '~~'},
       {ok, Token, Rest, Line, Column + 2, Scope};
-    
-    % Handle closing brackets - signal end of tokenization for this level
-    [$) | _] ->
-      {end_of_input, String, Line, Column, Scope};
-    [$} | _] ->
-      {end_of_input, String, Line, Column, Scope};
-    [$] | _] ->
-      {end_of_input, String, Line, Column, Scope};
     
     % Handle sequence tokens
     _ ->
