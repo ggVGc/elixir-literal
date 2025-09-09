@@ -573,6 +573,13 @@ defmodule Code.Formatter do
     anon_fun_to_algebra(clauses, line(meta), closing_line(meta), state, eol?(meta, state))
   end
 
+  # Handle sequence literals ~~(...)
+  defp quoted_to_algebra({:sequence_literal, _meta, args}, _context, state) do
+    {args_doc, state} = sequence_literal_args_to_algebra(args, state)
+    doc = string("~~(") |> concat(args_doc) |> concat(string(")"))
+    {doc, state}
+  end
+
   defp quoted_to_algebra({fun, meta, args}, context, state) when is_atom(fun) and is_list(args) do
     with :error <- maybe_sigil_to_algebra(fun, meta, args, state),
          :error <- maybe_unary_op_to_algebra(fun, meta, args, context, state),
@@ -2087,6 +2094,145 @@ defmodule Code.Formatter do
   # fn a, b, c -> e end
   defp clause_args_to_algebra(args, state) do
     many_args_to_algebra(args, state, &quoted_to_algebra(&1, :no_parens_arg, &2))
+  end
+
+  ## Sequence literal helpers
+
+  defp sequence_literal_args_to_algebra(args, state) do
+    case args do
+      [] -> 
+        {@empty, state}
+      [first | rest] ->
+        {first_doc, state} = sequence_literal_element_to_algebra(first, state)
+        {rest_docs, state} = Enum.reduce(rest, {[], state}, fn arg, {acc, state} ->
+          {doc, state} = sequence_literal_element_to_algebra(arg, state)
+          {[doc | acc], state}
+        end)
+        
+        docs = [first_doc | Enum.reverse(rest_docs)]
+        final_doc = Enum.reduce(docs, fn doc, acc -> 
+          concat([acc, " ", doc])
+        end)
+        {final_doc, state}
+    end
+  end
+
+  defp sequence_literal_element_to_algebra({:sequence_prefix, op, args}, state) do
+    {op_doc, state} = sequence_literal_element_to_algebra(op, state)
+    {args_docs, state} = Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
+      {doc, state} = sequence_literal_element_to_algebra(arg, state)
+      {[doc | acc], state}
+    end)
+    
+    if Enum.empty?(args_docs) do
+      {concat(["(", op_doc, ")"]), state}
+    else
+      args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
+      {concat(["(", op_doc, " ", args_doc, ")"]), state}
+    end
+  end
+
+  defp sequence_literal_element_to_algebra({:sequence_paren, _meta, args}, state) do
+    {args_docs, state} = Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
+      {doc, state} = sequence_literal_element_to_algebra(arg, state)
+      {[doc | acc], state}
+    end)
+    
+    args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
+    {concat(["(", args_doc, ")"]), state}
+  end
+
+  defp sequence_literal_element_to_algebra({:sequence_block, _meta, :"()", args}, state) do
+    {args_docs, state} = Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
+      {doc, state} = sequence_literal_element_to_algebra(arg, state)
+      {[doc | acc], state}
+    end)
+    
+    args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
+    {concat(["(", args_doc, ")"]), state}
+  end
+
+  defp sequence_literal_element_to_algebra({:sequence_block, _meta, :"[]", args}, state) do
+    {args_docs, state} = Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
+      {doc, state} = sequence_literal_element_to_algebra(arg, state)
+      {[doc | acc], state}
+    end)
+    
+    args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
+    {concat(["[", args_doc, "]"]), state}
+  end
+
+  defp sequence_literal_element_to_algebra({:sequence_block, _meta, :{}, args}, state) do
+    {args_docs, state} = Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
+      {doc, state} = sequence_literal_element_to_algebra(arg, state)
+      {[doc | acc], state}
+    end)
+    
+    args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
+    {concat(["{", args_doc, "}"]), state}
+  end
+
+  defp sequence_literal_element_to_algebra({:sequence_brace, _meta, args}, state) do
+    {args_docs, state} = Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
+      {doc, state} = sequence_literal_element_to_algebra(arg, state)
+      {[doc | acc], state}
+    end)
+    
+    args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
+    {concat(["{", args_doc, "}"]), state}
+  end
+
+  defp sequence_literal_element_to_algebra({:sequence_token, _meta, atom}, state) when is_atom(atom) do
+    {Atom.to_string(atom) |> string(), state}
+  end
+
+  defp sequence_literal_element_to_algebra({:sequence_atom, _meta, atom}, state) do
+    {":" <> Atom.to_string(atom) |> string(), state}
+  end
+
+  defp sequence_literal_element_to_algebra({:sequence_string, _meta, value}, state) do
+    str = if is_list(value), do: List.to_string(value), else: value
+    {inspect(str) |> string(), state}
+  end
+
+  defp sequence_literal_element_to_algebra({:sequence_chars, _meta, value}, state) do
+    {inspect(value, as_charlists: :as_charlists) |> string(), state}
+  end
+
+  defp sequence_literal_element_to_algebra({:sequence_number, _meta, value}, state) do
+    {to_string(value) |> string(), state}
+  end
+
+  # Handle regular AST nodes within sequence literals
+  defp sequence_literal_element_to_algebra({atom, _meta, nil}, state) when is_atom(atom) do
+    {Atom.to_string(atom) |> string(), state}
+  end
+
+  defp sequence_literal_element_to_algebra(number, state) when is_number(number) do
+    {to_string(number) |> string(), state}
+  end
+
+  defp sequence_literal_element_to_algebra(string, state) when is_binary(string) do
+    {inspect(string) |> string(), state}
+  end
+
+  defp sequence_literal_element_to_algebra(atom, state) when is_atom(atom) do
+    {":" <> Atom.to_string(atom) |> string(), state}
+  end
+
+  defp sequence_literal_element_to_algebra(list, state) when is_list(list) do
+    {docs, state} = Enum.reduce(list, {[], state}, fn arg, {acc, state} ->
+      {doc, state} = sequence_literal_element_to_algebra(arg, state)
+      {[doc | acc], state}
+    end)
+    
+    args_doc = docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
+    {concat(["[", args_doc, "]"]), state}
+  end
+
+  defp sequence_literal_element_to_algebra(other, state) do
+    # Fallback to regular quoted_to_algebra for complex expressions
+    quoted_to_algebra(other, :no_parens_arg, state)
   end
 
   ## Quoted helpers for comments
