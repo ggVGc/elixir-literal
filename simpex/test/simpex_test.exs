@@ -191,7 +191,7 @@ defmodule SimpexTest do
     end
 
     test "wip test" do
-      defsimpex ~~((assert (== true true)))
+      defsimpex ~~((assert (== true true )))
     end
   end
 end

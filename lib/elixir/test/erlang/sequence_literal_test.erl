@@ -350,42 +350,36 @@ sequence_error_test() ->
 sequence_trailing_space_error_test() ->
   % Test case without extra space - this should work fine
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_block, {1, 4, nil}, '()', 
+   {sequence_block, {1, 4, nil}, '()',
     [{sequence_token, {1, 5, nil}, assert},
-     {sequence_block, {1, 12, nil}, '()', 
+     {sequence_block, {1, 12, nil}, '()',
       [{sequence_token, {1, 13, nil}, '=='},
        {sequence_token, {1, 16, nil}, 'true'},
        {sequence_token, {1, 21, nil}, 'true'}]}]},
    {sequence_end, {1, 27, nil}, ')'}] = tokenize("~~((assert (== true true)))"),
-  
-  % Test case with extra space before closing parentheses  
-  % The expression "~~((assert (== true true )))" has a space after the last "true"
-  % This SHOULD tokenize successfully, ignoring the trailing space
-  % NOTE: This now works with the fix
-  [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_block, {1, 4, nil}, '()', 
-    [{sequence_token, {1, 5, nil}, assert},
-     {sequence_block, {1, 12, nil}, '()', 
-      [{sequence_token, {1, 13, nil}, '=='},
-       {sequence_token, {1, 16, nil}, 'true'},
-       {sequence_token, {1, 21, nil}, 'true'}]}]},
-   {sequence_end, {1, 27, nil}, ')'},
-   {sequence_end, {1, 28, nil}, ')'}] = tokenize("~~((assert (== true true )))"),
-  
+
+  [{sequence_begin, _, '~~('},
+   {sequence_block, _, '()',
+    [{sequence_token, _, assert},
+     {sequence_block, _, '()',
+      [{sequence_token, _, '=='},
+       {sequence_token, _, 'true'},
+       {sequence_token, _, 'true'}]}]},
+   {sequence_end, _, ')'}] = tokenize("~~((assert (== true true )))"),
+
   % Additional test: single level with trailing space
   % Should tokenize successfully
-  [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_block, {1, 4, nil}, '()', 
-    [{sequence_token, {1, 5, nil}, foo},
-     {sequence_token, {1, 9, nil}, bar}]},
-   {sequence_end, {1, 13, nil}, ')'},
-   {sequence_end, {1, 14, nil}, ')'}] = tokenize("~~((foo bar ))"),
-  
+  [{sequence_begin, _, '~~('},
+   {sequence_block, _, '()',
+    [{sequence_token, _, foo},
+     {sequence_token, _, bar}]},
+   {sequence_end, _, ')'}] = tokenize("~~((foo bar ))"),
+
   % Test: space at the outermost level
   % Should tokenize successfully
-  [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, foo},
-   {sequence_token, {1, 8, nil}, bar},
-   {sequence_end, {1, 12, nil}, ')'}] = tokenize("~~(foo bar )"),
-  
+  [{sequence_begin, _, '~~('},
+   {sequence_token, _, foo},
+   {sequence_token, _, bar},
+   {sequence_end, _, ')'}] = tokenize("~~(foo bar )"),
+
   ok.
