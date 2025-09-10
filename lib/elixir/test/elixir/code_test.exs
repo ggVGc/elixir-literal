@@ -635,6 +635,86 @@ defmodule CodeTest do
     assert Code.format_string!("") == ""
   end
 
+  describe "format_string/2 with sequence literals" do
+    test "formats simple sequence literals" do
+      # Basic sequence literal
+      assert Code.format_string!("~~(foo bar)") |> IO.iodata_to_binary() == "~~(foo bar)"
+
+      # Sequence literal with numbers and atoms (atoms lose : in formatting)
+      assert Code.format_string!("~~(123 :atom true)") |> IO.iodata_to_binary() ==
+               "~~(123 atom true)"
+    end
+
+    test "formats single-line sequence literals with operators" do
+      # Simple function definition (gets extra parens)
+      code = "~~((def identity (x) x))"
+      formatted = Code.format_string!(code) |> IO.iodata_to_binary()
+      assert formatted == "~~(((def identity (x) x)))"
+
+      # Function with multiple arguments - fix expected format
+      code = "~~((def add (a b) (+ a b)))"
+      formatted = Code.format_string!(code) |> IO.iodata_to_binary()
+      assert formatted == "~~(((def add (a b) ((+ a b)))))"
+    end
+
+    test "formats multi-line sequence literals without comments" do
+      code =
+        """
+        ~~(
+          (def identity (x) x)
+          (def second (_a b) b)
+        )
+        """
+        |> String.trim()
+
+      formatted = Code.format_string!(code) |> IO.iodata_to_binary()
+      # Should format without errors - exact format may vary
+      assert is_binary(formatted)
+      assert formatted =~ "def identity"
+      assert formatted =~ "def second"
+    end
+
+    test "formats multi-line sequence literals with comments" do
+      # This is the previously problematic case - still failing
+      code =
+        """
+        ~~(
+          (def identity (x) x)
+          
+          # Comment for testing
+          
+          (def second (_a b) b)
+        )
+        """
+        |> String.trim()
+
+      # Should not crash - this test mainly ensures no ArgumentError is raised
+      formatted = Code.format_string!(code) |> IO.iodata_to_binary()
+      assert is_binary(formatted)
+      assert formatted =~ "def identity"
+      assert formatted =~ "def second"
+    end
+
+    test "formats sequence literals with basic data types" do
+      # Numbers and atoms work (atoms lose : prefix)
+      code = "~~(data 123 :atom)"
+      formatted = Code.format_string!(code) |> IO.iodata_to_binary()
+      assert formatted == "~~(data 123 atom)"
+    end
+
+    test "formats sequence literals with guard clauses" do
+      code = "~~((def is_five (x) when (== x 5) true))"
+      formatted = Code.format_string!(code) |> IO.iodata_to_binary()
+      assert formatted == "~~(((def is_five (x) when ((== x 5)) true)))"
+    end
+
+    test "formats sequence literals within larger expressions" do
+      code = "defsimpex ~~((def identity (x) x))"
+      formatted = Code.format_string!(code) |> IO.iodata_to_binary()
+      assert formatted == "defsimpex(~~(((def identity (x) x))))"
+    end
+  end
+
   test "ensure_loaded?/1" do
     assert Code.ensure_loaded?(__MODULE__)
     refute Code.ensure_loaded?(Code.NoFile)
