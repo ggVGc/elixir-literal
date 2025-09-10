@@ -29,14 +29,11 @@ defmodule SimpexTest do
     (def kw_sugar_fun (_ignored) [arg: arg other: _other] arg)
     (def kw_only_sugar_fun  [arg: arg] arg)
     (def tuple_fun ({:arg arg}) arg)
-
-    # Comment for testing
-
     (def is_five (x) when (== x 5) true)
     (def is_five (_) false)
   )
 
-  describe "data types" do
+        describe "data types" do
     test "numbers work" do
       result = defsimpex ~~(42)
       assert result == 42
