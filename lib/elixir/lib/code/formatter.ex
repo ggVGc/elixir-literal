@@ -2188,6 +2188,12 @@ defmodule Code.Formatter do
 
   defp sequence_literal_element_to_algebra({:sequence_prefix, op, args}, state) do
     # Handle operator node specially - just extract the atom name
+    op_meta =
+      case op do
+        {_atom, meta, _} -> meta
+        _ -> []
+      end
+
     {op_doc, state} =
       case op do
         {atom, _meta, nil} when is_atom(atom) ->
@@ -2207,61 +2213,180 @@ defmodule Code.Formatter do
       # For bare atoms/operators, don't add extra parentheses
       {op_doc, state}
     else
-      # Don't add parentheses - just format as space-separated list
-      # The parentheses should come from sequence_paren or be explicit in source
-      args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
-      {concat([op_doc, " ", args_doc]), state}
+      # Check if arguments span multiple lines
+      min_line = op_meta[:line] || @min_line
+
+      max_line =
+        args
+        |> Enum.reduce(min_line, fn arg, max ->
+          {_arg_min, arg_max} = traverse_line(arg, {@max_line, @min_line})
+
+          case arg_max do
+            @min_line -> max
+            line -> max(line, max)
+          end
+        end)
+
+      is_multiline = max_line > min_line
+
+      # Format with intelligent line breaks for multi-line expressions
+      if is_multiline do
+        reversed_args = Enum.reverse(args_docs)
+
+        # For function definitions (def name args body...), keep header together
+        # and put body expressions on separate lines
+        case {op, reversed_args} do
+          {{:def, _, _}, [name_doc, args_doc | body_docs]} when length(body_docs) > 0 ->
+            # Keep 'def name args' together, separate body expressions
+            header_doc = concat([name_doc, " ", args_doc])
+            body_doc = body_docs |> Enum.reduce(&line(&2, &1))
+            {concat([op_doc, " ", header_doc, line(), body_doc]), state}
+
+          _ ->
+            # For other cases, just separate all arguments with lines
+            args_doc = reversed_args |> Enum.reduce(&line(&2, &1))
+            {concat([op_doc, " ", args_doc]), state}
+        end
+      else
+        args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
+        {concat([op_doc, " ", args_doc]), state}
+      end
     end
   end
 
-  defp sequence_literal_element_to_algebra({:sequence_paren, _meta, args}, state) do
+  defp sequence_literal_element_to_algebra({:sequence_paren, meta, args}, state) do
     {args_docs, state} =
       Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
         {doc, state} = sequence_literal_element_to_algebra(arg, state)
         {[doc | acc], state}
       end)
 
-    args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
-    {concat(["(", args_doc, ")"]), state}
+    # Check if arguments span multiple lines
+    min_line = meta[:line] || @min_line
+
+    max_line =
+      args
+      |> Enum.reduce(min_line, fn arg, max ->
+        {_arg_min, arg_max} = traverse_line(arg, {@max_line, @min_line})
+
+        case arg_max do
+          @min_line -> max
+          line -> max(line, max)
+        end
+      end)
+
+    is_multiline = max_line > min_line
+
+    # Format with newlines if multi-line, spaces if single-line
+    if is_multiline do
+      args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&line(&2, &1))
+      {concat(["(", line(), args_doc, line(), ")"]), state}
+    else
+      args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
+      {concat(["(", args_doc, ")"]), state}
+    end
   end
 
-  defp sequence_literal_element_to_algebra({:sequence_block, _meta, :"()", args}, state) do
+  defp sequence_literal_element_to_algebra({:sequence_block, meta, :"()", args}, state) do
     {args_docs, state} =
       Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
         {doc, state} = sequence_literal_element_to_algebra(arg, state)
         {[doc | acc], state}
       end)
+
+    # Check if arguments span multiple lines
+    min_line = meta[:line] || @min_line
+
+    max_line =
+      args
+      |> Enum.reduce(min_line, fn arg, max ->
+        {_arg_min, arg_max} = traverse_line(arg, {@max_line, @min_line})
+
+        case arg_max do
+          @min_line -> max
+          line -> max(line, max)
+        end
+      end)
+
+    is_multiline = max_line > min_line
 
     args_doc =
       case Enum.reverse(args_docs) do
         [] -> @empty
         [single] -> single
+        docs when is_multiline -> Enum.reduce(docs, &line(&2, &1))
         docs -> Enum.reduce(docs, &concat(&2, concat(" ", &1)))
       end
 
-    {concat(["(", args_doc, ")"]), state}
+    if is_multiline && length(args) > 1 do
+      {concat(["(", line(), args_doc, line(), ")"]), state}
+    else
+      {concat(["(", args_doc, ")"]), state}
+    end
   end
 
-  defp sequence_literal_element_to_algebra({:sequence_block, _meta, :"[]", args}, state) do
+  defp sequence_literal_element_to_algebra({:sequence_block, meta, :"[]", args}, state) do
     {args_docs, state} =
       Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
         {doc, state} = sequence_literal_element_to_algebra(arg, state)
         {[doc | acc], state}
       end)
 
-    args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
-    {concat(["[", args_doc, "]"]), state}
+    # Check if arguments span multiple lines
+    min_line = meta[:line] || @min_line
+
+    max_line =
+      args
+      |> Enum.reduce(min_line, fn arg, max ->
+        {_arg_min, arg_max} = traverse_line(arg, {@max_line, @min_line})
+
+        case arg_max do
+          @min_line -> max
+          line -> max(line, max)
+        end
+      end)
+
+    is_multiline = max_line > min_line
+
+    if is_multiline && length(args) > 1 do
+      args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&line(&2, &1))
+      {concat(["[", line(), args_doc, line(), "]"]), state}
+    else
+      args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
+      {concat(["[", args_doc, "]"]), state}
+    end
   end
 
-  defp sequence_literal_element_to_algebra({:sequence_block, _meta, :{}, args}, state) do
+  defp sequence_literal_element_to_algebra({:sequence_block, meta, :{}, args}, state) do
     {args_docs, state} =
       Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
         {doc, state} = sequence_literal_element_to_algebra(arg, state)
         {[doc | acc], state}
       end)
 
-    args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
-    {concat(["{", args_doc, "}"]), state}
+    # Check if arguments span multiple lines
+    min_line = meta[:line] || @min_line
+
+    max_line =
+      args
+      |> Enum.reduce(min_line, fn arg, max ->
+        {_arg_min, arg_max} = traverse_line(arg, {@max_line, @min_line})
+
+        case arg_max do
+          @min_line -> max
+          line -> max(line, max)
+        end
+      end)
+
+    is_multiline = max_line > min_line
+
+    if is_multiline && length(args) > 1 do
+      args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&line(&2, &1))
+      {concat(["{", line(), args_doc, line(), "}"]), state}
+    else
+      args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
+      {concat(["{", args_doc, "}"]), state}
+    end
   end
 
   defp sequence_literal_element_to_algebra({:sequence_brace, _meta, args}, state) do

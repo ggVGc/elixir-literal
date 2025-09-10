@@ -733,6 +733,63 @@ defmodule CodeTest do
       # Should preserve proper nesting without extra wrapping
       assert formatted2 =~ "~~((def add"
     end
+
+    test "preserves newlines in nested sequence literal elements" do
+      # Test multi-line function body
+      code =
+        """
+        ~~((def is_five (x)
+          (= a 1)
+          (= b 3)
+          (== a b)))
+        """
+        |> String.trim()
+
+      formatted = Code.format_string!(code) |> IO.iodata_to_binary()
+
+      # Should preserve the multi-line structure
+      assert formatted =~ "def is_five"
+      # Check that newlines are preserved (not all on one line)
+      lines = String.split(formatted, "\n")
+      assert length(lines) > 1
+      # Verify each expression is on its own line
+      assert Enum.any?(lines, &(&1 =~ "(= a 1)"))
+      assert Enum.any?(lines, &(&1 =~ "(= b 3)"))
+      assert Enum.any?(lines, &(&1 =~ "(== a b)"))
+
+      # Test nested multi-line in sequence_paren
+      code2 =
+        """
+        ~~((
+          first
+          second
+          third
+        ))
+        """
+        |> String.trim()
+
+      formatted2 = Code.format_string!(code2) |> IO.iodata_to_binary()
+      lines2 = String.split(formatted2, "\n")
+      assert length(lines2) > 1
+
+      # Test multi-line with mixed single/multi elements
+      code3 =
+        """
+        ~~(
+          (def foo (x) x)
+          (def bar (y)
+            (+ y 1)
+            (+ y 2))
+        )
+        """
+        |> String.trim()
+
+      formatted3 = Code.format_string!(code3) |> IO.iodata_to_binary()
+      lines3 = String.split(formatted3, "\n")
+      assert length(lines3) > 2
+      assert formatted3 =~ "def foo"
+      assert formatted3 =~ "def bar"
+    end
   end
 
   test "ensure_loaded?/1" do
