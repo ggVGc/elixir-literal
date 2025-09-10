@@ -2240,12 +2240,24 @@ defmodule Code.Formatter do
             # Keep 'def name args' together, separate body expressions
             header_doc = concat([name_doc, " ", args_doc])
             body_doc = body_docs |> Enum.reduce(&line(&2, &1))
-            {concat([op_doc, " ", header_doc, line(), body_doc]), state}
+            indented_body = line("", body_doc) |> nest(2)
+            {concat([op_doc, " ", header_doc, indented_body]), state}
 
           _ ->
-            # For other cases, just separate all arguments with lines
-            args_doc = reversed_args |> Enum.reduce(&line(&2, &1))
-            {concat([op_doc, " ", args_doc]), state}
+            # For other cases, apply indentation to multi-line arguments
+            case reversed_args do
+              [single_arg] ->
+                # Single argument - no special indentation needed
+                {concat([op_doc, " ", single_arg]), state}
+              [first_arg | rest_args] ->
+                # Multiple arguments - first stays on same line, rest get indented
+                rest_doc = rest_args |> Enum.reduce(&line(&2, &1))
+                indented_rest = line("", rest_doc) |> nest(2)
+                {concat([op_doc, " ", first_arg, indented_rest]), state}
+              [] ->
+                # No arguments
+                {op_doc, state}
+            end
         end
       else
         args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
@@ -2279,8 +2291,16 @@ defmodule Code.Formatter do
 
     # Format with newlines if multi-line, spaces if single-line
     if is_multiline do
-      args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&line(&2, &1))
-      {concat(["(", line(), args_doc, line(), ")"]), state}
+      # Check if we have a single sequence_prefix that handles its own formatting
+      case {args, args_docs} do
+        {[{:sequence_prefix, _, _}], [single_doc]} ->
+          # Single sequence_prefix - let it handle its own multi-line formatting
+          {concat(["(", single_doc, ")"]), state}
+        _ ->
+          # Multiple args or non-prefix - add our own line breaks
+          args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&line(&2, &1))
+          {concat(["(", line(), args_doc, line(), ")"]), state}
+      end
     else
       args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
       {concat(["(", args_doc, ")"]), state}
