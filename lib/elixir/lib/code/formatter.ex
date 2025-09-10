@@ -2100,30 +2100,46 @@ defmodule Code.Formatter do
 
   defp sequence_literal_args_to_algebra(args, state) do
     case args do
-      [] -> 
+      [] ->
         {@empty, state}
+
       [first | rest] ->
         {first_doc, state} = sequence_literal_element_to_algebra(first, state)
-        {rest_docs, state} = Enum.reduce(rest, {[], state}, fn arg, {acc, state} ->
-          {doc, state} = sequence_literal_element_to_algebra(arg, state)
-          {[doc | acc], state}
-        end)
-        
+
+        {rest_docs, state} =
+          Enum.reduce(rest, {[], state}, fn arg, {acc, state} ->
+            {doc, state} = sequence_literal_element_to_algebra(arg, state)
+            {[doc | acc], state}
+          end)
+
         docs = [first_doc | Enum.reverse(rest_docs)]
-        final_doc = Enum.reduce(docs, fn doc, acc -> 
-          concat([acc, " ", doc])
-        end)
+
+        final_doc =
+          Enum.reduce(docs, fn doc, acc ->
+            concat([acc, " ", doc])
+          end)
+
         {final_doc, state}
     end
   end
 
   defp sequence_literal_element_to_algebra({:sequence_prefix, op, args}, state) do
-    {op_doc, state} = sequence_literal_element_to_algebra(op, state)
-    {args_docs, state} = Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-      {doc, state} = sequence_literal_element_to_algebra(arg, state)
-      {[doc | acc], state}
-    end)
-    
+    # Handle operator node specially - just extract the atom name
+    {op_doc, state} =
+      case op do
+        {atom, _meta, nil} when is_atom(atom) ->
+          {Atom.to_string(atom) |> string(), state}
+
+        _ ->
+          sequence_literal_element_to_algebra(op, state)
+      end
+
+    {args_docs, state} =
+      Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
+        {doc, state} = sequence_literal_element_to_algebra(arg, state)
+        {[doc | acc], state}
+      end)
+
     if Enum.empty?(args_docs) do
       {concat(["(", op_doc, ")"]), state}
     else
@@ -2133,61 +2149,67 @@ defmodule Code.Formatter do
   end
 
   defp sequence_literal_element_to_algebra({:sequence_paren, _meta, args}, state) do
-    {args_docs, state} = Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-      {doc, state} = sequence_literal_element_to_algebra(arg, state)
-      {[doc | acc], state}
-    end)
-    
+    {args_docs, state} =
+      Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
+        {doc, state} = sequence_literal_element_to_algebra(arg, state)
+        {[doc | acc], state}
+      end)
+
     args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
     {concat(["(", args_doc, ")"]), state}
   end
 
   defp sequence_literal_element_to_algebra({:sequence_block, _meta, :"()", args}, state) do
-    {args_docs, state} = Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-      {doc, state} = sequence_literal_element_to_algebra(arg, state)
-      {[doc | acc], state}
-    end)
-    
+    {args_docs, state} =
+      Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
+        {doc, state} = sequence_literal_element_to_algebra(arg, state)
+        {[doc | acc], state}
+      end)
+
     args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
     {concat(["(", args_doc, ")"]), state}
   end
 
   defp sequence_literal_element_to_algebra({:sequence_block, _meta, :"[]", args}, state) do
-    {args_docs, state} = Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-      {doc, state} = sequence_literal_element_to_algebra(arg, state)
-      {[doc | acc], state}
-    end)
-    
+    {args_docs, state} =
+      Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
+        {doc, state} = sequence_literal_element_to_algebra(arg, state)
+        {[doc | acc], state}
+      end)
+
     args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
     {concat(["[", args_doc, "]"]), state}
   end
 
   defp sequence_literal_element_to_algebra({:sequence_block, _meta, :{}, args}, state) do
-    {args_docs, state} = Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-      {doc, state} = sequence_literal_element_to_algebra(arg, state)
-      {[doc | acc], state}
-    end)
-    
+    {args_docs, state} =
+      Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
+        {doc, state} = sequence_literal_element_to_algebra(arg, state)
+        {[doc | acc], state}
+      end)
+
     args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
     {concat(["{", args_doc, "}"]), state}
   end
 
   defp sequence_literal_element_to_algebra({:sequence_brace, _meta, args}, state) do
-    {args_docs, state} = Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-      {doc, state} = sequence_literal_element_to_algebra(arg, state)
-      {[doc | acc], state}
-    end)
-    
+    {args_docs, state} =
+      Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
+        {doc, state} = sequence_literal_element_to_algebra(arg, state)
+        {[doc | acc], state}
+      end)
+
     args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
     {concat(["{", args_doc, "}"]), state}
   end
 
-  defp sequence_literal_element_to_algebra({:sequence_token, _meta, atom}, state) when is_atom(atom) do
+  defp sequence_literal_element_to_algebra({:sequence_token, _meta, atom}, state)
+       when is_atom(atom) do
     {Atom.to_string(atom) |> string(), state}
   end
 
   defp sequence_literal_element_to_algebra({:sequence_atom, _meta, atom}, state) do
-    {":" <> Atom.to_string(atom) |> string(), state}
+    {(":" <> Atom.to_string(atom)) |> string(), state}
   end
 
   defp sequence_literal_element_to_algebra({:sequence_string, _meta, value}, state) do
@@ -2217,15 +2239,16 @@ defmodule Code.Formatter do
   end
 
   defp sequence_literal_element_to_algebra(atom, state) when is_atom(atom) do
-    {":" <> Atom.to_string(atom) |> string(), state}
+    {(":" <> Atom.to_string(atom)) |> string(), state}
   end
 
   defp sequence_literal_element_to_algebra(list, state) when is_list(list) do
-    {docs, state} = Enum.reduce(list, {[], state}, fn arg, {acc, state} ->
-      {doc, state} = sequence_literal_element_to_algebra(arg, state)
-      {[doc | acc], state}
-    end)
-    
+    {docs, state} =
+      Enum.reduce(list, {[], state}, fn arg, {acc, state} ->
+        {doc, state} = sequence_literal_element_to_algebra(arg, state)
+        {[doc | acc], state}
+      end)
+
     args_doc = docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
     {concat(["[", args_doc, "]"]), state}
   end

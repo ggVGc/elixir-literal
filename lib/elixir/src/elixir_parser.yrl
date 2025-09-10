@@ -1398,31 +1398,42 @@ warn(LineColumn, Message) ->
     File -> elixir_errors:erl_warn(LineColumn, File, Message)
   end.
 
+%% Helper to normalize metadata from tuple to keyword list format
+normalize_meta(Meta) when is_list(Meta) ->
+  Meta;
+normalize_meta({Line, Column, _}) when is_integer(Line) ->
+  meta_from_location({Line, Column, nil});
+normalize_meta(Meta) ->
+  Meta.
+
 %% Transform sequence arguments to detect operator-led patterns
 transform_sequence_args([]) ->
   [];
 transform_sequence_args([{Op, Meta, nil} | Rest]) when is_atom(Op) ->
+  NormalizedMeta = normalize_meta(Meta),
   case {is_operator_symbol(Op), Rest} of
     {true, []} ->
-      [{sequence_prefix, {Op, Meta, nil}, []}];
+      [{sequence_prefix, {Op, NormalizedMeta, nil}, []}];
     {true, _} ->
       TransformedRest = lists:map(fun transform_sequence_node/1, Rest),
-      [{sequence_prefix, {Op, Meta, nil}, TransformedRest}];
+      [{sequence_prefix, {Op, NormalizedMeta, nil}, TransformedRest}];
     {false, _} ->
-      [{Op, Meta, nil} | transform_sequence_args(Rest)]
+      [{Op, NormalizedMeta, nil} | transform_sequence_args(Rest)]
   end;
 transform_sequence_args([First | Rest]) ->
   [transform_sequence_node(First) | transform_sequence_args(Rest)].
 
 %% Transform individual sequence nodes recursively
 transform_sequence_node({sequence_paren, Meta, Args}) ->
-  {sequence_paren, Meta, transform_sequence_args(Args)};
+  {sequence_paren, normalize_meta(Meta), transform_sequence_args(Args)};
 transform_sequence_node({sequence_brace, Meta, Args}) ->
-  {sequence_brace, Meta, transform_sequence_args(Args)};  
+  {sequence_brace, normalize_meta(Meta), transform_sequence_args(Args)};  
 transform_sequence_node({sequence_bracket, Meta, Args}) ->
-  {sequence_bracket, Meta, transform_sequence_args(Args)};
+  {sequence_bracket, normalize_meta(Meta), transform_sequence_args(Args)};
+transform_sequence_node({sequence_block, Meta, BracketType, Args}) ->
+  {sequence_block, normalize_meta(Meta), BracketType, transform_sequence_args(Args)};
 transform_sequence_node({sequence_token, Location, Value}) ->
-  {Value, meta_from_location(Location), nil};
+  {Value, normalize_meta(Location), nil};
 transform_sequence_node({sequence_number, Location, Value}) ->
   Value;
 transform_sequence_node({sequence_string, Location, Value}) ->
