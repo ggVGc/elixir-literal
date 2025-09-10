@@ -32,10 +32,8 @@ defmodule SimpexTest do
     (def kw_only_sugar_fun [arg: arg] arg)
     (def tuple_fun ({:arg arg}) arg)
     (def is_five (x) when (== x 5) true)
-      (def is_five (x)
-        (= a 1)
-        (= b 3)
-        (== a b))
+    (def is_five (x)
+      (== x 5))
     )
   )
 
