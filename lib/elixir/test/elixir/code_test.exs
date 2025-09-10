@@ -713,6 +713,26 @@ defmodule CodeTest do
       formatted = Code.format_string!(code) |> IO.iodata_to_binary()
       assert formatted == "defsimpex(~~(((def identity (x) x))))"
     end
+
+    test "does not add unnecessary parentheses to sequence elements" do
+      # Simple function definition should not get triple parentheses
+      code = "~~((def identity (x) x))"
+      formatted = Code.format_string!(code) |> IO.iodata_to_binary()
+      
+      # Should not have triple opening parentheses around def
+      refute formatted =~ "(((def"
+      # Should preserve the original double parentheses structure
+      assert formatted =~ "((def"
+      
+      # Test with a more complex example
+      code2 = "~~((def add (a b) (+ a b)))"
+      formatted2 = Code.format_string!(code2) |> IO.iodata_to_binary()
+      
+      # Should not add extra parentheses around the entire def expression
+      refute formatted2 =~ "~~(((def add"
+      # Should preserve proper nesting without extra wrapping
+      assert formatted2 =~ "~~((def add"
+    end
   end
 
   test "ensure_loaded?/1" do

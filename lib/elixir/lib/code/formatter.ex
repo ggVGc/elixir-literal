@@ -574,10 +574,65 @@ defmodule Code.Formatter do
   end
 
   # Handle sequence literals ~~(...)
-  defp quoted_to_algebra({:sequence_literal, _meta, args}, _context, state) do
-    {args_doc, state} = sequence_literal_args_to_algebra(args, state)
-    doc = string("~~(") |> concat(args_doc) |> concat(string(")"))
-    {doc, state}
+  defp quoted_to_algebra({:sequence_literal, meta, args}, _context, state) do
+    case args do
+      [] ->
+        {string("~~()"), state}
+      [single_arg] ->
+        {args_doc, state} = sequence_literal_element_to_algebra(single_arg, state)
+        doc = string("~~(") |> concat(args_doc) |> concat(string(")"))
+        {doc, state}
+      _ ->
+        # Check if this was originally multi-line by looking at line spans
+        min_line = meta[:line] || @min_line
+        max_line = case args do
+          [] -> min_line
+          _ ->
+            args
+            |> Enum.reduce(min_line, fn arg, max ->
+              {_arg_min, arg_max} = traverse_line(arg, {@max_line, @min_line})
+              case arg_max do
+                @min_line -> max  # No line info found, keep current max
+                line -> max(line, max)
+              end
+            end)
+        end
+        
+        is_multiline = max_line > min_line
+        
+        {args_docs, state} =
+          Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
+            {doc, state} = sequence_literal_element_to_algebra(arg, state)
+            {[doc | acc], state}
+          end)
+        
+        if is_multiline do
+          # Original was multi-line: preserve newlines
+          args_doc = 
+            args_docs
+            |> Enum.reverse()
+            |> Enum.reduce(&line(&2, &1))
+          
+          doc = 
+            string("~~(")
+            |> concat(line())
+            |> concat(args_doc)
+            |> concat(line())
+            |> concat(string(")"))
+            |> group()
+          
+          {doc, state}
+        else
+          # Original was single-line: keep compact
+          args_doc = 
+            args_docs
+            |> Enum.reverse()
+            |> Enum.reduce(&concat(&2, concat(" ", &1)))
+          
+          doc = string("~~(") |> concat(args_doc) |> concat(string(")"))
+          {doc, state}
+        end
+    end
   end
 
   defp quoted_to_algebra({fun, meta, args}, context, state) when is_atom(fun) and is_list(args) do
