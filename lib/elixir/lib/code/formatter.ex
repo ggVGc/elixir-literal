@@ -2166,7 +2166,11 @@ defmodule Code.Formatter do
         {[doc | acc], state}
       end)
 
-    args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
+    args_doc = case Enum.reverse(args_docs) do
+      [] -> @empty
+      [single] -> single
+      docs -> Enum.reduce(docs, &concat(&2, concat(" ", &1)))
+    end
     {concat(["(", args_doc, ")"]), state}
   end
 
@@ -2348,6 +2352,37 @@ defmodule Code.Formatter do
   end
 
   defp adjust_trailing_newlines(doc_triplet, _, _), do: doc_triplet
+
+  # Helper function to extract line information from metadata
+  defp extract_line_from_meta(meta, {min, max}) when is_list(meta) do
+    case :lists.keyfind(:line, 1, meta) do
+      {:line, line} -> {min(line, min), max(line, max)}
+      false -> {min, max}
+    end
+  end
+
+  defp extract_line_from_meta(_, acc), do: acc
+
+  # Handle sequence literal nodes
+  defp traverse_line({:sequence_literal, meta, args}, {min, max}) do
+    acc = extract_line_from_meta(meta, {min, max})
+    traverse_line(args, acc)
+  end
+
+  defp traverse_line({:sequence_prefix, op, args}, {min, max}) do
+    acc = traverse_line(op, {min, max})
+    traverse_line(args, acc)
+  end
+
+  defp traverse_line({:sequence_paren, meta, args}, {min, max}) do
+    acc = extract_line_from_meta(meta, {min, max})
+    traverse_line(args, acc)
+  end
+
+  defp traverse_line({:sequence_block, meta, _bracket_type, args}, {min, max}) do
+    acc = extract_line_from_meta(meta, {min, max})
+    traverse_line(args, acc)
+  end
 
   defp traverse_line({expr, meta, args}, {min, max}) do
     # This is a hot path, so use :lists.keyfind/3 instead Keyword.fetch!/2
