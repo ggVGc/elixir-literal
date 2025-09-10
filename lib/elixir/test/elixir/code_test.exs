@@ -646,15 +646,15 @@ defmodule CodeTest do
     end
 
     test "formats single-line sequence literals with operators" do
-      # Simple function definition (gets extra parens)
+      # Simple function definition (no extra parens)
       code = "~~((def identity (x) x))"
       formatted = Code.format_string!(code) |> IO.iodata_to_binary()
-      assert formatted == "~~(((def identity (x) x)))"
+      assert formatted == "~~((def identity (x) x))"
 
-      # Function with multiple arguments - fix expected format
+      # Function with multiple arguments
       code = "~~((def add (a b) (+ a b)))"
       formatted = Code.format_string!(code) |> IO.iodata_to_binary()
-      assert formatted == "~~(((def add (a b) ((+ a b)))))"
+      assert formatted == "~~((def add (a b) (+ a b)))"
     end
 
     test "formats multi-line sequence literals without comments" do
@@ -705,29 +705,29 @@ defmodule CodeTest do
     test "formats sequence literals with guard clauses" do
       code = "~~((def is_five (x) when (== x 5) true))"
       formatted = Code.format_string!(code) |> IO.iodata_to_binary()
-      assert formatted == "~~(((def is_five (x) when ((== x 5)) true)))"
+      assert formatted == "~~((def is_five (x) when (== x 5) true))"
     end
 
     test "formats sequence literals within larger expressions" do
       code = "defsimpex ~~((def identity (x) x))"
       formatted = Code.format_string!(code) |> IO.iodata_to_binary()
-      assert formatted == "defsimpex(~~(((def identity (x) x))))"
+      assert formatted == "defsimpex(~~((def identity (x) x)))"
     end
 
     test "does not add unnecessary parentheses to sequence elements" do
       # Simple function definition should not get triple parentheses
       code = "~~((def identity (x) x))"
       formatted = Code.format_string!(code) |> IO.iodata_to_binary()
-      
+
       # Should not have triple opening parentheses around def
       refute formatted =~ "(((def"
       # Should preserve the original double parentheses structure
       assert formatted =~ "((def"
-      
+
       # Test with a more complex example
       code2 = "~~((def add (a b) (+ a b)))"
       formatted2 = Code.format_string!(code2) |> IO.iodata_to_binary()
-      
+
       # Should not add extra parentheses around the entire def expression
       refute formatted2 =~ "~~(((def add"
       # Should preserve proper nesting without extra wrapping

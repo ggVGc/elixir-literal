@@ -578,57 +578,65 @@ defmodule Code.Formatter do
     case args do
       [] ->
         {string("~~()"), state}
+
       [single_arg] ->
         {args_doc, state} = sequence_literal_element_to_algebra(single_arg, state)
         doc = string("~~(") |> concat(args_doc) |> concat(string(")"))
         {doc, state}
+
       _ ->
         # Check if this was originally multi-line by looking at line spans
         min_line = meta[:line] || @min_line
-        max_line = case args do
-          [] -> min_line
-          _ ->
-            args
-            |> Enum.reduce(min_line, fn arg, max ->
-              {_arg_min, arg_max} = traverse_line(arg, {@max_line, @min_line})
-              case arg_max do
-                @min_line -> max  # No line info found, keep current max
-                line -> max(line, max)
-              end
-            end)
-        end
-        
+
+        max_line =
+          case args do
+            [] ->
+              min_line
+
+            _ ->
+              args
+              |> Enum.reduce(min_line, fn arg, max ->
+                {_arg_min, arg_max} = traverse_line(arg, {@max_line, @min_line})
+
+                case arg_max do
+                  # No line info found, keep current max
+                  @min_line -> max
+                  line -> max(line, max)
+                end
+              end)
+          end
+
         is_multiline = max_line > min_line
-        
+
         {args_docs, state} =
           Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
             {doc, state} = sequence_literal_element_to_algebra(arg, state)
             {[doc | acc], state}
           end)
-        
+
         if is_multiline do
           # Original was multi-line: preserve newlines
-          args_doc = 
+          args_doc =
             args_docs
             |> Enum.reverse()
             |> Enum.reduce(&line(&2, &1))
-          
-          doc = 
+
+          doc =
             string("~~(")
             |> concat(line())
             |> concat(args_doc)
             |> concat(line())
             |> concat(string(")"))
             |> group()
-          
+
           {doc, state}
         else
           # Original was single-line: keep compact
-          args_doc = 
+          args_doc =
             args_docs
             |> Enum.reverse()
             |> Enum.reduce(&concat(&2, concat(" ", &1)))
-          
+
           doc = string("~~(") |> concat(args_doc) |> concat(string(")"))
           {doc, state}
         end
@@ -2196,10 +2204,13 @@ defmodule Code.Formatter do
       end)
 
     if Enum.empty?(args_docs) do
-      {concat(["(", op_doc, ")"]), state}
+      # For bare atoms/operators, don't add extra parentheses
+      {op_doc, state}
     else
+      # Don't add parentheses - just format as space-separated list
+      # The parentheses should come from sequence_paren or be explicit in source
       args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
-      {concat(["(", op_doc, " ", args_doc, ")"]), state}
+      {concat([op_doc, " ", args_doc]), state}
     end
   end
 
@@ -2221,11 +2232,13 @@ defmodule Code.Formatter do
         {[doc | acc], state}
       end)
 
-    args_doc = case Enum.reverse(args_docs) do
-      [] -> @empty
-      [single] -> single
-      docs -> Enum.reduce(docs, &concat(&2, concat(" ", &1)))
-    end
+    args_doc =
+      case Enum.reverse(args_docs) do
+        [] -> @empty
+        [single] -> single
+        docs -> Enum.reduce(docs, &concat(&2, concat(" ", &1)))
+      end
+
     {concat(["(", args_doc, ")"]), state}
   end
 
@@ -2314,7 +2327,7 @@ defmodule Code.Formatter do
 
   defp sequence_literal_element_to_algebra(other, state) do
     # Fallback to regular quoted_to_algebra for complex expressions
-    quoted_to_algebra(other, :no_parens_arg, state)
+    quoted_to_algebra(other, :sequence_element, state)
   end
 
   ## Quoted helpers for comments
@@ -2503,6 +2516,7 @@ defmodule Code.Formatter do
   defp force_many_args_or_operand(:no_parens_arg, _choice), do: :no_parens_arg
   defp force_many_args_or_operand(:parens_arg, _choice), do: :parens_arg
   defp force_many_args_or_operand(:operand, choice), do: choice
+  defp force_many_args_or_operand(:sequence_element, choice), do: choice
   defp force_many_args_or_operand(:block, choice), do: choice
 
   defp quoted_to_algebra_with_parens_if_operator(ast, context, state) do

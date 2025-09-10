@@ -14,7 +14,26 @@ defmodule SimpexTest do
   # Define functions at module level
   defsimpex(
     # Comment for testing
-    ~~(((def identity (x) x)) ((def second (_a b) b)) ((def get_number () 42)) ((def get_atom () :success)) ((def get_bool () true)) ((def echo (value) value)) ((def pick_first (a _b _c) a)) ((def pick_nth ({a _b} 0) a)) ((def pick_nth ({_a b} 1) b)) ((def pick_nth ([a _b] 0) a)) ((def pick_nth ([_ b] 1) b)) ((def get_map_value (((% :x val))) val)) ((def kw_fun ([{:arg arg}]) arg)) ((def kw_sugar_fun (_ignored) [arg: arg other: _other] arg)) ((def kw_only_sugar_fun [arg: arg] arg)) ((def tuple_fun ({:arg arg}) arg)) ((def is_five (x) when ((== x 5)) true)) ((def is_five (_) false)))
+    ~~(
+    (def identity (x) x)
+    (def second (_a b) b)
+    (def get_number () 42)
+    (def get_atom () :success)
+    (def get_bool () true)
+    (def echo (value) value)
+    (def pick_first (a _b _c) a)
+    (def pick_nth ({a _b} 0) a)
+    (def pick_nth ({_a b} 1) b)
+    (def pick_nth ([a _b] 0) a)
+    (def pick_nth ([_ b] 1) b)
+    (def get_map_value ((% :x val)) val)
+    (def kw_fun ([{:arg arg}]) arg)
+    (def kw_sugar_fun (_ignored) [arg: arg other: _other] arg)
+    (def kw_only_sugar_fun [arg: arg] arg)
+    (def tuple_fun ({:arg arg}) arg)
+    (def is_five (x) when (== x 5) true)
+    (def is_five (_) false)
+    )
   )
 
   describe "data types" do
@@ -91,13 +110,13 @@ defmodule SimpexTest do
     end
 
     test "assignment with pattern matching works" do
-      defsimpex(~~(((= a 123))))
+      defsimpex(~~((= a 123)))
       assert a == 123
 
-      defsimpex(~~(((= [_fst x] [50 99]))))
+      defsimpex(~~((= [_fst x] [50 99])))
       assert x == 99
 
-      defsimpex(~~(((= {fst _} {50 99}))))
+      defsimpex(~~((= {fst _} {50 99})))
       assert fst == 50
     end
 
@@ -107,38 +126,48 @@ defmodule SimpexTest do
     end
 
     test "assert inside simpex" do
-      defsimpex(~~(((= a 1)) ((= b 1)) (assert ((== a b)))))
+      defsimpex(~~(
+      (= a 1)
+      (= b 1)
+      (assert (== a b))
+      ))
     end
 
     test "elixir maps" do
       assert get_map_value(%{x: 123}) == 123
 
-      assert defsimpex(~~(((% :x 12 :y "test")))) == %{x: 12, y: "test"}
+      assert defsimpex(~~((% :x 12 :y "test"))) == %{x: 12, y: "test"}
 
       key = "yeo"
       value = :yep
-      assert defsimpex(~~(((% key value)))) == %{"yeo" => :yep}
+      assert defsimpex(~~((% key value))) == %{"yeo" => :yep}
     end
 
     test "case expression" do
-      assert :yep = defsimpex(~~(((= x 10)) ((case x (2 :nope) (10 :yep)))))
+      assert :yep = defsimpex(~~(
+      (= x 10)
+      (case x (2 :nope) (10 :yep))
+      ))
 
       assert_raise CaseClauseError, fn ->
-        defsimpex(~~(((case 123 (0 :no_match)))))
+        defsimpex(~~((case 123 (0 :no_match))))
       end
 
-      assert :original = defsimpex(~~(((case :original ("other" :not_this) (fallback fallback)))))
+      assert :original = defsimpex(~~((case :original ("other" :not_this) (fallback fallback))))
     end
 
     test "if expression" do
-      assert :yep == defsimpex(~~(((if true :yep :nope))))
-      assert :nope == defsimpex(~~(((if false :yep :nope))))
+      assert :yep == defsimpex(~~((if true :yep :nope)))
+      assert :nope == defsimpex(~~((if false :yep :nope)))
 
       # Test with variable conditions
-      assert :positive == defsimpex(~~(((= x 5)) ((if ((> x 0)) :positive :negative))))
+      assert :positive == defsimpex(~~(
+      (= x 5)
+      (if (> x 0) :positive :negative)
+      ))
 
       # Test with nil (falsy in Elixir)
-      assert :falsy == defsimpex(~~(((if nil :truthy :falsy))))
+      assert :falsy == defsimpex(~~((if nil :truthy :falsy)))
     end
 
     test "function with guard clauses" do
@@ -157,7 +186,7 @@ defmodule SimpexTest do
     end
 
     test "wip test" do
-      defsimpex(~~((assert ((== true true)))))
+      defsimpex(~~((assert (== true true))))
     end
   end
 end
