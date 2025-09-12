@@ -349,11 +349,6 @@ do_quote({sequence_literal, Meta, Args}, Q) when is_list(Meta) ->
   TArgs = do_quote(Args, Q),
   {'{}', [], [sequence_literal, meta(Meta, Q), TArgs]};
 
-do_quote({sequence_prefix, {Name, Meta, Context}, Args}, Q) when is_list(Meta) ->
-  TName = do_quote({Name, Meta, Context}, Q),
-  TArgs = do_quote(Args, Q),
-  {'{}', [], [sequence_prefix, TName, TArgs]};
-
 do_quote({sequence_paren, Meta, Args}, Q) when is_list(Meta) ->
   TArgs = do_quote(Args, Q),
   {'{}', [], [sequence_paren, meta(Meta, Q), TArgs]};

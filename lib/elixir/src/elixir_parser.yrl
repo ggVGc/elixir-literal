@@ -1400,20 +1400,13 @@ normalize_meta({Line, Column, _}) when is_integer(Line) ->
 normalize_meta(Meta) ->
   Meta.
 
-%% Transform sequence arguments to detect operator-led patterns
+%% Transform sequence arguments - no longer creating sequence_prefix
 transform_sequence_args([]) ->
   [];
 transform_sequence_args([{Op, Meta, nil} | Rest]) when is_atom(Op) ->
   NormalizedMeta = normalize_meta(Meta),
-  case {is_operator_symbol(Op), Rest} of
-    {true, []} ->
-      [{sequence_prefix, {Op, NormalizedMeta, nil}, []}];
-    {true, _} ->
-      TransformedRest = lists:map(fun transform_sequence_node/1, Rest),
-      [{sequence_prefix, {Op, NormalizedMeta, nil}, TransformedRest}];
-    {false, _} ->
-      [{Op, NormalizedMeta, nil} | transform_sequence_args(Rest)]
-  end;
+  % Simply treat all atoms (including operators) as regular tokens
+  [{Op, NormalizedMeta, nil} | transform_sequence_args(Rest)];
 transform_sequence_args([First | Rest]) ->
   [transform_sequence_node(First) | transform_sequence_args(Rest)].
 
@@ -1439,14 +1432,3 @@ transform_sequence_node({sequence_atom, Location, Value}) ->
 transform_sequence_node(Other) ->
   Other.
 
-%% Check if an atom represents an operator symbol
-is_operator_symbol(Op) ->
-  lists:member(Op, [
-    '+', '-', '*', '/', '%', '^',
-    '=', '<', '>', '<=', '>=', '==', '!=', '===', '!==',
-    'and', 'or', 'not',
-    '&', '@', '!', '~', '|>',
-    'def', 'defp', 'defmacro', 'defmodule', 'defstruct', 'defprotocol',
-    'if', 'else', 'cond', 'case', 'with', 'try', 'rescue', 'catch', 'throw',
-    'do', 'end', 'fn', 'when'
-  ]).

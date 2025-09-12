@@ -29,8 +29,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
     # Direct parsing should work and produce sequence_literal AST
     result = parse!("~~(+ 1 2 3)")
 
-    assert {:sequence_literal, [line: 1], [{:sequence_prefix, {:+, [line: 1], nil}, [1, 2, 3]}]} =
-             result
+    assert {:sequence_literal, [line: 1], [{:+, [line: 1], nil}, 1, 2, 3]} = result
   end
 
   describe "sequence literals work within quote blocks" do
@@ -39,7 +38,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
       result = parse!("quote do ~~(+ 1 2 3) end")
 
       expected_inner =
-        {:sequence_literal, [line: 1], [{:sequence_prefix, {:+, [line: 1], nil}, [1, 2, 3]}]}
+        {:sequence_literal, [line: 1], [{:+, [line: 1], nil}, 1, 2, 3]}
 
       assert {:quote, [line: 1], [[do: ^expected_inner]]} = result
     end
@@ -48,7 +47,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
       expected_inner = {
         :sequence_literal,
         [line: 1],
-        [{:sequence_prefix, {:case, [line: 1], nil}, [1, 2, 3]}]
+        [{:case, [line: 1], nil}, 1, 2, 3]
       }
 
       assert {:quote, [line: 1], [[do: ^expected_inner]]} = parse!("quote do ~~(case 1 2 3) end")
@@ -134,28 +133,26 @@ defmodule Kernel.ParserSequenceLiteralTest do
                {:sequence_literal, [line: 1],
                 [{true, [line: 1], nil}, {false, [line: 1], nil}, {nil, [line: 1], nil}]}
 
-      # When if appears first, it creates a sequence_prefix
+      # When if appears first, it's now just a simple list
       assert parse!("~~(if do end)") ==
                {:sequence_literal, [line: 1],
-                [
-                  {:sequence_prefix, {:if, [line: 1], nil},
-                   [{:do, [line: 1], nil}, {:end, [line: 1], nil}]}
-                ]}
+                [{:if, [line: 1], nil}, {:do, [line: 1], nil}, {:end, [line: 1], nil}]}
     end
 
-    test "operators work as simple tokens or prefixes" do
-      # When operators appear first, they create sequence_prefix structures
+    test "operators work as simple tokens" do
+      # When operators appear, they're now just simple tokens in the list
       assert parse!("~~(+ - * /)") ==
                {:sequence_literal, [line: 1],
                 [
-                  {:sequence_prefix, {:+, [line: 1], nil},
-                   [{:-, [line: 1], nil}, {:*, [line: 1], nil}, {:/, [line: 1], nil}]}
+                  {:+, [line: 1], nil},
+                  {:-, [line: 1], nil},
+                  {:*, [line: 1], nil},
+                  {:/, [line: 1], nil}
                 ]}
 
-      # Even when operators are not first, they create sequence_prefix with empty args
+      # Even when operators are not first, they're still simple tokens
       assert parse!("~~(a +)") ==
-               {:sequence_literal, [line: 1],
-                [{:a, [line: 1], nil}, {:sequence_prefix, {:+, [line: 1], nil}, []}]}
+               {:sequence_literal, [line: 1], [{:a, [line: 1], nil}, {:+, [line: 1], nil}]}
     end
 
     test "sequence operator still requires parentheses" do
@@ -224,34 +221,22 @@ defmodule Kernel.ParserSequenceLiteralTest do
                {:sequence_literal, [line: 1], [{:sequence_brace, [line: 1], []}]}
     end
 
-    test "operator prefixes work correctly" do
-      # When an operator appears first, it creates a sequence_prefix structure
+    test "operators work correctly as simple tokens" do
+      # When an operator appears, it's now just a simple token in the list
       assert parse!("~~(+ a b)") ==
                {:sequence_literal, [line: 1],
-                [
-                  {:sequence_prefix, {:+, [line: 1], nil},
-                   [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}
-                ]}
+                [{:+, [line: 1], nil}, {:a, [line: 1], nil}, {:b, [line: 1], nil}]}
 
       assert parse!("~~(+ 1 2)") ==
-               {:sequence_literal, [line: 1],
-                [
-                  {:sequence_prefix, {:+, [line: 1], nil}, [1, 2]}
-                ]}
+               {:sequence_literal, [line: 1], [{:+, [line: 1], nil}, 1, 2]}
 
       assert parse!("~~(- x y)") ==
                {:sequence_literal, [line: 1],
-                [
-                  {:sequence_prefix, {:-, [line: 1], nil},
-                   [{:x, [line: 1], nil}, {:y, [line: 1], nil}]}
-                ]}
+                [{:-, [line: 1], nil}, {:x, [line: 1], nil}, {:y, [line: 1], nil}]}
 
       assert parse!("~~(* foo bar)") ==
                {:sequence_literal, [line: 1],
-                [
-                  {:sequence_prefix, {:*, [line: 1], nil},
-                   [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}]}
-                ]}
+                [{:*, [line: 1], nil}, {:foo, [line: 1], nil}, {:bar, [line: 1], nil}]}
     end
 
     test "mixed structural elements work" do
@@ -416,13 +401,17 @@ defmodule Kernel.ParserSequenceLiteralTest do
       assert result_with_comment == expected
     end
 
-    test "comments with operator prefixes" do
-      # Comments should work with sequence prefixes (operators at start)
+    test "comments with operators" do
+      # Comments should work with operators
       result_with_comment = parse!("~~(+ a # comment\nb)")
       result_without_comment = parse!("~~(+ a\nb)")
 
       assert result_with_comment == result_without_comment
-      # Don't check exact structure, just that they're equal (avoid formatter issues)
+
+      # Verify the expected structure
+      assert result_with_comment ==
+               {:sequence_literal, [line: 1],
+                [{:+, [line: 1], nil}, {:a, [line: 1], nil}, {:b, [line: 2], nil}]}
     end
 
     test "comments with parentheses in multiline sequence literals" do
