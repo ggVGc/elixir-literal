@@ -1400,7 +1400,7 @@ normalize_meta({Line, Column, _}) when is_integer(Line) ->
 normalize_meta(Meta) ->
   Meta.
 
-%% Transform sequence arguments - no longer creating sequence_prefix
+%% Transform sequence arguments
 transform_sequence_args([]) ->
   [];
 transform_sequence_args([{Op, Meta, nil} | Rest]) when is_atom(Op) ->

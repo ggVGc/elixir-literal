@@ -103,88 +103,6 @@ defmodule Code.Formatter.SequenceLiteral do
     end
   end
 
-  def sequence_literal_element_to_algebra({:sequence_prefix, op, args}, state) do
-    # Handle operator node specially - just extract the atom name
-    op_meta =
-      case op do
-        {_atom, meta, _} -> meta
-        _ -> []
-      end
-
-    {op_doc, state} =
-      case op do
-        {atom, _meta, nil} when is_atom(atom) ->
-          {Atom.to_string(atom) |> string(), state}
-
-        _ ->
-          sequence_literal_element_to_algebra(op, state)
-      end
-
-    {args_docs, state} =
-      Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-        {doc, state} = sequence_literal_element_to_algebra(arg, state)
-        {[doc | acc], state}
-      end)
-
-    if Enum.empty?(args_docs) do
-      # For bare atoms/operators, don't add extra parentheses
-      {op_doc, state}
-    else
-      # Check if arguments span multiple lines
-      min_line = op_meta[:line] || @min_line
-
-      max_line =
-        args
-        |> Enum.reduce(min_line, fn arg, max ->
-          {_arg_min, arg_max} = traverse_line(arg, {@max_line, @min_line})
-
-          case arg_max do
-            @min_line -> max
-            line -> max(line, max)
-          end
-        end)
-
-      is_multiline = max_line > min_line
-
-      # Format with intelligent line breaks for multi-line expressions
-      if is_multiline do
-        reversed_args = Enum.reverse(args_docs)
-
-        # For function definitions (def name args body...), keep header together
-        # and put body expressions on separate lines
-        case {op, reversed_args} do
-          {{:def, _, _}, [name_doc, args_doc | body_docs]} when body_docs != [] ->
-            # Keep 'def name args' together, separate body expressions
-            header_doc = concat([name_doc, " ", args_doc])
-            body_doc = body_docs |> Enum.reduce(&line(&2, &1))
-            indented_body = line("", body_doc) |> nest(2)
-            {concat([op_doc, " ", header_doc, indented_body]), state}
-
-          _ ->
-            # For other cases, apply indentation to multi-line arguments
-            case reversed_args do
-              [single_arg] ->
-                # Single argument - no special indentation needed
-                {concat([op_doc, " ", single_arg]), state}
-
-              [first_arg | rest_args] ->
-                # Multiple arguments - first stays on same line, rest get indented
-                rest_doc = rest_args |> Enum.reduce(&line(&2, &1))
-                indented_rest = line("", rest_doc) |> nest(2)
-                {concat([op_doc, " ", first_arg, indented_rest]), state}
-
-              [] ->
-                # No arguments
-                {op_doc, state}
-            end
-        end
-      else
-        args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
-        {concat([op_doc, " ", args_doc]), state}
-      end
-    end
-  end
-
   def sequence_literal_element_to_algebra({:sequence_paren, meta, args}, state) do
     {args_docs, state} =
       Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
@@ -210,11 +128,27 @@ defmodule Code.Formatter.SequenceLiteral do
 
     # Format with newlines if multi-line, spaces if single-line
     if is_multiline do
-      # Check if we have a single sequence_prefix that handles its own formatting
-      case {args, args_docs} do
-        {[{:sequence_prefix, _, _}], [single_doc]} ->
-          # Single sequence_prefix - let it handle its own multi-line formatting
-          {concat(["(", single_doc, ")"]), state}
+      # Check for function-like pattern: (operator name args body...)
+      case args do
+        [{operator, _, nil}, {name, _, nil} | rest]
+        when is_atom(operator) and is_atom(name) ->
+          # This is a function-like pattern with operator and name
+          # Format: (operator name args on one line, then body on separate lines)
+          [operator_doc, name_doc | rest_docs] = Enum.reverse(args_docs)
+
+          case rest do
+            [{:sequence_block, _, :"()", _} | body] when body != [] ->
+              # Has args and body - format specially
+              [args_doc | body_docs] = rest_docs
+              header = concat([operator_doc, " ", name_doc, " ", args_doc])
+              body_doc = body_docs |> Enum.reduce(&line(&2, &1))
+              {concat(["(", header, line(), body_doc, ")"]), state}
+
+            _ ->
+              # No special pattern - use default formatting
+              args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&line(&2, &1))
+              {concat(["(", line(), args_doc, line(), ")"]), state}
+          end
 
         _ ->
           # Multiple args or non-prefix - add our own line breaks
@@ -403,11 +337,6 @@ defmodule Code.Formatter.SequenceLiteral do
 
   def traverse_line({:sequence_literal, meta, args}, {min, max}) do
     acc = extract_line_from_meta(meta, {min, max})
-    traverse_line(args, acc)
-  end
-
-  def traverse_line({:sequence_prefix, op, args}, {min, max}) do
-    acc = traverse_line(op, {min, max})
     traverse_line(args, acc)
   end
 

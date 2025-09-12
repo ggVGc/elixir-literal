@@ -17,3 +17,4 @@
 .elixir.plt
 erl_crash.dump
 /cover/
+old_scripts
