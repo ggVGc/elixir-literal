@@ -522,6 +522,10 @@ defmodule Module.Types.Expr do
     end
   end
 
+  def of_expr(node, expected, expr, stack, context) do
+    Module.Types.Literal.of_expr(node, expected, expr, stack, context)
+  end
+
   ## Tuples
 
   defp of_tuple(elems, _expected, expr, %{mode: :traversal} = stack, context) do

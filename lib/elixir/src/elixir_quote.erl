@@ -195,8 +195,11 @@ do_escape(Fun, _) when is_function(Fun) ->
     false -> bad_escape(Fun)
   end;
 
-do_escape(Other, _) ->
-  bad_escape(Other).
+do_escape(Node, Q) ->
+  case elixir_literal:escape_node(Node, Q) of
+    false -> bad_escape(Node);
+    Result -> Result
+  end.
 
 escape_map_key_value(K, V, Map, Q) ->
   MaybeRef = if
@@ -305,7 +308,9 @@ valid_ast_elem(Expr) when is_list(Expr); is_atom(Expr); is_binary(Expr); is_numb
 valid_ast_elem({Left, Right}) -> valid_ast_elem(Left) andalso valid_ast_elem(Right);
 valid_ast_elem({Atom, Meta, Args}) when is_atom(Atom), is_list(Meta), is_atom(Args) orelse is_list(Args) -> true;
 valid_ast_elem({Call, Meta, Args}) when is_list(Meta), is_list(Args) -> shallow_valid_ast(Call);
-valid_ast_elem(_Term) -> false.
+%% Support sequence nodes - delegate to elixir_literal module
+valid_ast_elem(Node) ->
+  elixir_literal:is_valid_ast(Node).
 
 quote({unquote_splicing, _, [_]}, #elixir_quote{unquote=true}) ->
   argument_error(<<"unquote_splicing only works inside arguments and block contexts, "
@@ -447,8 +452,11 @@ do_quote([H | T], #elixir_quote{unquote=false} = Q) ->
 do_quote([H | T], Q) ->
   do_quote_tail(lists:reverse(T, [H]), Q);
 
-do_quote(Other, _) ->
-  Other.
+do_quote(Node, Q) ->
+  case elixir_literal:quote_node(Node, Q) of
+    false -> Node;
+    Result -> Result
+  end.
 
 import_meta(Meta, Name, Arity, Q, E) ->
   case (keyfind(imports, Meta) == false) andalso

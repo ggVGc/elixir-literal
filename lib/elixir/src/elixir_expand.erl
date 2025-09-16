@@ -556,8 +556,11 @@ expand(Pid, S, E) when is_pid(Pid) ->
       {Pid, S, E}
   end;
 
-expand(Other, _S, E) ->
-  file_error([{line, 0}], ?key(E, file), ?MODULE, {invalid_quoted_expr, Other}).
+expand(Node, S, E) ->
+  case elixir_literal:expand(Node, S, E) of
+    false -> file_error([{line, 0}], ?key(E, file), ?MODULE, {invalid_quoted_expr, Node});
+    Result -> Result
+  end.
 
 %% Helpers
 

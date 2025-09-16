@@ -355,7 +355,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
     end
 
     test "comments with different token types" do
-      # Comments should work with numbers and atoms  
+      # Comments should work with numbers and atoms
       result_with_comment = parse!("~~(42 # comment\n:atom)")
       result_without_comment = parse!("~~(42\n:atom)")
 
@@ -438,13 +438,76 @@ defmodule Kernel.ParserSequenceLiteralTest do
     test "comments at different positions in multiline sequence literals" do
       # Test comments at various positions to isolate the issue
 
-      # Comment at the beginning - this might work
       result1 = parse!("# comment before\n~~(valid code)")
       assert {:sequence_literal, [line: 2], _} = result1
 
-      # Comment at the end - this might work  
       result2 = parse!("~~(valid code)\n# comment after")
       assert {:sequence_literal, [line: 1], _} = result2
+    end
+  end
+
+  describe "sequence blocks in quote expressions" do
+    test "sequence_block nodes with tuple destructuring patterns compile correctly" do
+      # This test reproduces the issue where sequence_block nodes with tuple patterns
+      # inside quoted expressions fail to compile
+
+      # The issue occurs when we have a nested structure like:
+      # {:sequence_block, meta, :"()", [{:sequence_block, meta2, :{}, [elements]}]}
+      # This represents something like ({a b}) in the sequence literal
+
+      ast =
+        {:sequence_literal, [line: 1],
+         [
+           {:sequence_paren, [line: 1],
+            [
+              {:def, [line: 1], nil},
+              {:match_tuple, [line: 1], nil},
+              {:sequence_block, [line: 1, column: 24], :"()",
+               [
+                 {:sequence_block, [line: 1, column: 25], :{},
+                  [
+                    {:a, [line: 1, column: 26], nil},
+                    {:b, [line: 1, column: 28], nil}
+                  ]}
+               ]},
+              {:a, [line: 1], nil}
+            ]}
+         ]}
+
+      # This should not raise an error when used in a quote block
+      result =
+        quote do
+          unquote(ast)
+        end
+
+      # Verify the AST is preserved correctly
+      assert {:sequence_literal, _, _} = result
+    end
+
+    test "sequence_block with parentheses type compiles in quote" do
+      # Test that sequence_block with :"()" type works in quote expressions
+      ast = {:sequence_block, [line: 1], :"()", [{:a, [line: 1], nil}]}
+
+      # Should not raise an error
+      result =
+        quote do
+          unquote(ast)
+        end
+
+      assert {:sequence_block, _, :"()", _} = result
+    end
+
+    test "sequence_block with braces type compiles in quote" do
+      # Test that sequence_block with :{} type works in quote expressions
+      ast = {:sequence_block, [line: 1], :{}, [{:x, [line: 1], nil}, {:y, [line: 1], nil}]}
+
+      # Should not raise an error
+      result =
+        quote do
+          unquote(ast)
+        end
+
+      assert {:sequence_block, _, :{}, _} = result
     end
   end
 
@@ -534,7 +597,6 @@ defmodule Kernel.ParserSequenceLiteralTest do
           _ -> false
         end)
 
-      # Should have sequence_end token  
       has_end =
         Enum.any?(tokens, fn
           {:sequence_end, {_, _, _}, :")"} -> true
