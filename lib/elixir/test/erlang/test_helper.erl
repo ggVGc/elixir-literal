@@ -10,7 +10,7 @@
   function_test,
   string_test,
   tokenizer_test,
-  sequence_literal_test
+  raw_section_test
 ]).
 
 test() ->

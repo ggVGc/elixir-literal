@@ -1,7 +1,7 @@
 %% SPDX-License-Identifier: Apache-2.0
 %% SPDX-FileCopyrightText: 2025 The Elixir Team
 
--module(sequence_literal_test).
+-module(raw_section_test).
 -include_lib("eunit/include/eunit.hrl").
 
 tokenize(String) ->
@@ -83,7 +83,7 @@ expression_after_seq_literal_test() ->
   ok.
 
 %% Test sequence literal with parentheses - ISOLATED TOKENIZATION
-sequence_literal_parens_test() ->
+raw_section_parens_test() ->
   [{sequence_begin, {1, 1, nil}, '~~('},
    {sequence_end, {1, 4, nil}, ')'}] = tokenize("~~()"),
 
@@ -142,7 +142,7 @@ sequence_operators_test() ->
   ok.
 
 %% Test literals in sequence literals - MUST BE sequence_* tokens
-sequence_literals_test() ->
+raw_sections_test() ->
   % Test string literals - MUST be sequence_string
   [{sequence_begin, {1, 1, nil}, '~~('},
    {sequence_string, {1, 4, nil}, "hello"},

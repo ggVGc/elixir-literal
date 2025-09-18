@@ -350,9 +350,9 @@ do_quote({unquote, Meta, [Expr]}, #elixir_quote{unquote=true, shallow_validate=V
 
 %% Sequence literals
 
-do_quote({sequence_literal, Meta, Args}, Q) when is_list(Meta) ->
+do_quote({raw_section, Meta, Args}, Q) when is_list(Meta) ->
   TArgs = do_quote(Args, Q),
-  {'{}', [], [sequence_literal, meta(Meta, Q), TArgs]};
+  {'{}', [], [raw_section, meta(Meta, Q), TArgs]};
 
 do_quote({sequence_paren, Meta, Args}, Q) when is_list(Meta) ->
   TArgs = do_quote(Args, Q),

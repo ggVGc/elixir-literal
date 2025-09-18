@@ -4,7 +4,7 @@ defmodule Module.Types.Literal do
   def of_expr({tag, _meta, _bracket_type, _args}, _expected, _expr, _stack, context)
       when tag in [
              :sequence_block,
-             :sequence_literal,
+             :raw_section,
              :sequence_paren,
              :sequence_brace,
              :sequence_bracket

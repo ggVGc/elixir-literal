@@ -6,12 +6,12 @@ defmodule Kernel.Sequence do
   Provides utilities for working with sequence literals in Elixir.
 
   Sequence literals are created using the `~~(...)` syntax and are represented
-  as `{:sequence_literal, metadata, arguments}` AST nodes.
+  as `{:raw_section, metadata, arguments}` AST nodes.
 
   ## Examples
 
       iex> Code.string_to_quoted("~~(foo bar baz)")
-      {:ok, {:sequence_literal, [line: 1], 
+      {:ok, {:raw_section, [line: 1], 
        [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}, {:baz, [line: 1], nil}]}}
 
   ## Supported Features
@@ -40,34 +40,34 @@ defmodule Kernel.Sequence do
 
   ## Examples
 
-      iex> Kernel.Sequence.sequence_literal?({:sequence_literal, [], [:foo, :bar]})
+      iex> Kernel.Sequence.raw_section?({:raw_section, [], [:foo, :bar]})
       true
       
-      iex> Kernel.Sequence.sequence_literal?({:foo, [], [:bar]})
+      iex> Kernel.Sequence.raw_section?({:foo, [], [:bar]})
       false
   """
-  def sequence_literal?({:sequence_literal, _, _}), do: true
-  def sequence_literal?(_), do: false
+  def raw_section?({:raw_section, _, _}), do: true
+  def raw_section?(_), do: false
 
   @doc """
   Extracts the arguments from a sequence literal.
 
   ## Examples
 
-      iex> ast = {:sequence_literal, [line: 1], [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}]}
+      iex> ast = {:raw_section, [line: 1], [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}]}
       iex> Kernel.Sequence.sequence_args(ast)
       [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}]
   """
-  def sequence_args({:sequence_literal, _, args}), do: args
+  def sequence_args({:raw_section, _, args}), do: args
 
   @doc """
   Returns the number of arguments in a sequence literal.
 
   ## Examples
 
-      iex> ast = {:sequence_literal, [line: 1], [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}]}
+      iex> ast = {:raw_section, [line: 1], [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}]}
       iex> Kernel.Sequence.sequence_arity(ast)
       2
   """
-  def sequence_arity({:sequence_literal, _, args}), do: length(args)
+  def sequence_arity({:raw_section, _, args}), do: length(args)
 end

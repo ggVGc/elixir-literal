@@ -986,7 +986,7 @@ build_call({_, Location, Identifier}, Args) ->
 build_sequence({sequence_begin, Location, _}, Args, {sequence_end, _EndLocation, _}) ->
   Meta = meta_from_location(Location),
   TransformedArgs = transform_sequence_args(Args),
-  {sequence_literal, Meta, TransformedArgs}.
+  {raw_section, Meta, TransformedArgs}.
 
 build_sequence_block({sequence_block, Location, BracketType, Args}) ->
   Meta = meta_from_location(Location),
