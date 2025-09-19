@@ -72,7 +72,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
 
   describe "sequence literals with simplified tokenizer" do
     # The simplified tokenizer produces raw_token for identifiers, keywords, and operators
-    # while preserving sequence_number, sequence_string, and sequence_atom.
+    # while preserving raw_number, raw_string, and raw_atom.
     # The parser now works correctly with these simplified tokens.
 
     test "empty sequence works" do
@@ -194,31 +194,31 @@ defmodule Kernel.ParserSequenceLiteralTest do
 
   describe "sequence literals with structural elements" do
     test "brackets work correctly" do
-      # Square brackets create sequence_bracket structures
+      # Square brackets create raw_bracket structures
       assert parse!("~~([a b c])") ==
                {:raw_section, [line: 1],
                 [
-                  {:sequence_bracket, [line: 1],
+                  {:raw_bracket, [line: 1],
                    [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil}]}
                 ]}
 
       # Empty brackets work
       assert parse!("~~([])") ==
-               {:raw_section, [line: 1], [{:sequence_bracket, [line: 1], []}]}
+               {:raw_section, [line: 1], [{:raw_bracket, [line: 1], []}]}
     end
 
     test "braces work correctly" do
-      # Curly braces create sequence_brace structures
+      # Curly braces create raw_brace structures
       assert parse!("~~({x y z})") ==
                {:raw_section, [line: 1],
                 [
-                  {:sequence_brace, [line: 1],
+                  {:raw_brace, [line: 1],
                    [{:x, [line: 1], nil}, {:y, [line: 1], nil}, {:z, [line: 1], nil}]}
                 ]}
 
       # Empty braces work
       assert parse!("~~({})") ==
-               {:raw_section, [line: 1], [{:sequence_brace, [line: 1], []}]}
+               {:raw_section, [line: 1], [{:raw_brace, [line: 1], []}]}
     end
 
     test "operators work correctly as simple tokens" do
@@ -244,27 +244,27 @@ defmodule Kernel.ParserSequenceLiteralTest do
       assert parse!("~~([a b] {c d})") ==
                {:raw_section, [line: 1],
                 [
-                  {:sequence_bracket, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]},
-                  {:sequence_brace, [line: 1], [{:c, [line: 1], nil}, {:d, [line: 1], nil}]}
+                  {:raw_bracket, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]},
+                  {:raw_brace, [line: 1], [{:c, [line: 1], nil}, {:d, [line: 1], nil}]}
                 ]}
     end
   end
 
   describe "edge cases and special scenarios" do
     test "nested parentheses work correctly" do
-      # Simple nested parentheses now work - they create sequence_paren structures
+      # Simple nested parentheses now work - they create raw_paren structures
       assert parse!("~~((a b))") ==
                {:raw_section, [line: 1],
-                [{:sequence_paren, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}]}
+                [{:raw_paren, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}]}
 
       # Single element in nested parentheses
       assert parse!("~~((a))") ==
                {:raw_section, [line: 1],
-                [{:sequence_paren, [line: 1], [{:a, [line: 1], nil}]}]}
+                [{:raw_paren, [line: 1], [{:a, [line: 1], nil}]}]}
 
-      # Empty nested parentheses create empty sequence_paren
+      # Empty nested parentheses create empty raw_paren
       assert parse!("~~(())") ==
-               {:raw_section, [line: 1], [{:sequence_paren, [line: 1], []}]}
+               {:raw_section, [line: 1], [{:raw_paren, [line: 1], []}]}
 
       # Nested sequence literals still don't work due to ~~ being treated as token
       assert_syntax_error(["syntax error before:"], "~~(a ~~(b) c)")
@@ -378,10 +378,10 @@ defmodule Kernel.ParserSequenceLiteralTest do
 
       # Just verify both parse successfully and have similar structure
       assert {:raw_section, [line: 1], [bracket]} = result_with_comment
-      assert {:sequence_bracket, [line: 1], _} = bracket
+      assert {:raw_bracket, [line: 1], _} = bracket
 
       assert {:raw_section, [line: 1], [bracket2]} = result_without_comment
-      assert {:sequence_bracket, [line: 1], _} = bracket2
+      assert {:raw_bracket, [line: 1], _} = bracket2
     end
 
     test "comments in complex expressions with sequence literals" do
@@ -447,24 +447,24 @@ defmodule Kernel.ParserSequenceLiteralTest do
   end
 
   describe "sequence blocks in quote expressions" do
-    test "sequence_block nodes with tuple destructuring patterns compile correctly" do
-      # This test reproduces the issue where sequence_block nodes with tuple patterns
+    test "raw_block nodes with tuple destructuring patterns compile correctly" do
+      # This test reproduces the issue where raw_block nodes with tuple patterns
       # inside quoted expressions fail to compile
 
       # The issue occurs when we have a nested structure like:
-      # {:sequence_block, meta, :"()", [{:sequence_block, meta2, :{}, [elements]}]}
+      # {:raw_block, meta, :"()", [{:raw_block, meta2, :{}, [elements]}]}
       # This represents something like ({a b}) in the sequence literal
 
       ast =
         {:raw_section, [line: 1],
          [
-           {:sequence_paren, [line: 1],
+           {:raw_paren, [line: 1],
             [
               {:def, [line: 1], nil},
               {:match_tuple, [line: 1], nil},
-              {:sequence_block, [line: 1, column: 24], :"()",
+              {:raw_block, [line: 1, column: 24], :"()",
                [
-                 {:sequence_block, [line: 1, column: 25], :{},
+                 {:raw_block, [line: 1, column: 25], :{},
                   [
                     {:a, [line: 1, column: 26], nil},
                     {:b, [line: 1, column: 28], nil}
@@ -484,9 +484,9 @@ defmodule Kernel.ParserSequenceLiteralTest do
       assert {:raw_section, _, _} = result
     end
 
-    test "sequence_block with parentheses type compiles in quote" do
-      # Test that sequence_block with :"()" type works in quote expressions
-      ast = {:sequence_block, [line: 1], :"()", [{:a, [line: 1], nil}]}
+    test "raw_block with parentheses type compiles in quote" do
+      # Test that raw_block with :"()" type works in quote expressions
+      ast = {:raw_block, [line: 1], :"()", [{:a, [line: 1], nil}]}
 
       # Should not raise an error
       result =
@@ -494,12 +494,12 @@ defmodule Kernel.ParserSequenceLiteralTest do
           unquote(ast)
         end
 
-      assert {:sequence_block, _, :"()", _} = result
+      assert {:raw_block, _, :"()", _} = result
     end
 
-    test "sequence_block with braces type compiles in quote" do
-      # Test that sequence_block with :{} type works in quote expressions
-      ast = {:sequence_block, [line: 1], :{}, [{:x, [line: 1], nil}, {:y, [line: 1], nil}]}
+    test "raw_block with braces type compiles in quote" do
+      # Test that raw_block with :{} type works in quote expressions
+      ast = {:raw_block, [line: 1], :{}, [{:x, [line: 1], nil}, {:y, [line: 1], nil}]}
 
       # Should not raise an error
       result =
@@ -507,7 +507,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
           unquote(ast)
         end
 
-      assert {:sequence_block, _, :{}, _} = result
+      assert {:raw_block, _, :{}, _} = result
     end
   end
 
@@ -531,29 +531,29 @@ defmodule Kernel.ParserSequenceLiteralTest do
              end)
     end
 
-    test "sequence strings produce sequence_string tokens" do
+    test "sequence strings produce raw_string tokens" do
       tokens = tokenize("~~(\"hello\")")
 
       assert Enum.any?(tokens, fn
-               {:sequence_string, {_, _, _}, ~c"hello"} -> true
+               {:raw_string, {_, _, _}, ~c"hello"} -> true
                _ -> false
              end)
     end
 
-    test "sequence numbers produce sequence_number tokens" do
+    test "sequence numbers produce raw_number tokens" do
       tokens = tokenize("~~(42)")
 
       assert Enum.any?(tokens, fn
-               {:sequence_number, {_, _, _}, 42} -> true
+               {:raw_number, {_, _, _}, 42} -> true
                _ -> false
              end)
     end
 
-    test "sequence atoms produce sequence_atom tokens" do
+    test "sequence atoms produce raw_atom tokens" do
       tokens = tokenize("~~(:foo)")
 
       assert Enum.any?(tokens, fn
-               {:sequence_atom, {_, _, _}, :foo} -> true
+               {:raw_atom, {_, _, _}, :foo} -> true
                _ -> false
              end)
     end
@@ -607,39 +607,39 @@ defmodule Kernel.ParserSequenceLiteralTest do
       assert has_end, "Expected sequence_end token"
     end
 
-    test "bracket pairs produce sequence_block tokens" do
+    test "bracket pairs produce raw_block tokens" do
       # Test parentheses
       paren_tokens = tokenize("~~((a))")
 
       has_paren_block =
         Enum.any?(paren_tokens, fn
-          {:sequence_block, {_, _, _}, :"()", _} -> true
+          {:raw_block, {_, _, _}, :"()", _} -> true
           _ -> false
         end)
 
-      assert has_paren_block, "Expected sequence_block token for parentheses"
+      assert has_paren_block, "Expected raw_block token for parentheses"
 
       # Test square brackets
       bracket_tokens = tokenize("~~([a])")
 
       has_bracket_block =
         Enum.any?(bracket_tokens, fn
-          {:sequence_block, {_, _, _}, :"[]", _} -> true
+          {:raw_block, {_, _, _}, :"[]", _} -> true
           _ -> false
         end)
 
-      assert has_bracket_block, "Expected sequence_block token for brackets"
+      assert has_bracket_block, "Expected raw_block token for brackets"
 
       # Test curly braces
       brace_tokens = tokenize("~~({a})")
 
       has_brace_block =
         Enum.any?(brace_tokens, fn
-          {:sequence_block, {_, _, _}, :{}, _} -> true
+          {:raw_block, {_, _, _}, :{}, _} -> true
           _ -> false
         end)
 
-      assert has_brace_block, "Expected sequence_block token for braces"
+      assert has_brace_block, "Expected raw_block token for braces"
     end
 
     test "tokenizer isolation - only sequence_* tokens inside sequences" do
@@ -650,7 +650,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
         Enum.filter(tokens, fn
           {:sequence_begin, {_, _, _}, _} -> false
           {:sequence_end, {_, _, _}, _} -> false
-          {:sequence_block, {_, _, _}, _, _} -> false
+          {:raw_block, {_, _, _}, _, _} -> false
           _ -> true
         end)
 
@@ -658,9 +658,9 @@ defmodule Kernel.ParserSequenceLiteralTest do
       all_sequence_types =
         Enum.all?(content_tokens, fn
           {:raw_token, {_, _, _}, _} -> true
-          {:sequence_number, {_, _, _}, _} -> true
-          {:sequence_atom, {_, _, _}, _} -> true
-          {:sequence_string, {_, _, _}, _} -> true
+          {:raw_number, {_, _, _}, _} -> true
+          {:raw_atom, {_, _, _}, _} -> true
+          {:raw_string, {_, _, _}, _} -> true
           _ -> false
         end)
 

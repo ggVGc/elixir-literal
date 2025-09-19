@@ -46,7 +46,7 @@ tokenize(String, Line, Column, Scope, Tokens) ->
       % Extract content between brackets
       case extract_bracket_content(Rest, ClosingChar, Line, Column + 1, NewScope, []) of
         {ok, ContentTokens, RestAfterBracket, FinalLine, FinalColumn, FinalScope} ->
-          Token = {sequence_block, {Line, Column, nil}, BracketType, lists:reverse(ContentTokens)},
+          Token = {raw_block, {Line, Column, nil}, BracketType, lists:reverse(ContentTokens)},
           tokenize(RestAfterBracket, FinalLine, FinalColumn, FinalScope, [Token | Tokens]);
         {error, Reason} ->
           {error, Reason, Rest, [], Tokens}
@@ -64,7 +64,7 @@ tokenize(String, Line, Column, Scope, Tokens) ->
           tokenize(Rest, Line, Column + 2, Scope, [Token | Tokens])
       end;
 
-    % Handle strings - double quotes become sequence_string
+    % Handle strings - double quotes become raw_string
     [$" | Rest] ->
       tokenize_string(Rest, Line, Column + 1, $", Scope, Tokens);
 
@@ -127,11 +127,11 @@ tokenize(String, Line, Column, Scope, Tokens) ->
       tokenize_raw_token(String, Line, Column, Scope, Tokens)
   end.
 
-%% String tokenization - "..." becomes sequence_string
+%% String tokenization - "..." becomes raw_string
 tokenize_string(String, Line, Column, Quote, Scope, Tokens) ->
   case extract_string(String, Quote, Line, Column, []) of
     {ok, Value, Rest, NewLine, NewColumn} ->
-      Token = {sequence_string, {Line, Column - 1, nil}, Value},
+      Token = {raw_string, {Line, Column - 1, nil}, Value},
       tokenize(Rest, NewLine, NewColumn, Scope, [Token | Tokens]);
     {error, Reason} ->
       {error, Reason, String, [], Tokens}
@@ -160,14 +160,14 @@ extract_string([$\n | Rest], Quote, Line, _Column, Acc) ->
 extract_string([C | Rest], Quote, Line, Column, Acc) ->
   extract_string(Rest, Quote, Line, Column + 1, [C | Acc]).
 
-%% Atom tokenization - :atom becomes sequence_atom
+%% Atom tokenization - :atom becomes raw_atom
 tokenize_atom([$" | Rest], Line, Column, Scope, Tokens) ->
   % Handle quoted atom like :"spaced atom"
   extract_quoted_atom(Rest, Line, Column + 1, [], Scope, Tokens, Column - 1);
 tokenize_atom(String, Line, Column, Scope, Tokens) ->
   case extract_atom(String, Line, Column, []) of
     {ok, Value, Rest, Length} ->
-      Token = {sequence_atom, {Line, Column - 1, nil}, list_to_atom(Value)},
+      Token = {raw_atom, {Line, Column - 1, nil}, list_to_atom(Value)},
       tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
     {error, Reason} ->
       {error, Reason, String, [], Tokens}
@@ -178,7 +178,7 @@ extract_quoted_atom([], Line, Column, _Acc, _Scope, _Tokens, _StartColumn) ->
   {error, {?LOC(Line, Column), "missing closing quote for atom", []}, [], [], []};
 extract_quoted_atom([$" | Rest], Line, Column, Acc, Scope, Tokens, StartColumn) ->
   AtomName = lists:reverse(Acc),
-  Token = {sequence_atom, {Line, StartColumn, nil}, list_to_atom(AtomName)},
+  Token = {raw_atom, {Line, StartColumn, nil}, list_to_atom(AtomName)},
   tokenize(Rest, Line, Column + 1, Scope, [Token | Tokens]);
 extract_quoted_atom([$\\ | [C | Rest]], Line, Column, Acc, Scope, Tokens, StartColumn) ->
   % Handle escape sequences
@@ -200,11 +200,11 @@ extract_atom(_String, Line, Column, []) ->
 extract_atom(String, _Line, _Column, Acc) ->
   {ok, lists:reverse(Acc), String, length(Acc)}.
 
-%% Number tokenization - integers and floats become sequence_number
+%% Number tokenization - integers and floats become raw_number
 tokenize_number(String, Line, Column, Scope, Tokens) ->
   case extract_number(String, Line, Column) of
     {ok, Value, Rest, Length} ->
-      Token = {sequence_number, {Line, Column, nil}, Value},
+      Token = {raw_number, {Line, Column, nil}, Value},
       tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
     {error, Reason} ->
       {error, Reason, String, [], Tokens}
@@ -406,7 +406,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
     [$" | Rest] ->
       case extract_string(Rest, $", Line, Column + 1, []) of
         {ok, Value, NewRest, NewLine, NewColumn} ->
-          Token = {sequence_string, {Line, Column, nil}, Value},
+          Token = {raw_string, {Line, Column, nil}, Value},
           {ok, Token, NewRest, NewLine, NewColumn, Scope};
         {error, Reason} ->
           {error, Reason}
@@ -435,7 +435,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
         _ ->
           case extract_atom(Rest, Line, Column + 1, []) of
             {ok, Value, NewRest, Length} ->
-              Token = {sequence_atom, {Line, Column, nil}, list_to_atom(Value)},
+              Token = {raw_atom, {Line, Column, nil}, list_to_atom(Value)},
               {ok, Token, NewRest, Line, Column + Length + 1, Scope};
             {error, Reason} ->
               {error, Reason}
@@ -446,7 +446,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
     [H | _] when ?is_digit(H) ->
       case extract_number(String, Line, Column) of
         {ok, Value, Rest, Length} ->
-          Token = {sequence_number, {Line, Column, nil}, Value},
+          Token = {raw_number, {Line, Column, nil}, Value},
           {ok, Token, Rest, Line, Column + Length, Scope};
         {error, Reason} ->
           {error, Reason}
@@ -456,7 +456,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
     [$-, D | _] when ?is_digit(D) ->
       case extract_number(String, Line, Column) of
         {ok, Value, Rest, Length} ->
-          Token = {sequence_number, {Line, Column, nil}, Value},
+          Token = {raw_number, {Line, Column, nil}, Value},
           {ok, Token, Rest, Line, Column + Length, Scope};
         {error, Reason} ->
           {error, Reason}
@@ -480,7 +480,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
       end,
       case extract_bracket_content(Rest, ClosingChar, Line, Column + 1, NewScope, []) of
         {ok, ContentTokens, RestAfterBracket, FinalLine, FinalColumn, FinalScope} ->
-          Token = {sequence_block, {Line, Column, nil}, BracketType, lists:reverse(ContentTokens)},
+          Token = {raw_block, {Line, Column, nil}, BracketType, lists:reverse(ContentTokens)},
           {ok, Token, RestAfterBracket, FinalLine, FinalColumn, FinalScope};
         {error, Reason} ->
           {error, Reason}
@@ -541,7 +541,7 @@ extract_quoted_atom_for_single(String, Line, Column, Acc, StartColumn) ->
       {error, {?LOC(Line, Column), "missing closing quote for atom", []}};
     [$" | Rest] ->
       AtomName = lists:reverse(Acc),
-      Token = {sequence_atom, {Line, StartColumn, nil}, list_to_atom(AtomName)},
+      Token = {raw_atom, {Line, StartColumn, nil}, list_to_atom(AtomName)},
       {ok, Token, Rest, Line, Column + 1};
     [$\\ | [C | Rest]] ->
       extract_quoted_atom_for_single(Rest, Line, Column + 2, [C | Acc], StartColumn);

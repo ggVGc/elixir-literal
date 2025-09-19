@@ -354,17 +354,17 @@ do_quote({raw_section, Meta, Args}, Q) when is_list(Meta) ->
   TArgs = do_quote(Args, Q),
   {'{}', [], [raw_section, meta(Meta, Q), TArgs]};
 
-do_quote({sequence_paren, Meta, Args}, Q) when is_list(Meta) ->
+do_quote({raw_paren, Meta, Args}, Q) when is_list(Meta) ->
   TArgs = do_quote(Args, Q),
-  {'{}', [], [sequence_paren, meta(Meta, Q), TArgs]};
+  {'{}', [], [raw_paren, meta(Meta, Q), TArgs]};
 
-do_quote({sequence_bracket, Meta, Args}, Q) when is_list(Meta) ->
+do_quote({raw_bracket, Meta, Args}, Q) when is_list(Meta) ->
   TArgs = do_quote(Args, Q),
-  {'{}', [], [sequence_bracket, meta(Meta, Q), TArgs]};
+  {'{}', [], [raw_bracket, meta(Meta, Q), TArgs]};
 
-do_quote({sequence_brace, Meta, Args}, Q) when is_list(Meta) ->
+do_quote({raw_brace, Meta, Args}, Q) when is_list(Meta) ->
   TArgs = do_quote(Args, Q),
-  {'{}', [], [sequence_brace, meta(Meta, Q), TArgs]};
+  {'{}', [], [raw_brace, meta(Meta, Q), TArgs]};
 
 %% Aliases
 

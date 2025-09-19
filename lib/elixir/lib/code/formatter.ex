@@ -2203,11 +2203,11 @@ defmodule Code.Formatter do
 
   # Handle sequence literal nodes
   defp traverse_line({node_type, _, _} = node, {min, max})
-       when node_type in [:raw_section, :sequence_paren] do
+       when node_type in [:raw_section, :raw_paren] do
     SequenceLiteral.traverse_line(node, {min, max})
   end
 
-  defp traverse_line({:sequence_block, _, _, _} = node, {min, max}) do
+  defp traverse_line({:raw_block, _, _, _} = node, {min, max}) do
     SequenceLiteral.traverse_line(node, {min, max})
   end
 

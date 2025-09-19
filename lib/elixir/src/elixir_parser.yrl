@@ -45,8 +45,8 @@ Terminals
   bin_heredoc list_heredoc
   comp_op at_op unary_op and_op or_op arrow_op match_op in_op in_match_op ellipsis_op
   type_op dual_op mult_op power_op concat_op range_op xor_op pipe_op stab_op when_op
-  capture_int capture_op assoc_op rel_op ternary_op dot_call_op sequence_op sequence_atom raw_token sequence_number
-  sequence_begin sequence_end sequence_block
+  capture_int capture_op assoc_op rel_op ternary_op dot_call_op sequence_op raw_atom raw_token raw_number
+  sequence_begin sequence_end raw_block
   'true' 'false' 'nil' 'do' eol ';' ',' '.'
   '(' ')' '[' ']' '{' '}' '<<' '>>' '%{}' '%'
   int flt char
@@ -322,12 +322,12 @@ raw_token_list -> raw_token_list eol : '$1'.
 
 % Accept various token types inside sequences  
 sequence_element -> raw_token : build_raw_token('$1').
-sequence_element -> sequence_number : element(3, '$1').
+sequence_element -> raw_number : element(3, '$1').
 sequence_element -> int : handle_number(number_value('$1'), '$1', ?exprs('$1')).
 sequence_element -> flt : handle_number(number_value('$1'), '$1', ?exprs('$1')).
 sequence_element -> bin_string : build_bin_string('$1', delimiter(<<$">>)).
-sequence_element -> sequence_block : build_sequence_block('$1').
-sequence_element -> sequence_atom : build_sequence_op('$1').
+sequence_element -> raw_block : build_raw_block('$1').
+sequence_element -> raw_atom : build_sequence_op('$1').
 
 bracket_arg -> open_bracket kw_data close_bracket : build_access_arg('$1', '$2', '$3').
 bracket_arg -> open_bracket container_expr close_bracket : build_access_arg('$1', '$2', '$3').
@@ -988,13 +988,13 @@ build_sequence({sequence_begin, Location, _}, Args, {sequence_end, _EndLocation,
   TransformedArgs = transform_sequence_args(Args),
   {raw_section, Meta, TransformedArgs}.
 
-build_sequence_block({sequence_block, Location, BracketType, Args}) ->
+build_raw_block({raw_block, Location, BracketType, Args}) ->
   Meta = meta_from_location(Location),
   TransformedArgs = transform_sequence_args(Args),
   case BracketType of
-    '()' -> {sequence_paren, Meta, TransformedArgs};
-    '[]' -> {sequence_bracket, Meta, TransformedArgs};
-    '{}' -> {sequence_brace, Meta, TransformedArgs}
+    '()' -> {raw_paren, Meta, TransformedArgs};
+    '[]' -> {raw_bracket, Meta, TransformedArgs};
+    '{}' -> {raw_brace, Meta, TransformedArgs}
   end.
 
 
@@ -1411,23 +1411,23 @@ transform_sequence_args([First | Rest]) ->
   [transform_sequence_node(First) | transform_sequence_args(Rest)].
 
 %% Transform individual sequence nodes recursively
-transform_sequence_node({sequence_paren, Meta, Args}) ->
-  {sequence_paren, normalize_meta(Meta), transform_sequence_args(Args)};
-transform_sequence_node({sequence_brace, Meta, Args}) ->
-  {sequence_brace, normalize_meta(Meta), transform_sequence_args(Args)};  
-transform_sequence_node({sequence_bracket, Meta, Args}) ->
-  {sequence_bracket, normalize_meta(Meta), transform_sequence_args(Args)};
-transform_sequence_node({sequence_block, Meta, BracketType, Args}) ->
-  {sequence_block, normalize_meta(Meta), BracketType, transform_sequence_args(Args)};
+transform_sequence_node({raw_paren, Meta, Args}) ->
+  {raw_paren, normalize_meta(Meta), transform_sequence_args(Args)};
+transform_sequence_node({raw_brace, Meta, Args}) ->
+  {raw_brace, normalize_meta(Meta), transform_sequence_args(Args)};  
+transform_sequence_node({raw_bracket, Meta, Args}) ->
+  {raw_bracket, normalize_meta(Meta), transform_sequence_args(Args)};
+transform_sequence_node({raw_block, Meta, BracketType, Args}) ->
+  {raw_block, normalize_meta(Meta), BracketType, transform_sequence_args(Args)};
 transform_sequence_node({raw_token, Location, Value}) ->
   {Value, normalize_meta(Location), nil};
-transform_sequence_node({sequence_number, Location, Value}) ->
+transform_sequence_node({raw_number, Location, Value}) ->
   Value;
-transform_sequence_node({sequence_string, Location, Value}) ->
+transform_sequence_node({raw_string, Location, Value}) ->
   list_to_binary(Value);
 transform_sequence_node({sequence_chars, Location, Value}) ->
   Value;
-transform_sequence_node({sequence_atom, Location, Value}) ->
+transform_sequence_node({raw_atom, Location, Value}) ->
   Value;
 transform_sequence_node(Other) ->
   Other.

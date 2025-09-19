@@ -25,7 +25,7 @@ The sequence literal syntax uses `~~(...)` to delimit s-expressions:
 #### Parser Changes (`lib/elixir/src/elixir_parser.yrl`)
 - Added `raw_section` AST node type
 - Transforms sequence contents into special AST nodes:
-  - `sequence_paren`: For parenthesized expressions like `(defun name ...)`
+  - `raw_paren`: For parenthesized expressions like `(defun name ...)`
   - Distinguishes operators from regular identifiers
 
 ## Lisp Implementations
