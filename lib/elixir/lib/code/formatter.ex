@@ -8,18 +8,18 @@ defmodule Code.Formatter do
   alias Code.Formatter.SequenceLiteral
 
   # Public interface for SequenceLiteral module
-  def delegate_to_sequence_literal(:quoted_to_algebra, args, _context_state) do
+  def delegate_to_raw_section(:quoted_to_algebra, args, _context_state) do
     {ast, context, state} = args
     quoted_to_algebra(ast, context, state)
   end
 
-  def delegate_to_sequence_literal(:traverse_line, args, _) do
+  def delegate_to_raw_section(:traverse_line, args, _) do
     {ast, acc} = args
     traverse_line(ast, acc)
   end
 
-  def delegate_to_sequence_literal(:force_many_args_or_operand, args, _) do
-    {:sequence_element, choice} = args
+  def delegate_to_raw_section(:force_many_args_or_operand, args, _) do
+    {:raw_element, choice} = args
     choice
   end
 
@@ -590,8 +590,8 @@ defmodule Code.Formatter do
   end
 
   # Handle sequence literals ~~(...)
-  defp quoted_to_algebra({:sequence_literal, meta, args}, context, state) do
-    SequenceLiteral.quoted_to_algebra({:sequence_literal, meta, args}, context, state)
+  defp quoted_to_algebra({:raw_section, meta, args}, context, state) do
+    SequenceLiteral.quoted_to_algebra({:raw_section, meta, args}, context, state)
   end
 
   defp quoted_to_algebra({fun, meta, args}, context, state) when is_atom(fun) and is_list(args) do
@@ -2203,11 +2203,11 @@ defmodule Code.Formatter do
 
   # Handle sequence literal nodes
   defp traverse_line({node_type, _, _} = node, {min, max})
-       when node_type in [:sequence_literal, :sequence_paren] do
+       when node_type in [:raw_section, :raw_paren] do
     SequenceLiteral.traverse_line(node, {min, max})
   end
 
-  defp traverse_line({:sequence_block, _, _, _} = node, {min, max}) do
+  defp traverse_line({:raw_block, _, _, _} = node, {min, max}) do
     SequenceLiteral.traverse_line(node, {min, max})
   end
 
@@ -2276,8 +2276,8 @@ defmodule Code.Formatter do
   defp force_many_args_or_operand(:parens_arg, _choice), do: :parens_arg
   defp force_many_args_or_operand(:operand, choice), do: choice
 
-  defp force_many_args_or_operand(:sequence_element, choice) do
-    delegate_to_sequence_literal(:force_many_args_or_operand, {:sequence_element, choice}, nil)
+  defp force_many_args_or_operand(:raw_element, choice) do
+    delegate_to_raw_section(:force_many_args_or_operand, {:raw_element, choice}, nil)
   end
 
   defp force_many_args_or_operand(:block, choice), do: choice

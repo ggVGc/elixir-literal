@@ -209,9 +209,9 @@ tokenize([$# | String], Line, Column, Scope, Tokens) ->
 
 tokenize([$~, $~, $( | Rest], Line, Column, Scope, Tokens) ->
   % Entering sequence literal - increment depth and dispatch to sequence tokenizer
-  NewScope = Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1},
-  SequenceBeginToken = {sequence_begin, {Line, Column, previous_was_eol(Tokens)}, '~~('},
-  case elixir_sequence_tokenizer:tokenize(Rest, Line, Column + 3, NewScope, [SequenceBeginToken | Tokens]) of
+  NewScope = Scope#elixir_tokenizer{raw_depth = Scope#elixir_tokenizer.raw_depth + 1},
+  SequenceBeginToken = {raw_begin, {Line, Column, previous_was_eol(Tokens)}, '~~('},
+  case elixir_raw_tokenizer:tokenize(Rest, Line, Column + 3, NewScope, [SequenceBeginToken | Tokens]) of
     {ok, FinalLine, FinalColumn, [], FinalTokens, FinalTerminators} ->
       % No remainder - return sequence tokenizer result directly
       {ok, FinalLine, FinalColumn, [], FinalTokens, FinalTerminators};
@@ -234,7 +234,7 @@ tokenize([$~, $~, $~, H | _] = String, Line, Column, Scope, Tokens) when
 
 tokenize([$~, $~ | Rest], Line, Column, Scope, Tokens) ->
   % Sequence operator without parentheses
-  Token = {sequence_op, {Line, Column, previous_was_eol(Tokens)}, '~~'},
+  Token = {raw_op, {Line, Column, previous_was_eol(Tokens)}, '~~'},
   tokenize(Rest, Line, Column + 2, Scope, [Token | Tokens]);
 
 % Sigils

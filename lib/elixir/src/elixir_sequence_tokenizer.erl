@@ -1,7 +1,7 @@
 %% SPDX-License-Identifier: Apache-2.0
 %% SPDX-FileCopyrightText: 2025 The Elixir Team
 
--module(elixir_sequence_tokenizer).
+-module(elixir_raw_tokenizer).
 -include("elixir.hrl").
 -include("elixir_tokenizer.hrl").
 -export([tokenize/5]).
@@ -15,10 +15,10 @@ tokenize(String, Line, Column, Scope, Tokens) ->
       {ok, Line, Column, [], Tokens, []};
 
     % Handle closing parenthesis (exit sequence literal)
-    [$) | Rest] when Scope#elixir_tokenizer.sequence_depth > 0 ->
-      NewScope = Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth - 1},
-      Token = {sequence_end, {Line, Column, nil}, ')'},
-      case NewScope#elixir_tokenizer.sequence_depth of
+    [$) | Rest] when Scope#elixir_tokenizer.raw_depth > 0 ->
+      NewScope = Scope#elixir_tokenizer{raw_depth = Scope#elixir_tokenizer.raw_depth - 1},
+      Token = {raw_end, {Line, Column, nil}, ')'},
+      case NewScope#elixir_tokenizer.raw_depth of
         0 ->
           % Exiting sequence literal - return remainder for main tokenizer to continue
           {ok, Line, Column + 1, Rest, [Token | Tokens], []};
@@ -40,13 +40,13 @@ tokenize(String, Line, Column, Scope, Tokens) ->
         $[ -> $]
       end,
       NewScope = case H of
-        $( -> Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1};
+        $( -> Scope#elixir_tokenizer{raw_depth = Scope#elixir_tokenizer.raw_depth + 1};
         _ -> Scope
       end,
       % Extract content between brackets
       case extract_bracket_content(Rest, ClosingChar, Line, Column + 1, NewScope, []) of
         {ok, ContentTokens, RestAfterBracket, FinalLine, FinalColumn, FinalScope} ->
-          Token = {sequence_block, {Line, Column, nil}, BracketType, lists:reverse(ContentTokens)},
+          Token = {raw_block, {Line, Column, nil}, BracketType, lists:reverse(ContentTokens)},
           tokenize(RestAfterBracket, FinalLine, FinalColumn, FinalScope, [Token | Tokens]);
         {error, Reason} ->
           {error, Reason, Rest, [], Tokens}
@@ -54,21 +54,21 @@ tokenize(String, Line, Column, Scope, Tokens) ->
 
     % Handle sequence operator ~~
     [$~, $~ | Rest] ->
-      Token = {sequence_op, {Line, Column, previous_was_eol(Tokens)}, '~~'},
+      Token = {raw_op, {Line, Column, previous_was_eol(Tokens)}, '~~'},
       % Check if next token is opening parenthesis for nested sequence
       case Rest of
         [$( | _] ->
-          NewScope = Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1},
+          NewScope = Scope#elixir_tokenizer{raw_depth = Scope#elixir_tokenizer.raw_depth + 1},
           tokenize(Rest, Line, Column + 2, NewScope, [Token | Tokens]);
         _ ->
           tokenize(Rest, Line, Column + 2, Scope, [Token | Tokens])
       end;
 
-    % Handle strings - double quotes become sequence_string
+    % Handle strings - double quotes become raw_string
     [$" | Rest] ->
       tokenize_string(Rest, Line, Column + 1, $", Scope, Tokens);
 
-    % Handle single-quoted strings - become sequence_chars
+    % Handle single-quoted strings - become raw_chars
     [$' | Rest] ->
       tokenize_chars(Rest, Line, Column + 1, $', Scope, Tokens);
 
@@ -86,7 +86,7 @@ tokenize(String, Line, Column, Scope, Tokens) ->
 
     % Handle punctuation
     [$, | Rest] ->
-      Token = {sequence_token, {Line, Column, nil}, ','},
+      Token = {raw_token, {Line, Column, nil}, ','},
       tokenize(Rest, Line, Column + 1, Scope, [Token | Tokens]);
 
     [$; | Rest] ->
@@ -122,26 +122,26 @@ tokenize(String, Line, Column, Scope, Tokens) ->
           tokenize(Rest, Line, Column + 1, Scope, Tokens)
       end;
 
-    % Handle any other non-whitespace sequence as sequence_token
+    % Handle any other non-whitespace sequence as raw_token
     _ ->
-      tokenize_sequence_token(String, Line, Column, Scope, Tokens)
+      tokenize_raw_token(String, Line, Column, Scope, Tokens)
   end.
 
-%% String tokenization - "..." becomes sequence_string
+%% String tokenization - "..." becomes raw_string
 tokenize_string(String, Line, Column, Quote, Scope, Tokens) ->
   case extract_string(String, Quote, Line, Column, []) of
     {ok, Value, Rest, NewLine, NewColumn} ->
-      Token = {sequence_string, {Line, Column - 1, nil}, Value},
+      Token = {raw_string, {Line, Column - 1, nil}, Value},
       tokenize(Rest, NewLine, NewColumn, Scope, [Token | Tokens]);
     {error, Reason} ->
       {error, Reason, String, [], Tokens}
   end.
 
-%% Chars tokenization - '...' becomes sequence_chars
+%% Chars tokenization - '...' becomes raw_chars
 tokenize_chars(String, Line, Column, Quote, Scope, Tokens) ->
   case extract_string(String, Quote, Line, Column, []) of
     {ok, Value, Rest, NewLine, NewColumn} ->
-      Token = {sequence_chars, {Line, Column - 1, nil}, Value},
+      Token = {raw_chars, {Line, Column - 1, nil}, Value},
       tokenize(Rest, NewLine, NewColumn, Scope, [Token | Tokens]);
     {error, Reason} ->
       {error, Reason, String, [], Tokens}
@@ -160,14 +160,14 @@ extract_string([$\n | Rest], Quote, Line, _Column, Acc) ->
 extract_string([C | Rest], Quote, Line, Column, Acc) ->
   extract_string(Rest, Quote, Line, Column + 1, [C | Acc]).
 
-%% Atom tokenization - :atom becomes sequence_atom
+%% Atom tokenization - :atom becomes raw_atom
 tokenize_atom([$" | Rest], Line, Column, Scope, Tokens) ->
   % Handle quoted atom like :"spaced atom"
   extract_quoted_atom(Rest, Line, Column + 1, [], Scope, Tokens, Column - 1);
 tokenize_atom(String, Line, Column, Scope, Tokens) ->
   case extract_atom(String, Line, Column, []) of
     {ok, Value, Rest, Length} ->
-      Token = {sequence_atom, {Line, Column - 1, nil}, list_to_atom(Value)},
+      Token = {raw_atom, {Line, Column - 1, nil}, list_to_atom(Value)},
       tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
     {error, Reason} ->
       {error, Reason, String, [], Tokens}
@@ -178,7 +178,7 @@ extract_quoted_atom([], Line, Column, _Acc, _Scope, _Tokens, _StartColumn) ->
   {error, {?LOC(Line, Column), "missing closing quote for atom", []}, [], [], []};
 extract_quoted_atom([$" | Rest], Line, Column, Acc, Scope, Tokens, StartColumn) ->
   AtomName = lists:reverse(Acc),
-  Token = {sequence_atom, {Line, StartColumn, nil}, list_to_atom(AtomName)},
+  Token = {raw_atom, {Line, StartColumn, nil}, list_to_atom(AtomName)},
   tokenize(Rest, Line, Column + 1, Scope, [Token | Tokens]);
 extract_quoted_atom([$\\ | [C | Rest]], Line, Column, Acc, Scope, Tokens, StartColumn) ->
   % Handle escape sequences
@@ -200,11 +200,11 @@ extract_atom(_String, Line, Column, []) ->
 extract_atom(String, _Line, _Column, Acc) ->
   {ok, lists:reverse(Acc), String, length(Acc)}.
 
-%% Number tokenization - integers and floats become sequence_number
+%% Number tokenization - integers and floats become raw_number
 tokenize_number(String, Line, Column, Scope, Tokens) ->
   case extract_number(String, Line, Column) of
     {ok, Value, Rest, Length} ->
-      Token = {sequence_number, {Line, Column, nil}, Value},
+      Token = {raw_number, {Line, Column, nil}, Value},
       tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
     {error, Reason} ->
       {error, Reason, String, [], Tokens}
@@ -295,29 +295,29 @@ extract_integer(_String, []) ->
 extract_integer(String, Acc) ->
   {ok, lists:reverse(Acc), String}.
 
-%% Sequence token tokenization - any non-structural element becomes sequence_token
-tokenize_sequence_token(String, Line, Column, Scope, Tokens) ->
-  case extract_sequence_token(String, []) of
+%% Sequence token tokenization - any non-structural element becomes raw_token
+tokenize_raw_token(String, Line, Column, Scope, Tokens) ->
+  case extract_raw_token(String, []) of
     {ok, Value, Rest, Length} ->
       Atom = list_to_atom(Value),
-      Token = {sequence_token, {Line, Column, nil}, Atom},
+      Token = {raw_token, {Line, Column, nil}, Atom},
       tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
     {error, Reason} ->
       {error, Reason, String, [], Tokens}
   end.
 
 %% Extract sequence token - anything until whitespace or structural character
-extract_sequence_token([], Acc) when Acc =/= [] ->
+extract_raw_token([], Acc) when Acc =/= [] ->
   {ok, lists:reverse(Acc), [], length(Acc)};
-extract_sequence_token([H | Rest], Acc) when ?is_space(H); H =:= $(; H =:= $); H =:= ${; 
+extract_raw_token([H | Rest], Acc) when ?is_space(H); H =:= $(; H =:= $); H =:= ${; 
                                               H =:= $}; H =:= $[; H =:= $]; H =:= $,; H =:= $;; H =:= $"; H =:= $'; H =:= $# ->
   case Acc of
     [] -> {error, "no token found"};
     _ -> {ok, lists:reverse(Acc), [H | Rest], length(Acc)}
   end;
-extract_sequence_token([H | Rest], Acc) ->
-  extract_sequence_token(Rest, [H | Acc]);
-extract_sequence_token([], []) ->
+extract_raw_token([H | Rest], Acc) ->
+  extract_raw_token(Rest, [H | Acc]);
+extract_raw_token([], []) ->
   {error, "no token found"}.
 
 %% Extract content between matching brackets
@@ -327,12 +327,12 @@ extract_bracket_content(String, ClosingChar, Line, Column, Scope, Acc) ->
     [ClosingChar | Rest] when ClosingChar =/= $) ->
       % Empty bracket pair (but not closing paren which ends sequence)
       {ok, Acc, Rest, Line, Column + 1, Scope};
-    [ClosingChar | _] when ClosingChar =:= $), Scope#elixir_tokenizer.sequence_depth =:= 1 ->
+    [ClosingChar | _] when ClosingChar =:= $), Scope#elixir_tokenizer.raw_depth =:= 1 ->
       % This is the final closing paren of an empty sequence literal 
       {ok, Acc, String, Line, Column, Scope};
     [ClosingChar | Rest] when ClosingChar =:= $) ->
       % Empty nested parentheses
-      FinalScope = Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth - 1},
+      FinalScope = Scope#elixir_tokenizer{raw_depth = Scope#elixir_tokenizer.raw_depth - 1},
       {ok, Acc, Rest, Line, Column + 1, FinalScope};
     _ ->
       % Not empty, proceed with normal tokenization
@@ -343,12 +343,12 @@ extract_bracket_content(String, ClosingChar, Line, Column, Scope, Acc) ->
         [ClosingChar | Rest] when Char =:= ClosingChar, ClosingChar =/= $) ->
           % Found matching closing bracket (but not closing paren which ends sequence)
           {ok, Acc, Rest, NewLine, NewColumn + 1, NewScope};
-        [ClosingChar | _] when Char =:= ClosingChar, ClosingChar =:= $), NewScope#elixir_tokenizer.sequence_depth =:= 1 ->
+        [ClosingChar | _] when Char =:= ClosingChar, ClosingChar =:= $), NewScope#elixir_tokenizer.raw_depth =:= 1 ->
           % This is the final closing paren of the sequence literal - don't consume it
           {ok, Acc, String2, NewLine, NewColumn, NewScope};
         [ClosingChar | Rest] when Char =:= ClosingChar, ClosingChar =:= $) ->
           % This is a closing paren but we're still nested
-          FinalScope = NewScope#elixir_tokenizer{sequence_depth = NewScope#elixir_tokenizer.sequence_depth - 1},
+          FinalScope = NewScope#elixir_tokenizer{raw_depth = NewScope#elixir_tokenizer.raw_depth - 1},
           {ok, Acc, Rest, NewLine, NewColumn + 1, FinalScope};
         _ ->
           % Mismatch or different bracket - this is an error
@@ -359,16 +359,16 @@ extract_bracket_content(String, ClosingChar, Line, Column, Scope, Acc) ->
         [ClosingChar | FinalRest] when ClosingChar =/= $) ->
           % Found matching closing bracket (but not closing paren which ends sequence)
           FinalScope = case ClosingChar of
-            $) -> NewScope#elixir_tokenizer{sequence_depth = NewScope#elixir_tokenizer.sequence_depth - 1};
+            $) -> NewScope#elixir_tokenizer{raw_depth = NewScope#elixir_tokenizer.raw_depth - 1};
             _ -> NewScope
           end,
           {ok, [Token | Acc], FinalRest, NewLine, NewColumn + 1, FinalScope};
-        [ClosingChar | _] when ClosingChar =:= $), NewScope#elixir_tokenizer.sequence_depth =:= 1 ->
+        [ClosingChar | _] when ClosingChar =:= $), NewScope#elixir_tokenizer.raw_depth =:= 1 ->
           % This is the final closing paren of the sequence literal - don't consume it
           {ok, [Token | Acc], Rest, NewLine, NewColumn, NewScope};
         [ClosingChar | FinalRest] when ClosingChar =:= $) ->
           % This is a closing paren but we're still nested
-          FinalScope = NewScope#elixir_tokenizer{sequence_depth = NewScope#elixir_tokenizer.sequence_depth - 1},
+          FinalScope = NewScope#elixir_tokenizer{raw_depth = NewScope#elixir_tokenizer.raw_depth - 1},
           {ok, [Token | Acc], FinalRest, NewLine, NewColumn + 1, FinalScope};
         _ ->
           % Continue collecting tokens
@@ -406,7 +406,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
     [$" | Rest] ->
       case extract_string(Rest, $", Line, Column + 1, []) of
         {ok, Value, NewRest, NewLine, NewColumn} ->
-          Token = {sequence_string, {Line, Column, nil}, Value},
+          Token = {raw_string, {Line, Column, nil}, Value},
           {ok, Token, NewRest, NewLine, NewColumn, Scope};
         {error, Reason} ->
           {error, Reason}
@@ -416,7 +416,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
     [$' | Rest] ->
       case extract_string(Rest, $', Line, Column + 1, []) of
         {ok, Value, NewRest, NewLine, NewColumn} ->
-          Token = {sequence_chars, {Line, Column, nil}, Value},
+          Token = {raw_chars, {Line, Column, nil}, Value},
           {ok, Token, NewRest, NewLine, NewColumn, Scope};
         {error, Reason} ->
           {error, Reason}
@@ -435,7 +435,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
         _ ->
           case extract_atom(Rest, Line, Column + 1, []) of
             {ok, Value, NewRest, Length} ->
-              Token = {sequence_atom, {Line, Column, nil}, list_to_atom(Value)},
+              Token = {raw_atom, {Line, Column, nil}, list_to_atom(Value)},
               {ok, Token, NewRest, Line, Column + Length + 1, Scope};
             {error, Reason} ->
               {error, Reason}
@@ -446,7 +446,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
     [H | _] when ?is_digit(H) ->
       case extract_number(String, Line, Column) of
         {ok, Value, Rest, Length} ->
-          Token = {sequence_number, {Line, Column, nil}, Value},
+          Token = {raw_number, {Line, Column, nil}, Value},
           {ok, Token, Rest, Line, Column + Length, Scope};
         {error, Reason} ->
           {error, Reason}
@@ -456,7 +456,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
     [$-, D | _] when ?is_digit(D) ->
       case extract_number(String, Line, Column) of
         {ok, Value, Rest, Length} ->
-          Token = {sequence_number, {Line, Column, nil}, Value},
+          Token = {raw_number, {Line, Column, nil}, Value},
           {ok, Token, Rest, Line, Column + Length, Scope};
         {error, Reason} ->
           {error, Reason}
@@ -475,12 +475,12 @@ tokenize_single_item(String, Line, Column, Scope) ->
         $[ -> $]
       end,
       NewScope = case H of
-        $( -> Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1};
+        $( -> Scope#elixir_tokenizer{raw_depth = Scope#elixir_tokenizer.raw_depth + 1};
         _ -> Scope
       end,
       case extract_bracket_content(Rest, ClosingChar, Line, Column + 1, NewScope, []) of
         {ok, ContentTokens, RestAfterBracket, FinalLine, FinalColumn, FinalScope} ->
-          Token = {sequence_block, {Line, Column, nil}, BracketType, lists:reverse(ContentTokens)},
+          Token = {raw_block, {Line, Column, nil}, BracketType, lists:reverse(ContentTokens)},
           {ok, Token, RestAfterBracket, FinalLine, FinalColumn, FinalScope};
         {error, Reason} ->
           {error, Reason}
@@ -488,7 +488,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
     
     % Handle commas
     [$, | Rest] ->
-      Token = {sequence_token, {Line, Column, nil}, ','},
+      Token = {raw_token, {Line, Column, nil}, ','},
       {ok, Token, Rest, Line, Column + 1, Scope};
     
     % Handle whitespace
@@ -519,15 +519,15 @@ tokenize_single_item(String, Line, Column, Scope) ->
     
     % Handle sequence operator ~~
     [$~, $~ | Rest] ->
-      Token = {sequence_op, {Line, Column, false}, '~~'},
+      Token = {raw_op, {Line, Column, false}, '~~'},
       {ok, Token, Rest, Line, Column + 2, Scope};
     
     % Handle sequence tokens
     _ ->
-      case extract_sequence_token(String, []) of
+      case extract_raw_token(String, []) of
         {ok, Value, Rest, Length} ->
           Atom = list_to_atom(Value),
-          Token = {sequence_token, {Line, Column, nil}, Atom},
+          Token = {raw_token, {Line, Column, nil}, Atom},
           {ok, Token, Rest, Line, Column + Length, Scope};
         {error, Reason} ->
           {error, Reason}
@@ -541,7 +541,7 @@ extract_quoted_atom_for_single(String, Line, Column, Acc, StartColumn) ->
       {error, {?LOC(Line, Column), "missing closing quote for atom", []}};
     [$" | Rest] ->
       AtomName = lists:reverse(Acc),
-      Token = {sequence_atom, {Line, StartColumn, nil}, list_to_atom(AtomName)},
+      Token = {raw_atom, {Line, StartColumn, nil}, list_to_atom(AtomName)},
       {ok, Token, Rest, Line, Column + 1};
     [$\\ | [C | Rest]] ->
       extract_quoted_atom_for_single(Rest, Line, Column + 2, [C | Acc], StartColumn);

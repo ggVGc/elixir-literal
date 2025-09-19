@@ -78,5 +78,5 @@
   column=1,
   mismatch_hints=[],
   warnings=[],
-  sequence_depth=0
+  raw_depth=0
 }).

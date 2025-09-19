@@ -20,17 +20,17 @@ defmodule Simpex do
   Main macro for defining and evaluating Simpex expressions.
   """
   # Handle empty sequence literal
-  defmacro defsimpex({:sequence_literal, _meta, []}) do
+  defmacro defsimpex({:raw_section, _meta, []}) do
     nil
   end
 
   # Handle single expression
-  defmacro defsimpex({:sequence_literal, _meta, [expr]}) do
+  defmacro defsimpex({:raw_section, _meta, [expr]}) do
     eval_simpex_expr(expr)
   end
 
   # Handle multiple expressions
-  defmacro defsimpex({:sequence_literal, _meta, exprs}) when is_list(exprs) do
+  defmacro defsimpex({:raw_section, _meta, exprs}) when is_list(exprs) do
     elixir_exprs = Enum.map(exprs, &eval_simpex_expr/1)
     {:__block__, [], elixir_exprs}
   end
@@ -48,15 +48,15 @@ defmodule Simpex do
         atom
 
       # Handle sequence numbers  
-      {:sequence_number, _meta, value} ->
+      {:raw_number, _meta, value} ->
         value
 
       # Handle sequence atoms (like :x, :key, etc.)
-      {:sequence_atom, _meta, atom} ->
+      {:raw_atom, _meta, atom} ->
         atom
 
       # Handle sequence string tokens (double quotes)
-      {:sequence_string, _meta, value} ->
+      {:raw_string, _meta, value} ->
         # Convert character list to binary string if needed
         if is_list(value) do
           List.to_string(value)
@@ -65,7 +65,7 @@ defmodule Simpex do
         end
 
       # Handle sequence character list tokens (single quotes)
-      {:sequence_chars, _meta, value} ->
+      {:raw_chars, _meta, value} ->
         # Keep as character list
         value
 
@@ -80,7 +80,7 @@ defmodule Simpex do
         nil
 
       # Handle sequence tokens that represent variables
-      {:sequence_token, meta, name} when is_atom(name) ->
+      {:raw_token, meta, name} when is_atom(name) ->
         # Convert to proper Elixir AST variable
         case name do
           n when n in [true, false, nil] ->
@@ -107,15 +107,15 @@ defmodule Simpex do
       {var, meta, nil} when is_atom(var) and var not in [true, false, nil] ->
         {var, meta, nil}
 
-      # Handle structured expressions - sequence_prefix for def, sequence_paren for calls
-      {:sequence_prefix, op_node, args} ->
+      # Handle structured expressions - raw_prefix for def, raw_paren for calls
+      {:raw_prefix, op_node, args} ->
         eval_function_expr(op_node, args)
 
       # Handle function calls: (func arg1 arg2...)
-      {:sequence_paren, _meta, [func_node | args]} ->
+      {:raw_paren, _meta, [func_node | args]} ->
         case func_node do
-          # Handle nested sequence_prefix in paren (like function definitions)
-          {:sequence_prefix, op_node, nested_args} ->
+          # Handle nested raw_prefix in paren (like function definitions)
+          {:raw_prefix, op_node, nested_args} ->
             eval_function_expr(op_node, nested_args)
 
           # Handle direct function calls
@@ -129,13 +129,13 @@ defmodule Simpex do
         end
 
       # Handle parenthesized expressions that look like function calls
-      {:sequence_block, _meta, :"()", [{:sequence_token, _, func_atom} | args]}
+      {:raw_block, _meta, :"()", [{:raw_token, _, func_atom} | args]}
       when func_atom == :% ->
         # Handle map syntax
         pairs = build_map_pairs(args)
         {:%{}, [], pairs}
 
-      {:sequence_block, _meta, :"()", [{:sequence_token, _, _} = func | args]} ->
+      {:raw_block, _meta, :"()", [{:raw_token, _, _} = func | args]} ->
         func_name = extract_atom(func)
         elixir_args = Enum.map(args, &eval_simpex_expr/1)
 
@@ -144,16 +144,16 @@ defmodule Simpex do
         end
 
       # Handle parameter blocks and other parenthesized content
-      {:sequence_block, _meta, :"()", contents} ->
+      {:raw_block, _meta, :"()", contents} ->
         contents
 
       # Handle tuple syntax {a b c} -> {a, b, c}
-      {:sequence_block, _meta, :{}, items} ->
+      {:raw_block, _meta, :{}, items} ->
         elixir_items = Enum.map(items, &eval_simpex_expr/1)
         {:{}, [], elixir_items}
 
       # Handle list syntax [a b c] -> [a, b, c] or keyword list [key: value] -> [{:key, value}]
-      {:sequence_block, _meta, :"[]", items} ->
+      {:raw_block, _meta, :"[]", items} ->
         case detect_keyword_syntax(items) do
           {:keywords, _} ->
             # Convert to keyword list using general expression evaluation
@@ -164,8 +164,8 @@ defmodule Simpex do
             Enum.map(items, &eval_simpex_expr/1)
         end
 
-      # Also handle sequence_brace if it appears
-      {:sequence_brace, _meta, items} ->
+      # Also handle raw_brace if it appears
+      {:raw_brace, _meta, items} ->
         elixir_items = Enum.map(items, &eval_simpex_expr/1)
         {:{}, [], elixir_items}
 
@@ -180,7 +180,7 @@ defmodule Simpex do
 
     case params_node do
       # Keyword-only function: (def name [keywords] body)  
-      {:sequence_block, _meta, :"[]", _items} ->
+      {:raw_block, _meta, :"[]", _items} ->
         keyword_params = extract_keyword_list_params(params_node)
         body = eval_simpex_expr(body_node)
 
@@ -230,7 +230,7 @@ defmodule Simpex do
   defp eval_function_expr({:def, _meta, nil}, [
          name_node,
          params_node,
-         {:sequence_token, _, :when},
+         {:raw_token, _, :when},
          guard_node,
          body_node
        ]) do
@@ -305,7 +305,7 @@ defmodule Simpex do
   end
 
   # Simplified atom extraction - let Elixir handle most cases
-  defp extract_atom({:sequence_token, _meta, atom}) when is_atom(atom) do
+  defp extract_atom({:raw_token, _meta, atom}) when is_atom(atom) do
     handle_atom(atom)
   end
 
@@ -342,7 +342,7 @@ defmodule Simpex do
   end
 
   # Parameter extraction with minimal sequence token handling
-  defp extract_params({:sequence_block, _meta, :"()", params}) do
+  defp extract_params({:raw_block, _meta, :"()", params}) do
     # Check if we have keyword syntax and convert to proper keyword list parameter
     case detect_keyword_syntax(params) do
       {:keywords, keyword_pairs} ->
@@ -364,7 +364,7 @@ defmodule Simpex do
   defp extract_params(_), do: []
 
   # Extract keyword list parameters from bracket syntax [key: value, ...]
-  defp extract_keyword_list_params({:sequence_block, _meta, :"[]", params}) do
+  defp extract_keyword_list_params({:raw_block, _meta, :"[]", params}) do
     # Convert keyword syntax to proper keyword list
     build_keyword_pairs_from_list(params)
   end
@@ -374,7 +374,7 @@ defmodule Simpex do
   end
 
   # Convert sequence tokens to proper Elixir AST for parameters
-  defp to_elixir_param({:sequence_token, {line, column, _}, name}) when is_atom(name) do
+  defp to_elixir_param({:raw_token, {line, column, _}, name}) when is_atom(name) do
     {name, [line: line, column: column], nil}
   end
 
@@ -405,11 +405,11 @@ defmodule Simpex do
   defp has_keyword_syntax?(params) do
     Enum.any?(params, fn param ->
       case param do
-        {:sequence_atom, _, atom} ->
+        {:raw_atom, _, atom} ->
           atom_str = Atom.to_string(atom)
           String.ends_with?(atom_str, ":")
 
-        {:sequence_token, _, atom} ->
+        {:raw_token, _, atom} ->
           atom_str = Atom.to_string(atom)
           String.ends_with?(atom_str, ":")
 
@@ -425,7 +425,7 @@ defmodule Simpex do
       params
       |> Enum.chunk_every(2)
       |> Enum.map(fn
-        [{:sequence_atom, _, key_atom}, value] ->
+        [{:raw_atom, _, key_atom}, value] ->
           # Remove trailing colon from key
           key_str = Atom.to_string(key_atom)
 
@@ -438,7 +438,7 @@ defmodule Simpex do
 
           {key, to_elixir_param(value)}
 
-        [{:sequence_token, _, key_atom}, value] ->
+        [{:raw_token, _, key_atom}, value] ->
           # Remove trailing colon from key
           key_str = Atom.to_string(key_atom)
 
@@ -464,7 +464,7 @@ defmodule Simpex do
       params
       |> Enum.chunk_every(2)
       |> Enum.map(fn
-        [{:sequence_atom, _, key_atom}, value] ->
+        [{:raw_atom, _, key_atom}, value] ->
           # Remove trailing colon from key
           key_str = Atom.to_string(key_atom)
 
@@ -477,7 +477,7 @@ defmodule Simpex do
 
           {key, to_elixir_param(value)}
 
-        [{:sequence_token, _, key_atom}, value] ->
+        [{:raw_token, _, key_atom}, value] ->
           # Remove trailing colon from key
           key_str = Atom.to_string(key_atom)
 
@@ -503,7 +503,7 @@ defmodule Simpex do
       items
       |> Enum.chunk_every(2)
       |> Enum.map(fn
-        [{:sequence_atom, _, key_atom}, value] ->
+        [{:raw_atom, _, key_atom}, value] ->
           # Remove trailing colon from key
           key_str = Atom.to_string(key_atom)
 
@@ -516,7 +516,7 @@ defmodule Simpex do
 
           {key, eval_simpex_expr(value)}
 
-        [{:sequence_token, _, key_atom}, value] ->
+        [{:raw_token, _, key_atom}, value] ->
           # Remove trailing colon from key
           key_str = Atom.to_string(key_atom)
 
@@ -550,14 +550,14 @@ defmodule Simpex do
   end
 
   # Build case clause from (pattern result) -> pattern -> result
-  defp build_case_clause({:sequence_paren, _meta, [pattern, result]}) do
+  defp build_case_clause({:raw_paren, _meta, [pattern, result]}) do
     pattern_ast = eval_simpex_expr(pattern)
     result_ast = eval_simpex_expr(result)
     {:->, [], [[pattern_ast], result_ast]}
   end
 
-  # Handle sequence_block format for case clauses
-  defp build_case_clause({:sequence_block, _meta, :"()", [pattern, result]}) do
+  # Handle raw_block format for case clauses
+  defp build_case_clause({:raw_block, _meta, :"()", [pattern, result]}) do
     pattern_ast = eval_simpex_expr(pattern)
     result_ast = eval_simpex_expr(result)
     {:->, [], [[pattern_ast], result_ast]}

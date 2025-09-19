@@ -10,13 +10,13 @@ defmodule Code.Formatter.SequenceLiteral do
   @max_line 9_999_999
   @empty empty()
 
-  def quoted_to_algebra({:sequence_literal, meta, args}, _context, state) do
+  def quoted_to_algebra({:raw_section, meta, args}, _context, state) do
     case args do
       [] ->
         {string("~~()"), state}
 
       [single_arg] ->
-        {args_doc, state} = sequence_literal_element_to_algebra(single_arg, state)
+        {args_doc, state} = raw_section_element_to_algebra(single_arg, state)
         doc = string("~~(") |> concat(args_doc) |> concat(string(")"))
         {doc, state}
 
@@ -46,7 +46,7 @@ defmodule Code.Formatter.SequenceLiteral do
 
         {args_docs, state} =
           Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-            {doc, state} = sequence_literal_element_to_algebra(arg, state)
+            {doc, state} = raw_section_element_to_algebra(arg, state)
             {[doc | acc], state}
           end)
 
@@ -78,17 +78,17 @@ defmodule Code.Formatter.SequenceLiteral do
     end
   end
 
-  def sequence_literal_args_to_algebra(args, state) do
+  def raw_section_args_to_algebra(args, state) do
     case args do
       [] ->
         {@empty, state}
 
       [first | rest] ->
-        {first_doc, state} = sequence_literal_element_to_algebra(first, state)
+        {first_doc, state} = raw_section_element_to_algebra(first, state)
 
         {rest_docs, state} =
           Enum.reduce(rest, {[], state}, fn arg, {acc, state} ->
-            {doc, state} = sequence_literal_element_to_algebra(arg, state)
+            {doc, state} = raw_section_element_to_algebra(arg, state)
             {[doc | acc], state}
           end)
 
@@ -103,10 +103,10 @@ defmodule Code.Formatter.SequenceLiteral do
     end
   end
 
-  def sequence_literal_element_to_algebra({:sequence_paren, meta, args}, state) do
+  def raw_section_element_to_algebra({:raw_paren, meta, args}, state) do
     {args_docs, state} =
       Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-        {doc, state} = sequence_literal_element_to_algebra(arg, state)
+        {doc, state} = raw_section_element_to_algebra(arg, state)
         {[doc | acc], state}
       end)
 
@@ -137,7 +137,7 @@ defmodule Code.Formatter.SequenceLiteral do
           [operator_doc, name_doc | rest_docs] = Enum.reverse(args_docs)
 
           case rest do
-            [{:sequence_block, _, :"()", _} | body] when body != [] ->
+            [{:raw_block, _, :"()", _} | body] when body != [] ->
               # Has args and body - format specially
               [args_doc | body_docs] = rest_docs
               header = concat([operator_doc, " ", name_doc, " ", args_doc])
@@ -161,10 +161,10 @@ defmodule Code.Formatter.SequenceLiteral do
     end
   end
 
-  def sequence_literal_element_to_algebra({:sequence_block, meta, :"()", args}, state) do
+  def raw_section_element_to_algebra({:raw_block, meta, :"()", args}, state) do
     {args_docs, state} =
       Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-        {doc, state} = sequence_literal_element_to_algebra(arg, state)
+        {doc, state} = raw_section_element_to_algebra(arg, state)
         {[doc | acc], state}
       end)
 
@@ -199,10 +199,10 @@ defmodule Code.Formatter.SequenceLiteral do
     end
   end
 
-  def sequence_literal_element_to_algebra({:sequence_block, meta, :"[]", args}, state) do
+  def raw_section_element_to_algebra({:raw_block, meta, :"[]", args}, state) do
     {args_docs, state} =
       Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-        {doc, state} = sequence_literal_element_to_algebra(arg, state)
+        {doc, state} = raw_section_element_to_algebra(arg, state)
         {[doc | acc], state}
       end)
 
@@ -231,10 +231,10 @@ defmodule Code.Formatter.SequenceLiteral do
     end
   end
 
-  def sequence_literal_element_to_algebra({:sequence_block, meta, :{}, args}, state) do
+  def raw_section_element_to_algebra({:raw_block, meta, :{}, args}, state) do
     {args_docs, state} =
       Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-        {doc, state} = sequence_literal_element_to_algebra(arg, state)
+        {doc, state} = raw_section_element_to_algebra(arg, state)
         {[doc | acc], state}
       end)
 
@@ -263,10 +263,10 @@ defmodule Code.Formatter.SequenceLiteral do
     end
   end
 
-  def sequence_literal_element_to_algebra({:sequence_brace, _meta, args}, state) do
+  def raw_section_element_to_algebra({:raw_brace, _meta, args}, state) do
     {args_docs, state} =
       Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-        {doc, state} = sequence_literal_element_to_algebra(arg, state)
+        {doc, state} = raw_section_element_to_algebra(arg, state)
         {[doc | acc], state}
       end)
 
@@ -274,49 +274,49 @@ defmodule Code.Formatter.SequenceLiteral do
     {concat(["{", args_doc, "}"]), state}
   end
 
-  def sequence_literal_element_to_algebra({:sequence_token, _meta, atom}, state)
+  def raw_section_element_to_algebra({:raw_token, _meta, atom}, state)
       when is_atom(atom) do
     {Atom.to_string(atom) |> string(), state}
   end
 
-  def sequence_literal_element_to_algebra({:sequence_atom, _meta, atom}, state) do
+  def raw_section_element_to_algebra({:raw_atom, _meta, atom}, state) do
     {(":" <> Atom.to_string(atom)) |> string(), state}
   end
 
-  def sequence_literal_element_to_algebra({:sequence_string, _meta, value}, state) do
+  def raw_section_element_to_algebra({:raw_string, _meta, value}, state) do
     str = if is_list(value), do: List.to_string(value), else: value
     {inspect(str) |> string(), state}
   end
 
-  def sequence_literal_element_to_algebra({:sequence_chars, _meta, value}, state) do
+  def raw_section_element_to_algebra({:raw_chars, _meta, value}, state) do
     {inspect(value, as_charlists: :as_charlists) |> string(), state}
   end
 
-  def sequence_literal_element_to_algebra({:sequence_number, _meta, value}, state) do
+  def raw_section_element_to_algebra({:raw_number, _meta, value}, state) do
     {to_string(value) |> string(), state}
   end
 
   # Handle regular AST nodes within sequence literals
-  def sequence_literal_element_to_algebra({atom, _meta, nil}, state) when is_atom(atom) do
+  def raw_section_element_to_algebra({atom, _meta, nil}, state) when is_atom(atom) do
     {Atom.to_string(atom) |> string(), state}
   end
 
-  def sequence_literal_element_to_algebra(number, state) when is_number(number) do
+  def raw_section_element_to_algebra(number, state) when is_number(number) do
     {to_string(number) |> string(), state}
   end
 
-  def sequence_literal_element_to_algebra(string, state) when is_binary(string) do
+  def raw_section_element_to_algebra(string, state) when is_binary(string) do
     {inspect(string) |> string(), state}
   end
 
-  def sequence_literal_element_to_algebra(atom, state) when is_atom(atom) do
+  def raw_section_element_to_algebra(atom, state) when is_atom(atom) do
     {(":" <> Atom.to_string(atom)) |> string(), state}
   end
 
-  def sequence_literal_element_to_algebra(list, state) when is_list(list) do
+  def raw_section_element_to_algebra(list, state) when is_list(list) do
     {docs, state} =
       Enum.reduce(list, {[], state}, fn arg, {acc, state} ->
-        {doc, state} = sequence_literal_element_to_algebra(arg, state)
+        {doc, state} = raw_section_element_to_algebra(arg, state)
         {[doc | acc], state}
       end)
 
@@ -324,34 +324,34 @@ defmodule Code.Formatter.SequenceLiteral do
     {concat(["[", args_doc, "]"]), state}
   end
 
-  def sequence_literal_element_to_algebra(other, state) do
+  def raw_section_element_to_algebra(other, state) do
     # Fallback to regular quoted_to_algebra for complex expressions
-    Code.Formatter.delegate_to_sequence_literal(
+    Code.Formatter.delegate_to_raw_section(
       :quoted_to_algebra,
-      {other, :sequence_element, state},
+      {other, :raw_element, state},
       nil
     )
   end
 
   ## Line traversal helpers
 
-  def traverse_line({:sequence_literal, meta, args}, {min, max}) do
+  def traverse_line({:raw_section, meta, args}, {min, max}) do
     acc = extract_line_from_meta(meta, {min, max})
     traverse_line(args, acc)
   end
 
-  def traverse_line({:sequence_paren, meta, args}, {min, max}) do
+  def traverse_line({:raw_paren, meta, args}, {min, max}) do
     acc = extract_line_from_meta(meta, {min, max})
     traverse_line(args, acc)
   end
 
-  def traverse_line({:sequence_block, meta, _bracket_type, args}, {min, max}) do
+  def traverse_line({:raw_block, meta, _bracket_type, args}, {min, max}) do
     acc = extract_line_from_meta(meta, {min, max})
     traverse_line(args, acc)
   end
 
   def traverse_line(other, acc) do
-    Code.Formatter.delegate_to_sequence_literal(:traverse_line, {other, acc}, nil)
+    Code.Formatter.delegate_to_raw_section(:traverse_line, {other, acc}, nil)
   end
 
   def extract_line_from_meta(meta, {min, max}) when is_list(meta) do

@@ -3,11 +3,11 @@ defmodule Module.Types.Literal do
 
   def of_expr({tag, _meta, _bracket_type, _args}, _expected, _expr, _stack, context)
       when tag in [
-             :sequence_block,
-             :sequence_literal,
-             :sequence_paren,
-             :sequence_brace,
-             :sequence_bracket
+             :raw_block,
+             :raw_section,
+             :raw_paren,
+             :raw_brace,
+             :raw_bracket
            ] do
     {dynamic(), context}
   end

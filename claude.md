@@ -18,14 +18,14 @@ The sequence literal syntax uses `~~(...)` to delimit s-expressions:
 ### Implementation Details
 
 #### Tokenizer Changes (`lib/elixir/src/elixir_tokenizer.erl`)
-- Added `sequence_op` token for `~~` operator
+- Added `raw_op` token for `~~` operator
 - Tracks sequence depth to properly handle nested parentheses within sequence literals
 - Preserves all tokens inside sequence literals without special interpretation
 
 #### Parser Changes (`lib/elixir/src/elixir_parser.yrl`)
-- Added `sequence_literal` AST node type
+- Added `raw_section` AST node type
 - Transforms sequence contents into special AST nodes:
-  - `sequence_paren`: For parenthesized expressions like `(defun name ...)`
+  - `raw_paren`: For parenthesized expressions like `(defun name ...)`
   - Distinguishes operators from regular identifiers
 
 ## Lisp Implementations
@@ -110,7 +110,7 @@ The project aims to eventually support more natural Lisp-like DSLs within Elixir
 
 - **Documentation**:
   - `elixir_lisp_syntax_design.md` - Design document for Elixir-like Lisp syntax
-  - `sequence_syntax_enhancement_plan.md` - Original plan for sequence syntax support
+  - `raw_syntax_enhancement_plan.md` - Original plan for sequence syntax support
 
 - **Tests**:
   - `simple_lisp_test.exs` - Basic Lisp functionality tests

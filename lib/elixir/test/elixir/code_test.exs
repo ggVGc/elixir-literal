@@ -671,7 +671,7 @@ defmodule CodeTest do
       assert Enum.any?(lines, &(&1 =~ "(= b 3)"))
       assert Enum.any?(lines, &(&1 =~ "(== a b)"))
 
-      # Test nested multi-line in sequence_paren
+      # Test nested multi-line in raw_paren
       code2 =
         """
         ~~((
