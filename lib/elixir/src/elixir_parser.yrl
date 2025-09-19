@@ -34,7 +34,7 @@ Nonterminals
   dot_op dot_alias dot_bracket_identifier dot_call_identifier
   dot_identifier dot_op_identifier dot_do_identifier dot_paren_identifier
   do_block fn_eoe do_eoe block_eoe block_item block_list
-  sequence_expr sequence_args sequence_token_list sequence_element
+  sequence_expr sequence_args raw_token_list sequence_element
   .
 
 Terminals
@@ -45,7 +45,7 @@ Terminals
   bin_heredoc list_heredoc
   comp_op at_op unary_op and_op or_op arrow_op match_op in_op in_match_op ellipsis_op
   type_op dual_op mult_op power_op concat_op range_op xor_op pipe_op stab_op when_op
-  capture_int capture_op assoc_op rel_op ternary_op dot_call_op sequence_op sequence_atom sequence_token sequence_number
+  capture_int capture_op assoc_op rel_op ternary_op dot_call_op sequence_op sequence_atom raw_token sequence_number
   sequence_begin sequence_end sequence_block
   'true' 'false' 'nil' 'do' eol ';' ',' '.'
   '(' ')' '[' ']' '{' '}' '<<' '>>' '%{}' '%'
@@ -310,18 +310,18 @@ parens_call -> dot_call_identifier call_args_parens call_args_parens : build_nes
 %% Sequence expressions
 sequence_expr -> sequence_begin sequence_args sequence_end : build_sequence('$1', '$2', '$3').
 
-sequence_args -> sequence_token_list : '$1'.
+sequence_args -> raw_token_list : '$1'.
 sequence_args -> '$empty' : [].
-sequence_args -> eol sequence_token_list : '$2'.
+sequence_args -> eol raw_token_list : '$2'.
 sequence_args -> eol : [].
 
-sequence_token_list -> sequence_element : ['$1'].
-sequence_token_list -> sequence_token_list sequence_element : '$1' ++ ['$2'].
-sequence_token_list -> sequence_token_list eol sequence_element : '$1' ++ ['$3'].
-sequence_token_list -> sequence_token_list eol : '$1'.
+raw_token_list -> sequence_element : ['$1'].
+raw_token_list -> raw_token_list sequence_element : '$1' ++ ['$2'].
+raw_token_list -> raw_token_list eol sequence_element : '$1' ++ ['$3'].
+raw_token_list -> raw_token_list eol : '$1'.
 
 % Accept various token types inside sequences  
-sequence_element -> sequence_token : build_sequence_token('$1').
+sequence_element -> raw_token : build_raw_token('$1').
 sequence_element -> sequence_number : element(3, '$1').
 sequence_element -> int : handle_number(number_value('$1'), '$1', ?exprs('$1')).
 sequence_element -> flt : handle_number(number_value('$1'), '$1', ?exprs('$1')).
@@ -968,7 +968,7 @@ build_identifier({_, Location, Identifier}) ->
 build_sequence_op({_, Location, Op}) ->
   {Op, meta_from_location(Location), nil}.
 
-build_sequence_token({sequence_token, Location, Value}) ->
+build_raw_token({raw_token, Location, Value}) ->
   {Value, meta_from_location(Location), nil}.
 
 build_call({'.', Meta, IdentifierMeta, DotArgs}, Args) ->
@@ -1419,7 +1419,7 @@ transform_sequence_node({sequence_bracket, Meta, Args}) ->
   {sequence_bracket, normalize_meta(Meta), transform_sequence_args(Args)};
 transform_sequence_node({sequence_block, Meta, BracketType, Args}) ->
   {sequence_block, normalize_meta(Meta), BracketType, transform_sequence_args(Args)};
-transform_sequence_node({sequence_token, Location, Value}) ->
+transform_sequence_node({raw_token, Location, Value}) ->
   {Value, normalize_meta(Location), nil};
 transform_sequence_node({sequence_number, Location, Value}) ->
   Value;

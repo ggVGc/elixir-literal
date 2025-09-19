@@ -1,7 +1,7 @@
 %% SPDX-License-Identifier: Apache-2.0
 %% SPDX-FileCopyrightText: 2025 The Elixir Team
 
--module(elixir_sequence_tokenizer).
+-module(elixir_raw_tokenizer).
 -include("elixir.hrl").
 -include("elixir_tokenizer.hrl").
 -export([tokenize/5]).
@@ -86,7 +86,7 @@ tokenize(String, Line, Column, Scope, Tokens) ->
 
     % Handle punctuation
     [$, | Rest] ->
-      Token = {sequence_token, {Line, Column, nil}, ','},
+      Token = {raw_token, {Line, Column, nil}, ','},
       tokenize(Rest, Line, Column + 1, Scope, [Token | Tokens]);
 
     [$; | Rest] ->
@@ -122,9 +122,9 @@ tokenize(String, Line, Column, Scope, Tokens) ->
           tokenize(Rest, Line, Column + 1, Scope, Tokens)
       end;
 
-    % Handle any other non-whitespace sequence as sequence_token
+    % Handle any other non-whitespace sequence as raw_token
     _ ->
-      tokenize_sequence_token(String, Line, Column, Scope, Tokens)
+      tokenize_raw_token(String, Line, Column, Scope, Tokens)
   end.
 
 %% String tokenization - "..." becomes sequence_string
@@ -295,29 +295,29 @@ extract_integer(_String, []) ->
 extract_integer(String, Acc) ->
   {ok, lists:reverse(Acc), String}.
 
-%% Sequence token tokenization - any non-structural element becomes sequence_token
-tokenize_sequence_token(String, Line, Column, Scope, Tokens) ->
-  case extract_sequence_token(String, []) of
+%% Sequence token tokenization - any non-structural element becomes raw_token
+tokenize_raw_token(String, Line, Column, Scope, Tokens) ->
+  case extract_raw_token(String, []) of
     {ok, Value, Rest, Length} ->
       Atom = list_to_atom(Value),
-      Token = {sequence_token, {Line, Column, nil}, Atom},
+      Token = {raw_token, {Line, Column, nil}, Atom},
       tokenize(Rest, Line, Column + Length, Scope, [Token | Tokens]);
     {error, Reason} ->
       {error, Reason, String, [], Tokens}
   end.
 
 %% Extract sequence token - anything until whitespace or structural character
-extract_sequence_token([], Acc) when Acc =/= [] ->
+extract_raw_token([], Acc) when Acc =/= [] ->
   {ok, lists:reverse(Acc), [], length(Acc)};
-extract_sequence_token([H | Rest], Acc) when ?is_space(H); H =:= $(; H =:= $); H =:= ${; 
+extract_raw_token([H | Rest], Acc) when ?is_space(H); H =:= $(; H =:= $); H =:= ${; 
                                               H =:= $}; H =:= $[; H =:= $]; H =:= $,; H =:= $;; H =:= $"; H =:= $'; H =:= $# ->
   case Acc of
     [] -> {error, "no token found"};
     _ -> {ok, lists:reverse(Acc), [H | Rest], length(Acc)}
   end;
-extract_sequence_token([H | Rest], Acc) ->
-  extract_sequence_token(Rest, [H | Acc]);
-extract_sequence_token([], []) ->
+extract_raw_token([H | Rest], Acc) ->
+  extract_raw_token(Rest, [H | Acc]);
+extract_raw_token([], []) ->
   {error, "no token found"}.
 
 %% Extract content between matching brackets
@@ -488,7 +488,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
     
     % Handle commas
     [$, | Rest] ->
-      Token = {sequence_token, {Line, Column, nil}, ','},
+      Token = {raw_token, {Line, Column, nil}, ','},
       {ok, Token, Rest, Line, Column + 1, Scope};
     
     % Handle whitespace
@@ -524,10 +524,10 @@ tokenize_single_item(String, Line, Column, Scope) ->
     
     % Handle sequence tokens
     _ ->
-      case extract_sequence_token(String, []) of
+      case extract_raw_token(String, []) of
         {ok, Value, Rest, Length} ->
           Atom = list_to_atom(Value),
-          Token = {sequence_token, {Line, Column, nil}, Atom},
+          Token = {raw_token, {Line, Column, nil}, Atom},
           {ok, Token, Rest, Line, Column + Length, Scope};
         {error, Reason} ->
           {error, Reason}

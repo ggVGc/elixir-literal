@@ -211,7 +211,7 @@ tokenize([$~, $~, $( | Rest], Line, Column, Scope, Tokens) ->
   % Entering sequence literal - increment depth and dispatch to sequence tokenizer
   NewScope = Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1},
   SequenceBeginToken = {sequence_begin, {Line, Column, previous_was_eol(Tokens)}, '~~('},
-  case elixir_sequence_tokenizer:tokenize(Rest, Line, Column + 3, NewScope, [SequenceBeginToken | Tokens]) of
+  case elixir_raw_tokenizer:tokenize(Rest, Line, Column + 3, NewScope, [SequenceBeginToken | Tokens]) of
     {ok, FinalLine, FinalColumn, [], FinalTokens, FinalTerminators} ->
       % No remainder - return sequence tokenizer result directly
       {ok, FinalLine, FinalColumn, [], FinalTokens, FinalTerminators};

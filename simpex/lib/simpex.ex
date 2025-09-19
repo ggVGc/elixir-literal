@@ -80,7 +80,7 @@ defmodule Simpex do
         nil
 
       # Handle sequence tokens that represent variables
-      {:sequence_token, meta, name} when is_atom(name) ->
+      {:raw_token, meta, name} when is_atom(name) ->
         # Convert to proper Elixir AST variable
         case name do
           n when n in [true, false, nil] ->
@@ -129,13 +129,13 @@ defmodule Simpex do
         end
 
       # Handle parenthesized expressions that look like function calls
-      {:sequence_block, _meta, :"()", [{:sequence_token, _, func_atom} | args]}
+      {:sequence_block, _meta, :"()", [{:raw_token, _, func_atom} | args]}
       when func_atom == :% ->
         # Handle map syntax
         pairs = build_map_pairs(args)
         {:%{}, [], pairs}
 
-      {:sequence_block, _meta, :"()", [{:sequence_token, _, _} = func | args]} ->
+      {:sequence_block, _meta, :"()", [{:raw_token, _, _} = func | args]} ->
         func_name = extract_atom(func)
         elixir_args = Enum.map(args, &eval_simpex_expr/1)
 
@@ -230,7 +230,7 @@ defmodule Simpex do
   defp eval_function_expr({:def, _meta, nil}, [
          name_node,
          params_node,
-         {:sequence_token, _, :when},
+         {:raw_token, _, :when},
          guard_node,
          body_node
        ]) do
@@ -305,7 +305,7 @@ defmodule Simpex do
   end
 
   # Simplified atom extraction - let Elixir handle most cases
-  defp extract_atom({:sequence_token, _meta, atom}) when is_atom(atom) do
+  defp extract_atom({:raw_token, _meta, atom}) when is_atom(atom) do
     handle_atom(atom)
   end
 
@@ -374,7 +374,7 @@ defmodule Simpex do
   end
 
   # Convert sequence tokens to proper Elixir AST for parameters
-  defp to_elixir_param({:sequence_token, {line, column, _}, name}) when is_atom(name) do
+  defp to_elixir_param({:raw_token, {line, column, _}, name}) when is_atom(name) do
     {name, [line: line, column: column], nil}
   end
 
@@ -409,7 +409,7 @@ defmodule Simpex do
           atom_str = Atom.to_string(atom)
           String.ends_with?(atom_str, ":")
 
-        {:sequence_token, _, atom} ->
+        {:raw_token, _, atom} ->
           atom_str = Atom.to_string(atom)
           String.ends_with?(atom_str, ":")
 
@@ -438,7 +438,7 @@ defmodule Simpex do
 
           {key, to_elixir_param(value)}
 
-        [{:sequence_token, _, key_atom}, value] ->
+        [{:raw_token, _, key_atom}, value] ->
           # Remove trailing colon from key
           key_str = Atom.to_string(key_atom)
 
@@ -477,7 +477,7 @@ defmodule Simpex do
 
           {key, to_elixir_param(value)}
 
-        [{:sequence_token, _, key_atom}, value] ->
+        [{:raw_token, _, key_atom}, value] ->
           # Remove trailing colon from key
           key_str = Atom.to_string(key_atom)
 
@@ -516,7 +516,7 @@ defmodule Simpex do
 
           {key, eval_simpex_expr(value)}
 
-        [{:sequence_token, _, key_atom}, value] ->
+        [{:raw_token, _, key_atom}, value] ->
           # Remove trailing colon from key
           key_str = Atom.to_string(key_atom)
 

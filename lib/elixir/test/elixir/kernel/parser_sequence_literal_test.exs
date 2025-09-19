@@ -71,7 +71,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
   end
 
   describe "sequence literals with simplified tokenizer" do
-    # The simplified tokenizer produces sequence_token for identifiers, keywords, and operators
+    # The simplified tokenizer produces raw_token for identifiers, keywords, and operators
     # while preserving sequence_number, sequence_string, and sequence_atom.
     # The parser now works correctly with these simplified tokens.
 
@@ -80,7 +80,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
     end
 
     test "basic identifiers work with simplified tokenizer" do
-      # The tokenizer produces sequence_token which the parser now handles correctly
+      # The tokenizer produces raw_token which the parser now handles correctly
       assert parse!("~~(hello)") == {:raw_section, [line: 1], [{:hello, [line: 1], nil}]}
 
       assert parse!("~~(a b)") ==
@@ -92,14 +92,14 @@ defmodule Kernel.ParserSequenceLiteralTest do
     end
 
     test "mixed case identifiers work with simplified tokenizer" do
-      # Both produce sequence_token tokens that parser now handles correctly
+      # Both produce raw_token tokens that parser now handles correctly
       assert parse!("~~(CamelCase snake_case)") ==
                {:raw_section, [line: 1],
                 [{:CamelCase, [line: 1], nil}, {:snake_case, [line: 1], nil}]}
     end
 
     test "dot notation identifiers work as single tokens" do
-      # These now produce sequence_token tokens with dotted names like 'IO.puts'
+      # These now produce raw_token tokens with dotted names like 'IO.puts'
       # and the parser handles them correctly as single atoms
       assert parse!("~~(IO.puts)") ==
                {:raw_section, [line: 1], [{:"IO.puts", [line: 1], nil}]}
@@ -522,11 +522,11 @@ defmodule Kernel.ParserSequenceLiteralTest do
     end
 
     test "sequence literals produce expected token types" do
-      # Test that identifiers inside sequences become sequence_token
+      # Test that identifiers inside sequences become raw_token
       tokens = tokenize("~~(hello)")
 
       assert Enum.any?(tokens, fn
-               {:sequence_token, {_, _, _}, :hello} -> true
+               {:raw_token, {_, _, _}, :hello} -> true
                _ -> false
              end)
     end
@@ -558,19 +558,19 @@ defmodule Kernel.ParserSequenceLiteralTest do
              end)
     end
 
-    test "operators and keywords produce sequence_token tokens" do
+    test "operators and keywords produce raw_token tokens" do
       tokens = tokenize("~~(+ true)")
 
-      # Both operator and keyword should be sequence_token
+      # Both operator and keyword should be raw_token
       plus_token =
         Enum.any?(tokens, fn
-          {:sequence_token, {_, _, _}, :+} -> true
+          {:raw_token, {_, _, _}, :+} -> true
           _ -> false
         end)
 
       true_token =
         Enum.any?(tokens, fn
-          {:sequence_token, {_, _, _}, true} -> true
+          {:raw_token, {_, _, _}, true} -> true
           _ -> false
         end)
 
@@ -578,11 +578,11 @@ defmodule Kernel.ParserSequenceLiteralTest do
       assert true_token
     end
 
-    test "dotted identifiers become single sequence_token tokens" do
+    test "dotted identifiers become single raw_token tokens" do
       tokens = tokenize("~~(IO.puts)")
 
       assert Enum.any?(tokens, fn
-               {:sequence_token, {_, _, _}, :"IO.puts"} -> true
+               {:raw_token, {_, _, _}, :"IO.puts"} -> true
                _ -> false
              end)
     end
@@ -657,7 +657,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
       # All content tokens should be sequence_* types
       all_sequence_types =
         Enum.all?(content_tokens, fn
-          {:sequence_token, {_, _, _}, _} -> true
+          {:raw_token, {_, _, _}, _} -> true
           {:sequence_number, {_, _, _}, _} -> true
           {:sequence_atom, {_, _, _}, _} -> true
           {:sequence_string, {_, _, _}, _} -> true

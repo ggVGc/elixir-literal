@@ -274,7 +274,7 @@ defmodule Code.Formatter.SequenceLiteral do
     {concat(["{", args_doc, "}"]), state}
   end
 
-  def raw_section_element_to_algebra({:sequence_token, _meta, atom}, state)
+  def raw_section_element_to_algebra({:raw_token, _meta, atom}, state)
       when is_atom(atom) do
     {Atom.to_string(atom) |> string(), state}
   end

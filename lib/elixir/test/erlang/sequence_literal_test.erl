@@ -20,7 +20,7 @@ quoted_test() ->
   [{do_identifier,{1,1,"quote"},quote},
      {do,{1,7,nil}},
      {sequence_begin,{1,10,nil},'~~('},
-     {sequence_token,{1,13,nil},a},
+     {raw_token,{1,13,nil},a},
      {sequence_end,{1,14,nil},')'},
      {'end',{1,16,nil}}] = tokenize("quote do ~~(a) end"),
 
@@ -29,7 +29,7 @@ quoted_test() ->
      {sequence_begin,{1,10,nil},'~~('},
      {sequence_block,{1,13,nil},
       '()',
-       [{sequence_token,{1,14,nil},'case'},
+       [{raw_token,{1,14,nil},'case'},
         {sequence_number,{1,19,nil},1},
         {sequence_number,{1,21,nil},2},
         {sequence_number,{1,23,nil},3}]},
@@ -38,8 +38,8 @@ quoted_test() ->
   [{do_identifier,{1,1,"quote"},quote},
      {do,{1,7,nil}},
      {sequence_begin,{1,10,nil},'~~('},
-     {sequence_token,{1,13,nil},'+'},
-     {sequence_token,{1,15,nil},a},
+     {raw_token,{1,13,nil},'+'},
+     {raw_token,{1,15,nil},a},
      {sequence_number,{1,17,nil},1},
      {sequence_atom,{1,19,nil},yeo},
      {sequence_string,{1,24,nil},"breo"},
@@ -64,7 +64,7 @@ expression_after_seq_literal_test() ->
 [{sequence_begin,{_,_,nil},'~~('},
   {sequence_block,{_,_,nil},
                            '()',
-                           [{sequence_token,{_,_,nil},'+'},
+                           [{raw_token,{_,_,nil},'+'},
                             {sequence_number,{_,_,nil},1},
                             {sequence_number,{_,_,nil},3}]},
            {sequence_end,{_,_,nil},')'},
@@ -89,18 +89,18 @@ raw_section_parens_test() ->
 
   % Content within sequence literal should use sequence_* tokens
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, hello},
+   {raw_token, {1, 4, nil}, hello},
    {sequence_end, {1, 9, nil}, ')'}] = tokenize("~~(hello)"),
   ok.
 
 %% Test nested brackets in sequence literals
 sequence_nested_brackets_test() ->
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_block, {1, 4, nil}, '()', [{sequence_token, {1, 5, nil}, a}]},
+   {sequence_block, {1, 4, nil}, '()', [{raw_token, {1, 5, nil}, a}]},
    {sequence_end, {1, 7, nil}, ')'}] = tokenize("~~((a))"),
 
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_block, {1, 4, nil}, '[]', [{sequence_block, {1, 5, nil}, '{}', [{sequence_token, {1, 6, nil}, a}]}]},
+   {sequence_block, {1, 4, nil}, '[]', [{sequence_block, {1, 5, nil}, '{}', [{raw_token, {1, 6, nil}, a}]}]},
    {sequence_end, {1, 9, nil}, ')'}] = tokenize("~~([{a}])"),
   ok.
 
@@ -108,36 +108,36 @@ sequence_nested_brackets_test() ->
 sequence_dotted_identifiers_test() ->
   % IO.puts MUST become a single token
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, 'IO.puts'},
+   {raw_token, {1, 4, nil}, 'IO.puts'},
    {sequence_end, {1, 11, nil}, ')'}] = tokenize("~~(IO.puts)"),
 
   % Complex dotted paths should also be single tokens
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, 'Enum.map.filter'},
+   {raw_token, {1, 4, nil}, 'Enum.map.filter'},
    {sequence_end, {1, 19, nil}, ')'}] = tokenize("~~(Enum.map.filter)"),
   ok.
 
-%% Test operators in sequence literals - MUST BE sequence_token
+%% Test operators in sequence literals - MUST BE raw_token
 sequence_operators_test() ->
   % Test arithmetic operators
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, a},
-   {sequence_token, {1, 6, nil}, '+'},
-   {sequence_token, {1, 8, nil}, b},
+   {raw_token, {1, 4, nil}, a},
+   {raw_token, {1, 6, nil}, '+'},
+   {raw_token, {1, 8, nil}, b},
    {sequence_end, {1, 9, nil}, ')'}] = tokenize("~~(a + b)"),
 
   % Test comparison operators
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, a},
-   {sequence_token, {1, 6, nil}, '=='},
-   {sequence_token, {1, 9, nil}, b},
+   {raw_token, {1, 4, nil}, a},
+   {raw_token, {1, 6, nil}, '=='},
+   {raw_token, {1, 9, nil}, b},
    {sequence_end, {1, 10, nil}, ')'}] = tokenize("~~(a == b)"),
 
   % Test complex operators
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, a},
-   {sequence_token, {1, 6, nil}, '++'},
-   {sequence_token, {1, 9, nil}, b},
+   {raw_token, {1, 4, nil}, a},
+   {raw_token, {1, 6, nil}, '++'},
+   {raw_token, {1, 9, nil}, b},
    {sequence_end, {1, 10, nil}, ')'}] = tokenize("~~(a ++ b)"),
   ok.
 
@@ -173,28 +173,28 @@ raw_sections_test() ->
    {sequence_end, {1, 8, nil}, ')'}] = tokenize("~~(3.14)"),
   ok.
 
-%% Test keywords in sequence literals - MUST BE sequence_token
+%% Test keywords in sequence literals - MUST BE raw_token
 sequence_keywords_test() ->
-  % Test if/do/end keywords - MUST be sequence_token tokens
+  % Test if/do/end keywords - MUST be raw_token tokens
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, 'if'},
-   {sequence_token, {1, 7, nil}, 'true'},
-   {sequence_token, {1, 12, nil}, 'do'},
-   {sequence_token, {1, 15, nil}, 'end'},
+   {raw_token, {1, 4, nil}, 'if'},
+   {raw_token, {1, 7, nil}, 'true'},
+   {raw_token, {1, 12, nil}, 'do'},
+   {raw_token, {1, 15, nil}, 'end'},
    {sequence_end, {1, 18, nil}, ')'}] = tokenize("~~(if true do end)"),
 
   % Test boolean keywords
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, 'true'},
+   {raw_token, {1, 4, nil}, 'true'},
    {sequence_end, {1, 8, nil}, ')'}] = tokenize("~~(true)"),
 
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, 'false'},
+   {raw_token, {1, 4, nil}, 'false'},
    {sequence_end, {1, 9, nil}, ')'}] = tokenize("~~(false)"),
 
   % Test nil keyword
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, 'nil'},
+   {raw_token, {1, 4, nil}, 'nil'},
    {sequence_end, {1, 7, nil}, ')'}] = tokenize("~~(nil)"),
   ok.
 
@@ -203,7 +203,7 @@ sequence_multline_test() ->
   % Expected: sequence_begin, seq_token, sequence_end
   [{sequence_begin, {1, 1, nil}, '~~('},
    {eol,{_,_,_}},
-   {sequence_token, {2, 1, nil}, a},
+   {raw_token, {2, 1, nil}, a},
    {eol,{_,_,_}},
    {sequence_end, {3, 1, nil}, ')'} ] = tokenize("~~(\na\n)"),
   ok.
@@ -234,7 +234,7 @@ sequence_empty_brackets_test() ->
 
 sequence_op_embedded_test() ->
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, '~'},
+   {raw_token, {1, 4, nil}, '~'},
    {sequence_end, {1, 5, nil}, ')'}] = tokenize("~~(~)"),
 
   [{sequence_begin, {1, 1, nil}, '~~('},
@@ -253,9 +253,9 @@ sequence_no_parens_test() ->
 sequence_nested_test() ->
   % ~~(a (b) c) - inner parentheses should be sequence_block
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, a},
-   {sequence_block, {1, 6, nil}, '()', [{sequence_token, {1, 7, nil}, b}]},
-   {sequence_token, {1, 10, nil}, c},
+   {raw_token, {1, 4, nil}, a},
+   {sequence_block, {1, 6, nil}, '()', [{raw_token, {1, 7, nil}, b}]},
+   {raw_token, {1, 10, nil}, c},
    {sequence_end, {1, 11, nil}, ')'}] = tokenize("~~(a (b) c)"),
   ok.
 
@@ -267,7 +267,7 @@ sequence_mixed_content_test() ->
    {sequence_number, {_, _, nil}, 42},
    {sequence_number, {_, _, nil}, -1},
    {sequence_atom, {_, _, nil}, atom},
-   {sequence_token, {_, _, nil}, 'IO.puts'},
+   {raw_token, {_, _, nil}, 'IO.puts'},
    {sequence_end, {_, _, nil}, ')'}] = tokenize("~~(\"hello\" 42 -1 :atom IO.puts)"),
   ok.
 
@@ -288,7 +288,7 @@ sequence_isolation_test() ->
     fun({sequence_string, _, _}) -> true;
        ({sequence_number, _, _}) -> true;
        ({sequence_atom, _, _}) -> true;
-       ({sequence_token, _, _}) -> true;
+       ({raw_token, _, _}) -> true;
        ({sequence_block, _, _, _}) -> true;
        (_) -> false
     end, InsideTokens),
@@ -301,28 +301,28 @@ sequence_isolation_test() ->
 sequence_comments_test() ->
   % Test basic comment handling - comment should be ignored
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, a},
+   {raw_token, {1, 4, nil}, a},
    {eol, {_, _, _}},
-   {sequence_token, {2, 1, nil}, b},
+   {raw_token, {2, 1, nil}, b},
    {sequence_end, {2, 2, nil}, ')'}] = tokenize("~~(a # this is a comment\nb)"),
 
   % Test comment at end of line
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, hello}] = tokenize("~~(hello # comment)"),
+   {raw_token, {1, 4, nil}, hello}] = tokenize("~~(hello # comment)"),
 
   % Test full line comment within sequence
   [{sequence_begin, {1, 1, nil}, '~~('},
    {eol, {_, _, _}},
-   {sequence_token, {3, 1, nil}, world},
+   {raw_token, {3, 1, nil}, world},
    {sequence_end, {3, 6, nil}, ')'}] = tokenize("~~(\n# full line comment\nworld)"),
 
   % Test multiple comments
   [{sequence_begin, {1, 1, nil}, '~~('},
-   {sequence_token, {1, 4, nil}, a},
+   {raw_token, {1, 4, nil}, a},
    {eol, {_, _, _}},
-   {sequence_token, {2, 1, nil}, b},
+   {raw_token, {2, 1, nil}, b},
    {eol, {_, _, _}},
-   {sequence_token, {3, 1, nil}, c},
+   {raw_token, {3, 1, nil}, c},
    {sequence_end, {3, 2, nil}, ')'}] = tokenize("~~(a # comment1\nb # comment2\nc)"),
 
   % Test mixed content with comments
@@ -351,35 +351,35 @@ sequence_trailing_space_error_test() ->
   % Test case without extra space - this should work fine
   [{sequence_begin, {1, 1, nil}, '~~('},
    {sequence_block, {1, 4, nil}, '()',
-    [{sequence_token, {1, 5, nil}, assert},
+    [{raw_token, {1, 5, nil}, assert},
      {sequence_block, {1, 12, nil}, '()',
-      [{sequence_token, {1, 13, nil}, '=='},
-       {sequence_token, {1, 16, nil}, 'true'},
-       {sequence_token, {1, 21, nil}, 'true'}]}]},
+      [{raw_token, {1, 13, nil}, '=='},
+       {raw_token, {1, 16, nil}, 'true'},
+       {raw_token, {1, 21, nil}, 'true'}]}]},
    {sequence_end, {1, 27, nil}, ')'}] = tokenize("~~((assert (== true true)))"),
 
   [{sequence_begin, _, '~~('},
    {sequence_block, _, '()',
-    [{sequence_token, _, assert},
+    [{raw_token, _, assert},
      {sequence_block, _, '()',
-      [{sequence_token, _, '=='},
-       {sequence_token, _, 'true'},
-       {sequence_token, _, 'true'}]}]},
+      [{raw_token, _, '=='},
+       {raw_token, _, 'true'},
+       {raw_token, _, 'true'}]}]},
    {sequence_end, _, ')'}] = tokenize("~~((assert (== true true )))"),
 
   % Additional test: single level with trailing space
   % Should tokenize successfully
   [{sequence_begin, _, '~~('},
    {sequence_block, _, '()',
-    [{sequence_token, _, foo},
-     {sequence_token, _, bar}]},
+    [{raw_token, _, foo},
+     {raw_token, _, bar}]},
    {sequence_end, _, ')'}] = tokenize("~~((foo bar ))"),
 
   % Test: space at the outermost level
   % Should tokenize successfully
   [{sequence_begin, _, '~~('},
-   {sequence_token, _, foo},
-   {sequence_token, _, bar},
+   {raw_token, _, foo},
+   {raw_token, _, bar},
    {sequence_end, _, ')'}] = tokenize("~~(foo bar )"),
 
   ok.
