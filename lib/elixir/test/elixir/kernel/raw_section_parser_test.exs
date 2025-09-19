@@ -1,6 +1,6 @@
 Code.require_file("../test_helper.exs", __DIR__)
 
-defmodule Kernel.ParserSequenceLiteralTest do
+defmodule Kernel.RawSectionParserTest do
   use ExUnit.Case, async: true
 
   defp parse!(string), do: Code.string_to_quoted!(string)
@@ -111,8 +111,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
                {:raw_section, [line: 1], [{:"GenServer.start_link", [line: 1], nil}]}
 
       assert parse!("~~(io.puts data)") ==
-               {:raw_section, [line: 1],
-                [{:"io.puts", [line: 1], nil}, {:data, [line: 1], nil}]}
+               {:raw_section, [line: 1], [{:"io.puts", [line: 1], nil}, {:data, [line: 1], nil}]}
     end
 
     test "normal Elixir dot syntax still works outside sequences" do
@@ -259,8 +258,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
 
       # Single element in nested parentheses
       assert parse!("~~((a))") ==
-               {:raw_section, [line: 1],
-                [{:raw_paren, [line: 1], [{:a, [line: 1], nil}]}]}
+               {:raw_section, [line: 1], [{:raw_paren, [line: 1], [{:a, [line: 1], nil}]}]}
 
       # Empty nested parentheses create empty raw_paren
       assert parse!("~~(())") ==
