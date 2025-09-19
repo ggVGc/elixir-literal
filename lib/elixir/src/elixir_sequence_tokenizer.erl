@@ -15,10 +15,10 @@ tokenize(String, Line, Column, Scope, Tokens) ->
       {ok, Line, Column, [], Tokens, []};
 
     % Handle closing parenthesis (exit sequence literal)
-    [$) | Rest] when Scope#elixir_tokenizer.sequence_depth > 0 ->
-      NewScope = Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth - 1},
-      Token = {sequence_end, {Line, Column, nil}, ')'},
-      case NewScope#elixir_tokenizer.sequence_depth of
+    [$) | Rest] when Scope#elixir_tokenizer.raw_depth > 0 ->
+      NewScope = Scope#elixir_tokenizer{raw_depth = Scope#elixir_tokenizer.raw_depth - 1},
+      Token = {raw_end, {Line, Column, nil}, ')'},
+      case NewScope#elixir_tokenizer.raw_depth of
         0 ->
           % Exiting sequence literal - return remainder for main tokenizer to continue
           {ok, Line, Column + 1, Rest, [Token | Tokens], []};
@@ -40,7 +40,7 @@ tokenize(String, Line, Column, Scope, Tokens) ->
         $[ -> $]
       end,
       NewScope = case H of
-        $( -> Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1};
+        $( -> Scope#elixir_tokenizer{raw_depth = Scope#elixir_tokenizer.raw_depth + 1};
         _ -> Scope
       end,
       % Extract content between brackets
@@ -54,11 +54,11 @@ tokenize(String, Line, Column, Scope, Tokens) ->
 
     % Handle sequence operator ~~
     [$~, $~ | Rest] ->
-      Token = {sequence_op, {Line, Column, previous_was_eol(Tokens)}, '~~'},
+      Token = {raw_op, {Line, Column, previous_was_eol(Tokens)}, '~~'},
       % Check if next token is opening parenthesis for nested sequence
       case Rest of
         [$( | _] ->
-          NewScope = Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1},
+          NewScope = Scope#elixir_tokenizer{raw_depth = Scope#elixir_tokenizer.raw_depth + 1},
           tokenize(Rest, Line, Column + 2, NewScope, [Token | Tokens]);
         _ ->
           tokenize(Rest, Line, Column + 2, Scope, [Token | Tokens])
@@ -68,7 +68,7 @@ tokenize(String, Line, Column, Scope, Tokens) ->
     [$" | Rest] ->
       tokenize_string(Rest, Line, Column + 1, $", Scope, Tokens);
 
-    % Handle single-quoted strings - become sequence_chars
+    % Handle single-quoted strings - become raw_chars
     [$' | Rest] ->
       tokenize_chars(Rest, Line, Column + 1, $', Scope, Tokens);
 
@@ -137,11 +137,11 @@ tokenize_string(String, Line, Column, Quote, Scope, Tokens) ->
       {error, Reason, String, [], Tokens}
   end.
 
-%% Chars tokenization - '...' becomes sequence_chars
+%% Chars tokenization - '...' becomes raw_chars
 tokenize_chars(String, Line, Column, Quote, Scope, Tokens) ->
   case extract_string(String, Quote, Line, Column, []) of
     {ok, Value, Rest, NewLine, NewColumn} ->
-      Token = {sequence_chars, {Line, Column - 1, nil}, Value},
+      Token = {raw_chars, {Line, Column - 1, nil}, Value},
       tokenize(Rest, NewLine, NewColumn, Scope, [Token | Tokens]);
     {error, Reason} ->
       {error, Reason, String, [], Tokens}
@@ -327,12 +327,12 @@ extract_bracket_content(String, ClosingChar, Line, Column, Scope, Acc) ->
     [ClosingChar | Rest] when ClosingChar =/= $) ->
       % Empty bracket pair (but not closing paren which ends sequence)
       {ok, Acc, Rest, Line, Column + 1, Scope};
-    [ClosingChar | _] when ClosingChar =:= $), Scope#elixir_tokenizer.sequence_depth =:= 1 ->
+    [ClosingChar | _] when ClosingChar =:= $), Scope#elixir_tokenizer.raw_depth =:= 1 ->
       % This is the final closing paren of an empty sequence literal 
       {ok, Acc, String, Line, Column, Scope};
     [ClosingChar | Rest] when ClosingChar =:= $) ->
       % Empty nested parentheses
-      FinalScope = Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth - 1},
+      FinalScope = Scope#elixir_tokenizer{raw_depth = Scope#elixir_tokenizer.raw_depth - 1},
       {ok, Acc, Rest, Line, Column + 1, FinalScope};
     _ ->
       % Not empty, proceed with normal tokenization
@@ -343,12 +343,12 @@ extract_bracket_content(String, ClosingChar, Line, Column, Scope, Acc) ->
         [ClosingChar | Rest] when Char =:= ClosingChar, ClosingChar =/= $) ->
           % Found matching closing bracket (but not closing paren which ends sequence)
           {ok, Acc, Rest, NewLine, NewColumn + 1, NewScope};
-        [ClosingChar | _] when Char =:= ClosingChar, ClosingChar =:= $), NewScope#elixir_tokenizer.sequence_depth =:= 1 ->
+        [ClosingChar | _] when Char =:= ClosingChar, ClosingChar =:= $), NewScope#elixir_tokenizer.raw_depth =:= 1 ->
           % This is the final closing paren of the sequence literal - don't consume it
           {ok, Acc, String2, NewLine, NewColumn, NewScope};
         [ClosingChar | Rest] when Char =:= ClosingChar, ClosingChar =:= $) ->
           % This is a closing paren but we're still nested
-          FinalScope = NewScope#elixir_tokenizer{sequence_depth = NewScope#elixir_tokenizer.sequence_depth - 1},
+          FinalScope = NewScope#elixir_tokenizer{raw_depth = NewScope#elixir_tokenizer.raw_depth - 1},
           {ok, Acc, Rest, NewLine, NewColumn + 1, FinalScope};
         _ ->
           % Mismatch or different bracket - this is an error
@@ -359,16 +359,16 @@ extract_bracket_content(String, ClosingChar, Line, Column, Scope, Acc) ->
         [ClosingChar | FinalRest] when ClosingChar =/= $) ->
           % Found matching closing bracket (but not closing paren which ends sequence)
           FinalScope = case ClosingChar of
-            $) -> NewScope#elixir_tokenizer{sequence_depth = NewScope#elixir_tokenizer.sequence_depth - 1};
+            $) -> NewScope#elixir_tokenizer{raw_depth = NewScope#elixir_tokenizer.raw_depth - 1};
             _ -> NewScope
           end,
           {ok, [Token | Acc], FinalRest, NewLine, NewColumn + 1, FinalScope};
-        [ClosingChar | _] when ClosingChar =:= $), NewScope#elixir_tokenizer.sequence_depth =:= 1 ->
+        [ClosingChar | _] when ClosingChar =:= $), NewScope#elixir_tokenizer.raw_depth =:= 1 ->
           % This is the final closing paren of the sequence literal - don't consume it
           {ok, [Token | Acc], Rest, NewLine, NewColumn, NewScope};
         [ClosingChar | FinalRest] when ClosingChar =:= $) ->
           % This is a closing paren but we're still nested
-          FinalScope = NewScope#elixir_tokenizer{sequence_depth = NewScope#elixir_tokenizer.sequence_depth - 1},
+          FinalScope = NewScope#elixir_tokenizer{raw_depth = NewScope#elixir_tokenizer.raw_depth - 1},
           {ok, [Token | Acc], FinalRest, NewLine, NewColumn + 1, FinalScope};
         _ ->
           % Continue collecting tokens
@@ -416,7 +416,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
     [$' | Rest] ->
       case extract_string(Rest, $', Line, Column + 1, []) of
         {ok, Value, NewRest, NewLine, NewColumn} ->
-          Token = {sequence_chars, {Line, Column, nil}, Value},
+          Token = {raw_chars, {Line, Column, nil}, Value},
           {ok, Token, NewRest, NewLine, NewColumn, Scope};
         {error, Reason} ->
           {error, Reason}
@@ -475,7 +475,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
         $[ -> $]
       end,
       NewScope = case H of
-        $( -> Scope#elixir_tokenizer{sequence_depth = Scope#elixir_tokenizer.sequence_depth + 1};
+        $( -> Scope#elixir_tokenizer{raw_depth = Scope#elixir_tokenizer.raw_depth + 1};
         _ -> Scope
       end,
       case extract_bracket_content(Rest, ClosingChar, Line, Column + 1, NewScope, []) of
@@ -519,7 +519,7 @@ tokenize_single_item(String, Line, Column, Scope) ->
     
     % Handle sequence operator ~~
     [$~, $~ | Rest] ->
-      Token = {sequence_op, {Line, Column, false}, '~~'},
+      Token = {raw_op, {Line, Column, false}, '~~'},
       {ok, Token, Rest, Line, Column + 2, Scope};
     
     % Handle sequence tokens

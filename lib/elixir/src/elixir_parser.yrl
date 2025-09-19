@@ -34,7 +34,7 @@ Nonterminals
   dot_op dot_alias dot_bracket_identifier dot_call_identifier
   dot_identifier dot_op_identifier dot_do_identifier dot_paren_identifier
   do_block fn_eoe do_eoe block_eoe block_item block_list
-  sequence_expr sequence_args raw_token_list sequence_element
+  raw_expr raw_args raw_token_list raw_element
   .
 
 Terminals
@@ -45,8 +45,8 @@ Terminals
   bin_heredoc list_heredoc
   comp_op at_op unary_op and_op or_op arrow_op match_op in_op in_match_op ellipsis_op
   type_op dual_op mult_op power_op concat_op range_op xor_op pipe_op stab_op when_op
-  capture_int capture_op assoc_op rel_op ternary_op dot_call_op sequence_op raw_atom raw_token raw_number
-  sequence_begin sequence_end raw_block
+  capture_int capture_op assoc_op rel_op ternary_op dot_call_op raw_op raw_atom raw_token raw_number
+  raw_begin raw_end raw_block
   'true' 'false' 'nil' 'do' eol ';' ',' '.'
   '(' ')' '[' ']' '{' '}' '<<' '>>' '%{}' '%'
   int flt char
@@ -161,7 +161,7 @@ matched_expr -> capture_op_eol matched_expr : build_unary_op('$1', '$2').
 matched_expr -> ellipsis_op matched_expr : build_unary_op('$1', '$2').
 matched_expr -> no_parens_one_expr : '$1'.
 matched_expr -> sub_matched_expr : '$1'.
-matched_expr -> sequence_expr : '$1'.
+matched_expr -> raw_expr : '$1'.
 
 unmatched_expr -> matched_expr unmatched_op_expr : build_op('$1', '$2').
 unmatched_expr -> unmatched_expr matched_op_expr : build_op('$1', '$2').
@@ -308,26 +308,26 @@ parens_call -> dot_call_identifier call_args_parens : build_parens('$1', '$2', {
 parens_call -> dot_call_identifier call_args_parens call_args_parens : build_nested_parens('$1', '$2', '$3', {[], []}).
 
 %% Sequence expressions
-sequence_expr -> sequence_begin sequence_args sequence_end : build_sequence('$1', '$2', '$3').
+raw_expr -> raw_begin raw_args raw_end : build_sequence('$1', '$2', '$3').
 
-sequence_args -> raw_token_list : '$1'.
-sequence_args -> '$empty' : [].
-sequence_args -> eol raw_token_list : '$2'.
-sequence_args -> eol : [].
+raw_args -> raw_token_list : '$1'.
+raw_args -> '$empty' : [].
+raw_args -> eol raw_token_list : '$2'.
+raw_args -> eol : [].
 
-raw_token_list -> sequence_element : ['$1'].
-raw_token_list -> raw_token_list sequence_element : '$1' ++ ['$2'].
-raw_token_list -> raw_token_list eol sequence_element : '$1' ++ ['$3'].
+raw_token_list -> raw_element : ['$1'].
+raw_token_list -> raw_token_list raw_element : '$1' ++ ['$2'].
+raw_token_list -> raw_token_list eol raw_element : '$1' ++ ['$3'].
 raw_token_list -> raw_token_list eol : '$1'.
 
 % Accept various token types inside sequences  
-sequence_element -> raw_token : build_raw_token('$1').
-sequence_element -> raw_number : element(3, '$1').
-sequence_element -> int : handle_number(number_value('$1'), '$1', ?exprs('$1')).
-sequence_element -> flt : handle_number(number_value('$1'), '$1', ?exprs('$1')).
-sequence_element -> bin_string : build_bin_string('$1', delimiter(<<$">>)).
-sequence_element -> raw_block : build_raw_block('$1').
-sequence_element -> raw_atom : build_sequence_op('$1').
+raw_element -> raw_token : build_raw_token('$1').
+raw_element -> raw_number : element(3, '$1').
+raw_element -> int : handle_number(number_value('$1'), '$1', ?exprs('$1')).
+raw_element -> flt : handle_number(number_value('$1'), '$1', ?exprs('$1')).
+raw_element -> bin_string : build_bin_string('$1', delimiter(<<$">>)).
+raw_element -> raw_block : build_raw_block('$1').
+raw_element -> raw_atom : build_raw_op('$1').
 
 bracket_arg -> open_bracket kw_data close_bracket : build_access_arg('$1', '$2', '$3').
 bracket_arg -> open_bracket container_expr close_bracket : build_access_arg('$1', '$2', '$3').
@@ -965,7 +965,7 @@ build_identifier({'.', Meta, _} = Dot) ->
 build_identifier({_, Location, Identifier}) ->
   {Identifier, meta_from_location(Location), nil}.
 
-build_sequence_op({_, Location, Op}) ->
+build_raw_op({_, Location, Op}) ->
   {Op, meta_from_location(Location), nil}.
 
 build_raw_token({raw_token, Location, Value}) ->
@@ -983,14 +983,14 @@ build_call({op_identifier, Location, Identifier}, [Arg]) ->
 build_call({_, Location, Identifier}, Args) ->
   {Identifier, meta_from_location(Location), Args}.
 
-build_sequence({sequence_begin, Location, _}, Args, {sequence_end, _EndLocation, _}) ->
+build_sequence({raw_begin, Location, _}, Args, {raw_end, _EndLocation, _}) ->
   Meta = meta_from_location(Location),
-  TransformedArgs = transform_sequence_args(Args),
+  TransformedArgs = transform_raw_args(Args),
   {raw_section, Meta, TransformedArgs}.
 
 build_raw_block({raw_block, Location, BracketType, Args}) ->
   Meta = meta_from_location(Location),
-  TransformedArgs = transform_sequence_args(Args),
+  TransformedArgs = transform_raw_args(Args),
   case BracketType of
     '()' -> {raw_paren, Meta, TransformedArgs};
     '[]' -> {raw_bracket, Meta, TransformedArgs};
@@ -1401,34 +1401,34 @@ normalize_meta(Meta) ->
   Meta.
 
 %% Transform sequence arguments
-transform_sequence_args([]) ->
+transform_raw_args([]) ->
   [];
-transform_sequence_args([{Op, Meta, nil} | Rest]) when is_atom(Op) ->
+transform_raw_args([{Op, Meta, nil} | Rest]) when is_atom(Op) ->
   NormalizedMeta = normalize_meta(Meta),
   % Simply treat all atoms (including operators) as regular tokens
-  [{Op, NormalizedMeta, nil} | transform_sequence_args(Rest)];
-transform_sequence_args([First | Rest]) ->
-  [transform_sequence_node(First) | transform_sequence_args(Rest)].
+  [{Op, NormalizedMeta, nil} | transform_raw_args(Rest)];
+transform_raw_args([First | Rest]) ->
+  [transform_raw_node(First) | transform_raw_args(Rest)].
 
 %% Transform individual sequence nodes recursively
-transform_sequence_node({raw_paren, Meta, Args}) ->
-  {raw_paren, normalize_meta(Meta), transform_sequence_args(Args)};
-transform_sequence_node({raw_brace, Meta, Args}) ->
-  {raw_brace, normalize_meta(Meta), transform_sequence_args(Args)};  
-transform_sequence_node({raw_bracket, Meta, Args}) ->
-  {raw_bracket, normalize_meta(Meta), transform_sequence_args(Args)};
-transform_sequence_node({raw_block, Meta, BracketType, Args}) ->
-  {raw_block, normalize_meta(Meta), BracketType, transform_sequence_args(Args)};
-transform_sequence_node({raw_token, Location, Value}) ->
+transform_raw_node({raw_paren, Meta, Args}) ->
+  {raw_paren, normalize_meta(Meta), transform_raw_args(Args)};
+transform_raw_node({raw_brace, Meta, Args}) ->
+  {raw_brace, normalize_meta(Meta), transform_raw_args(Args)};  
+transform_raw_node({raw_bracket, Meta, Args}) ->
+  {raw_bracket, normalize_meta(Meta), transform_raw_args(Args)};
+transform_raw_node({raw_block, Meta, BracketType, Args}) ->
+  {raw_block, normalize_meta(Meta), BracketType, transform_raw_args(Args)};
+transform_raw_node({raw_token, Location, Value}) ->
   {Value, normalize_meta(Location), nil};
-transform_sequence_node({raw_number, Location, Value}) ->
+transform_raw_node({raw_number, Location, Value}) ->
   Value;
-transform_sequence_node({raw_string, Location, Value}) ->
+transform_raw_node({raw_string, Location, Value}) ->
   list_to_binary(Value);
-transform_sequence_node({sequence_chars, Location, Value}) ->
+transform_raw_node({raw_chars, Location, Value}) ->
   Value;
-transform_sequence_node({raw_atom, Location, Value}) ->
+transform_raw_node({raw_atom, Location, Value}) ->
   Value;
-transform_sequence_node(Other) ->
+transform_raw_node(Other) ->
   Other.
 

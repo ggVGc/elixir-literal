@@ -533,7 +533,7 @@ defmodule String.Tokenizer do
         )
 
       # Accept dots when inside sequence literals  
-      head == ?. and scope != nil and sequence_depth_greater_than_zero?(scope) ->
+      head == ?. and scope != nil and raw_depth_greater_than_zero?(scope) ->
         continue_with_scope(
           tail,
           [head | acc],
@@ -660,14 +660,14 @@ defmodule String.Tokenizer do
     end
   end
 
-  # Check if we're inside sequence literals (sequence_depth > 0)
-  defp sequence_depth_greater_than_zero?(scope) do
+  # Check if we're inside sequence literals (raw_depth > 0)
+  defp raw_depth_greater_than_zero?(scope) do
     try do
-      # Access sequence_depth field from elixir_tokenizer record
+      # Access raw_depth field from elixir_tokenizer record
       # The record has the structure: {elixir_tokenizer, terminators, unescape, cursor_completion, 
       # existing_atoms_only, static_atoms_encoder, preserve_comments, identifier_tokenizer, 
-      # ascii_identifiers_only, indentation, column, mismatch_hints, warnings, sequence_depth}
-      # sequence_depth is at 0-indexed position 13
+      # ascii_identifiers_only, indentation, column, mismatch_hints, warnings, raw_depth}
+      # raw_depth is at 0-indexed position 13
       depth = elem(scope, 13)
       depth > 0
     rescue

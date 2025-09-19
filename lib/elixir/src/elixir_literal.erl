@@ -2,15 +2,15 @@
 %% This module centralizes all sequence-related logic for the Elixir compiler
 -module(elixir_literal).
 
--export([is_sequence_node/1, is_valid_ast/1, quote_node/2, escape_node/2, expand/3]).
+-export([is_raw_node/1, is_valid_ast/1, quote_node/2, escape_node/2, expand/3]).
 
 %% Check if a node is a sequence node
-is_sequence_node({raw_block, _Meta, _BracketType, _Args}) -> true;
-is_sequence_node({raw_section, _Meta, _Args}) -> true;
-is_sequence_node({raw_paren, _Meta, _Args}) -> true;
-is_sequence_node({raw_bracket, _Meta, _Args}) -> true;
-is_sequence_node({raw_brace, _Meta, _Args}) -> true;
-is_sequence_node(_) -> false.
+is_raw_node({raw_block, _Meta, _BracketType, _Args}) -> true;
+is_raw_node({raw_section, _Meta, _Args}) -> true;
+is_raw_node({raw_paren, _Meta, _Args}) -> true;
+is_raw_node({raw_bracket, _Meta, _Args}) -> true;
+is_raw_node({raw_brace, _Meta, _Args}) -> true;
+is_raw_node(_) -> false.
 
 %% Validate sequence AST nodes
 %% For raw_block (4-tuple format), validate the inner args

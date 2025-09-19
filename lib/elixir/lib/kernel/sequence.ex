@@ -55,10 +55,10 @@ defmodule Kernel.Sequence do
   ## Examples
 
       iex> ast = {:raw_section, [line: 1], [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}]}
-      iex> Kernel.Sequence.sequence_args(ast)
+      iex> Kernel.Sequence.raw_args(ast)
       [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}]
   """
-  def sequence_args({:raw_section, _, args}), do: args
+  def raw_args({:raw_section, _, args}), do: args
 
   @doc """
   Returns the number of arguments in a sequence literal.
@@ -66,8 +66,8 @@ defmodule Kernel.Sequence do
   ## Examples
 
       iex> ast = {:raw_section, [line: 1], [{:foo, [line: 1], nil}, {:bar, [line: 1], nil}]}
-      iex> Kernel.Sequence.sequence_arity(ast)
+      iex> Kernel.Sequence.raw_arity(ast)
       2
   """
-  def sequence_arity({:raw_section, _, args}), do: length(args)
+  def raw_arity({:raw_section, _, args}), do: length(args)
 end

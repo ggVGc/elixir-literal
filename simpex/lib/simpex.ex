@@ -65,7 +65,7 @@ defmodule Simpex do
         end
 
       # Handle sequence character list tokens (single quotes)
-      {:sequence_chars, _meta, value} ->
+      {:raw_chars, _meta, value} ->
         # Keep as character list
         value
 
@@ -107,15 +107,15 @@ defmodule Simpex do
       {var, meta, nil} when is_atom(var) and var not in [true, false, nil] ->
         {var, meta, nil}
 
-      # Handle structured expressions - sequence_prefix for def, raw_paren for calls
-      {:sequence_prefix, op_node, args} ->
+      # Handle structured expressions - raw_prefix for def, raw_paren for calls
+      {:raw_prefix, op_node, args} ->
         eval_function_expr(op_node, args)
 
       # Handle function calls: (func arg1 arg2...)
       {:raw_paren, _meta, [func_node | args]} ->
         case func_node do
-          # Handle nested sequence_prefix in paren (like function definitions)
-          {:sequence_prefix, op_node, nested_args} ->
+          # Handle nested raw_prefix in paren (like function definitions)
+          {:raw_prefix, op_node, nested_args} ->
             eval_function_expr(op_node, nested_args)
 
           # Handle direct function calls

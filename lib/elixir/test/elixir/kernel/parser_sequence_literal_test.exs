@@ -587,24 +587,24 @@ defmodule Kernel.ParserSequenceLiteralTest do
              end)
     end
 
-    test "sequence literals produce sequence_begin and sequence_end tokens" do
+    test "sequence literals produce raw_begin and raw_end tokens" do
       tokens = tokenize("~~(hello)")
 
-      # Should have sequence_begin token
+      # Should have raw_begin token
       has_begin =
         Enum.any?(tokens, fn
-          {:sequence_begin, {_, _, _}, :"~~("} -> true
+          {:raw_begin, {_, _, _}, :"~~("} -> true
           _ -> false
         end)
 
       has_end =
         Enum.any?(tokens, fn
-          {:sequence_end, {_, _, _}, :")"} -> true
+          {:raw_end, {_, _, _}, :")"} -> true
           _ -> false
         end)
 
-      assert has_begin, "Expected sequence_begin token"
-      assert has_end, "Expected sequence_end token"
+      assert has_begin, "Expected raw_begin token"
+      assert has_end, "Expected raw_end token"
     end
 
     test "bracket pairs produce raw_block tokens" do
@@ -642,20 +642,20 @@ defmodule Kernel.ParserSequenceLiteralTest do
       assert has_brace_block, "Expected raw_block token for braces"
     end
 
-    test "tokenizer isolation - only sequence_* tokens inside sequences" do
+    test "tokenizer isolation - only raw_* tokens inside sequences" do
       tokens = tokenize("~~(hello 123 :atom \"string\" + true)")
 
-      # Filter out structural tokens (sequence_begin, sequence_end, etc.)
+      # Filter out structural tokens (raw_begin, raw_end, etc.)
       content_tokens =
         Enum.filter(tokens, fn
-          {:sequence_begin, {_, _, _}, _} -> false
-          {:sequence_end, {_, _, _}, _} -> false
+          {:raw_begin, {_, _, _}, _} -> false
+          {:raw_end, {_, _, _}, _} -> false
           {:raw_block, {_, _, _}, _, _} -> false
           _ -> true
         end)
 
-      # All content tokens should be sequence_* types
-      all_sequence_types =
+      # All content tokens should be raw_* types
+      all_raw_types =
         Enum.all?(content_tokens, fn
           {:raw_token, {_, _, _}, _} -> true
           {:raw_number, {_, _, _}, _} -> true
@@ -664,7 +664,7 @@ defmodule Kernel.ParserSequenceLiteralTest do
           _ -> false
         end)
 
-      assert all_sequence_types,
+      assert all_raw_types,
              "Found non-sequence tokens inside sequence literal: #{inspect(content_tokens)}"
     end
   end

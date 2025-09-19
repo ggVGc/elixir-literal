@@ -19,7 +19,7 @@ defmodule Code.Formatter do
   end
 
   def delegate_to_raw_section(:force_many_args_or_operand, args, _) do
-    {:sequence_element, choice} = args
+    {:raw_element, choice} = args
     choice
   end
 
@@ -2276,8 +2276,8 @@ defmodule Code.Formatter do
   defp force_many_args_or_operand(:parens_arg, _choice), do: :parens_arg
   defp force_many_args_or_operand(:operand, choice), do: choice
 
-  defp force_many_args_or_operand(:sequence_element, choice) do
-    delegate_to_raw_section(:force_many_args_or_operand, {:sequence_element, choice}, nil)
+  defp force_many_args_or_operand(:raw_element, choice) do
+    delegate_to_raw_section(:force_many_args_or_operand, {:raw_element, choice}, nil)
   end
 
   defp force_many_args_or_operand(:block, choice), do: choice

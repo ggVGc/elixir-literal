@@ -288,7 +288,7 @@ defmodule Code.Formatter.SequenceLiteral do
     {inspect(str) |> string(), state}
   end
 
-  def raw_section_element_to_algebra({:sequence_chars, _meta, value}, state) do
+  def raw_section_element_to_algebra({:raw_chars, _meta, value}, state) do
     {inspect(value, as_charlists: :as_charlists) |> string(), state}
   end
 
@@ -328,7 +328,7 @@ defmodule Code.Formatter.SequenceLiteral do
     # Fallback to regular quoted_to_algebra for complex expressions
     Code.Formatter.delegate_to_raw_section(
       :quoted_to_algebra,
-      {other, :sequence_element, state},
+      {other, :raw_element, state},
       nil
     )
   end
