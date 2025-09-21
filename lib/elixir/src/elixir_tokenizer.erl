@@ -230,13 +230,6 @@ tokenize([$~, $~, $~, H | _] = String, Line, Column, Scope, Tokens) when
   % This is a ~~~ unary operator, delegate to the normal three-token operator pattern
   [T1, T2, T3 | Rest] = String,
   handle_unary_op(Rest, Line, Column, unary_op, 3, list_to_atom([T1, T2, T3]), Scope, Tokens);
-
-
-tokenize([$~, $~ | Rest], Line, Column, Scope, Tokens) ->
-  % Sequence operator without parentheses
-  Token = {raw_op, {Line, Column, previous_was_eol(Tokens)}, '~~'},
-  tokenize(Rest, Line, Column + 2, Scope, [Token | Tokens]);
-
 % Sigils
 
 tokenize([$~, H | _T] = Original, Line, Column, Scope, Tokens) when ?is_upcase(H) orelse ?is_downcase(H) ->

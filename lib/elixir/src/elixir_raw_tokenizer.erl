@@ -52,18 +52,6 @@ tokenize(String, Line, Column, Scope, Tokens) ->
           {error, Reason, Rest, [], Tokens}
       end;
 
-    % Handle sequence operator ~~
-    [$~, $~ | Rest] ->
-      Token = {raw_op, {Line, Column, previous_was_eol(Tokens)}, '~~'},
-      % Check if next token is opening parenthesis for nested sequence
-      case Rest of
-        [$( | _] ->
-          NewScope = Scope#elixir_tokenizer{raw_depth = Scope#elixir_tokenizer.raw_depth + 1},
-          tokenize(Rest, Line, Column + 2, NewScope, [Token | Tokens]);
-        _ ->
-          tokenize(Rest, Line, Column + 2, Scope, [Token | Tokens])
-      end;
-
     % Handle strings - double quotes become raw_string
     [$" | Rest] ->
       tokenize_string(Rest, Line, Column + 1, $", Scope, Tokens);
@@ -516,11 +504,6 @@ tokenize_single_item(String, Line, Column, Scope) ->
     
     [$] | _] = String ->
       {closing_bracket, $], String, Line, Column, Scope};
-    
-    % Handle sequence operator ~~
-    [$~, $~ | Rest] ->
-      Token = {raw_op, {Line, Column, false}, '~~'},
-      {ok, Token, Rest, Line, Column + 2, Scope};
     
     % Handle sequence tokens
     _ ->

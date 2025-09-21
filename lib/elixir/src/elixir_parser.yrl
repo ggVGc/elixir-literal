@@ -327,7 +327,7 @@ raw_element -> int : handle_number(number_value('$1'), '$1', ?exprs('$1')).
 raw_element -> flt : handle_number(number_value('$1'), '$1', ?exprs('$1')).
 raw_element -> bin_string : build_bin_string('$1', delimiter(<<$">>)).
 raw_element -> raw_block : build_raw_block('$1').
-raw_element -> raw_atom : build_raw_op('$1').
+raw_element -> raw_atom : build_raw_atom('$1').
 
 bracket_arg -> open_bracket kw_data close_bracket : build_access_arg('$1', '$2', '$3').
 bracket_arg -> open_bracket container_expr close_bracket : build_access_arg('$1', '$2', '$3').
@@ -965,7 +965,7 @@ build_identifier({'.', Meta, _} = Dot) ->
 build_identifier({_, Location, Identifier}) ->
   {Identifier, meta_from_location(Location), nil}.
 
-build_raw_op({_, Location, Op}) ->
+build_raw_atom({_, Location, Op}) ->
   {Op, meta_from_location(Location), nil}.
 
 build_raw_token({raw_token, Location, Value}) ->

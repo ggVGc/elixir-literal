@@ -154,11 +154,6 @@ defmodule Kernel.RawSectionParserTest do
                {:raw_section, [line: 1], [{:a, [line: 1], nil}, {:+, [line: 1], nil}]}
     end
 
-    test "sequence operator still requires parentheses" do
-      assert_syntax_error(["syntax error before: ", "foo"], "~~foo bar")
-      assert_syntax_error(["syntax error before: ", "a"], "~~ a b c")
-    end
-
     test "backward compatibility - regular parentheses unaffected" do
       # Regular parenthesized expressions should still parse as before
       assert parse!("(1 + 2)") == {:+, [line: 1], [1, 2]}
@@ -259,9 +254,6 @@ defmodule Kernel.RawSectionParserTest do
 
       assert parse!("~~(())") ==
                {:raw_section, [line: 1], [{:raw_block, [line: 1], :"()", []}]}
-
-      # Nested sequence literals still don't work due to ~~ being treated as token
-      assert_syntax_error(["syntax error before:"], "~~(a ~~(b) c)")
     end
 
     test "whitespace handling" do

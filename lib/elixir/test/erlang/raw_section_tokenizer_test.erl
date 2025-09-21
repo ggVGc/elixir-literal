@@ -47,14 +47,6 @@ quoted_test() ->
      {'end',{1,32,nil}}] = tokenize("quote do ~~(+ a 1 :yeo \"breo\") end"),
   ok.
 
-%% Test basic sequence operator tokenization
-raw_op_test() ->
-  [{raw_op, {1, 1, nil}, '~~'}] = tokenize("~~"),
-  [{identifier, {1, 1, "a"}, a},
-   {raw_op, {1, 3, nil}, '~~'},
-   {identifier, {1, 6, "b"}, b}] = tokenize("a ~~ b"),
-  ok.
-
 expression_after_seq_literal_test() ->
 [{identifier,{_,_,"assert"},assert},
    {identifier,{_,_,"a"},a},
@@ -117,7 +109,6 @@ raw_dotted_identifiers_test() ->
    {raw_end, {1, 19, nil}, ')'}] = tokenize("~~(Enum.map.filter)"),
   ok.
 
-%% Test operators in sequence literals - MUST BE raw_token
 raw_operators_test() ->
   % Test arithmetic operators
   [{raw_begin, {1, 1, nil}, '~~('},
@@ -230,23 +221,6 @@ raw_empty_brackets_test() ->
   [{raw_begin, {1, 1, nil}, '~~('},
    {raw_block, {1, 4, nil}, '()', []},
    {raw_end, {1, 6, nil}, ')'}] = tokenize("~~(())"),
-  ok.
-
-raw_op_embedded_test() ->
-  [{raw_begin, {1, 1, nil}, '~~('},
-   {raw_token, {1, 4, nil}, '~'},
-   {raw_end, {1, 5, nil}, ')'}] = tokenize("~~(~)"),
-
-  [{raw_begin, {1, 1, nil}, '~~('},
-   {raw_op, {1, 4, false}, '~~'},
-   {raw_end, {1, 6, nil}, ')'}] = tokenize("~~(~~)"),
-
-  ok.
-
-%% Test sequence operator without parentheses - normal tokenization
-raw_no_parens_test() ->
-  [{raw_op, {1, 1, nil}, '~~'},
-   {identifier, {1, 4, "a"}, a}] = tokenize("~~ a"),  % Normal identifier
   ok.
 
 %% Test nested sequence literals
