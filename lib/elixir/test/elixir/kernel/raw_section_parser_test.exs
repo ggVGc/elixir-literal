@@ -193,31 +193,29 @@ defmodule Kernel.RawSectionParserTest do
 
   describe "sequence literals with structural elements" do
     test "brackets work correctly" do
-      # Square brackets create raw_bracket structures
       assert parse!("~~([a b c])") ==
                {:raw_section, [line: 1],
                 [
-                  {:raw_bracket, [line: 1],
+                  {:raw_block, [line: 1], :"[]",
                    [{:a, [line: 1], nil}, {:b, [line: 1], nil}, {:c, [line: 1], nil}]}
                 ]}
 
       # Empty brackets work
       assert parse!("~~([])") ==
-               {:raw_section, [line: 1], [{:raw_bracket, [line: 1], []}]}
+               {:raw_section, [line: 1], [{:raw_block, [line: 1], :"[]", []}]}
     end
 
     test "braces work correctly" do
-      # Curly braces create raw_brace structures
       assert parse!("~~({x y z})") ==
                {:raw_section, [line: 1],
                 [
-                  {:raw_brace, [line: 1],
+                  {:raw_block, [line: 1], :{},
                    [{:x, [line: 1], nil}, {:y, [line: 1], nil}, {:z, [line: 1], nil}]}
                 ]}
 
       # Empty braces work
       assert parse!("~~({})") ==
-               {:raw_section, [line: 1], [{:raw_brace, [line: 1], []}]}
+               {:raw_section, [line: 1], [{:raw_block, [line: 1], :{}, []}]}
     end
 
     test "operators work correctly as simple tokens" do
@@ -243,26 +241,24 @@ defmodule Kernel.RawSectionParserTest do
       assert parse!("~~([a b] {c d})") ==
                {:raw_section, [line: 1],
                 [
-                  {:raw_bracket, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]},
-                  {:raw_brace, [line: 1], [{:c, [line: 1], nil}, {:d, [line: 1], nil}]}
+                  {:raw_block, [line: 1], :"[]", [{:a, [line: 1], nil}, {:b, [line: 1], nil}]},
+                  {:raw_block, [line: 1], :{}, [{:c, [line: 1], nil}, {:d, [line: 1], nil}]}
                 ]}
     end
   end
 
   describe "edge cases and special scenarios" do
     test "nested parentheses work correctly" do
-      # Simple nested parentheses now work - they create raw_paren structures
       assert parse!("~~((a b))") ==
                {:raw_section, [line: 1],
-                [{:raw_paren, [line: 1], [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}]}
+                [{:raw_block, [line: 1], :"()", [{:a, [line: 1], nil}, {:b, [line: 1], nil}]}]}
 
       # Single element in nested parentheses
       assert parse!("~~((a))") ==
-               {:raw_section, [line: 1], [{:raw_paren, [line: 1], [{:a, [line: 1], nil}]}]}
+               {:raw_section, [line: 1], [{:raw_block, [line: 1], :"()", [{:a, [line: 1], nil}]}]}
 
-      # Empty nested parentheses create empty raw_paren
       assert parse!("~~(())") ==
-               {:raw_section, [line: 1], [{:raw_paren, [line: 1], []}]}
+               {:raw_section, [line: 1], [{:raw_block, [line: 1], :"()", []}]}
 
       # Nested sequence literals still don't work due to ~~ being treated as token
       assert_syntax_error(["syntax error before:"], "~~(a ~~(b) c)")
@@ -376,10 +372,9 @@ defmodule Kernel.RawSectionParserTest do
 
       # Just verify both parse successfully and have similar structure
       assert {:raw_section, [line: 1], [bracket]} = result_with_comment
-      assert {:raw_bracket, [line: 1], _} = bracket
+      assert {:raw_block, [line: 1], :"[]", _} = bracket
 
-      assert {:raw_section, [line: 1], [bracket2]} = result_without_comment
-      assert {:raw_bracket, [line: 1], _} = bracket2
+      assert {:raw_section, [line: 1], [^bracket]} = result_without_comment
     end
 
     test "comments in complex expressions with sequence literals" do

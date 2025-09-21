@@ -7,9 +7,6 @@
 %% Check if a node is a sequence node
 is_raw_node({raw_block, _Meta, _BracketType, _Args}) -> true;
 is_raw_node({raw_section, _Meta, _Args}) -> true;
-is_raw_node({raw_paren, _Meta, _Args}) -> true;
-is_raw_node({raw_bracket, _Meta, _Args}) -> true;
-is_raw_node({raw_brace, _Meta, _Args}) -> true;
 is_raw_node(_) -> false.
 
 %% Validate sequence AST nodes
@@ -21,34 +18,19 @@ is_valid_ast({raw_block, Meta, BracketType, Args})
 %% For other sequence nodes (3-tuple format), they're always valid
 is_valid_ast({raw_section, Meta, Args})
   when is_list(Meta), is_list(Args) -> true;
-is_valid_ast({raw_paren, Meta, Args})
-  when is_list(Meta), is_list(Args) -> true;
-is_valid_ast({raw_bracket, Meta, Args})
-  when is_list(Meta), is_list(Args) -> true;
-is_valid_ast({raw_brace, Meta, Args})
-  when is_list(Meta), is_list(Args) -> true;
 is_valid_ast(_) -> false.
 
 %% Quote sequence nodes - keep them as-is without transforming internals
 quote_node({raw_block, _Meta, _BracketType, _Args} = Node, _Q) -> Node;
 quote_node({raw_section, _Meta, _Args} = Node, _Q) -> Node;
-quote_node({raw_paren, _Meta, _Args} = Node, _Q) -> Node;
-quote_node({raw_bracket, _Meta, _Args} = Node, _Q) -> Node;
-quote_node({raw_brace, _Meta, _Args} = Node, _Q) -> Node;
 quote_node(_, _) -> false.
 
 %% Escape sequence nodes - keep them as-is without transforming internals
 escape_node({raw_block, _Meta, _BracketType, _Args} = Node, _Q) -> Node;
 escape_node({raw_section, _Meta, _Args} = Node, _Q) -> Node;
-escape_node({raw_paren, _Meta, _Args} = Node, _Q) -> Node;
-escape_node({raw_bracket, _Meta, _Args} = Node, _Q) -> Node;
-escape_node({raw_brace, _Meta, _Args} = Node, _Q) -> Node;
 escape_node(_, _) -> false.
 
 %% Expand sequence nodes - keep them as-is since they will be processed by Paxir
 expand({raw_block, _Meta, _BracketType, _Args} = Node, S, E) -> {Node, S, E};
 expand({raw_section, _Meta, _Args} = Node, S, E) -> {Node, S, E};
-expand({raw_paren, _Meta, _Args} = Node, S, E) -> {Node, S, E};
-expand({raw_bracket, _Meta, _Args} = Node, S, E) -> {Node, S, E};
-expand({raw_brace, _Meta, _Args} = Node, S, E) -> {Node, S, E};
 expand(_, _, _) -> false.

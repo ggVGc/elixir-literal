@@ -991,11 +991,7 @@ build_sequence({raw_begin, Location, _}, Args, {raw_end, _EndLocation, _}) ->
 build_raw_block({raw_block, Location, BracketType, Args}) ->
   Meta = meta_from_location(Location),
   TransformedArgs = transform_raw_args(Args),
-  case BracketType of
-    '()' -> {raw_paren, Meta, TransformedArgs};
-    '[]' -> {raw_bracket, Meta, TransformedArgs};
-    '{}' -> {raw_brace, Meta, TransformedArgs}
-  end.
+  {raw_block, Meta, BracketType, TransformedArgs}.
 
 
 %% Fn
@@ -1411,12 +1407,6 @@ transform_raw_args([First | Rest]) ->
   [transform_raw_node(First) | transform_raw_args(Rest)].
 
 %% Transform individual sequence nodes recursively
-transform_raw_node({raw_paren, Meta, Args}) ->
-  {raw_paren, normalize_meta(Meta), transform_raw_args(Args)};
-transform_raw_node({raw_brace, Meta, Args}) ->
-  {raw_brace, normalize_meta(Meta), transform_raw_args(Args)};  
-transform_raw_node({raw_bracket, Meta, Args}) ->
-  {raw_bracket, normalize_meta(Meta), transform_raw_args(Args)};
 transform_raw_node({raw_block, Meta, BracketType, Args}) ->
   {raw_block, normalize_meta(Meta), BracketType, transform_raw_args(Args)};
 transform_raw_node({raw_token, Location, Value}) ->

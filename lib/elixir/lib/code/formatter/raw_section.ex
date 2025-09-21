@@ -103,7 +103,7 @@ defmodule Code.Formatter.SequenceLiteral do
     end
   end
 
-  def raw_section_element_to_algebra({:raw_paren, meta, args}, state) do
+  def raw_section_element_to_algebra({:raw_block, meta, :"()", args}, state) do
     {args_docs, state} =
       Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
         {doc, state} = raw_section_element_to_algebra(arg, state)
@@ -157,44 +157,6 @@ defmodule Code.Formatter.SequenceLiteral do
       end
     else
       args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
-      {concat(["(", args_doc, ")"]), state}
-    end
-  end
-
-  def raw_section_element_to_algebra({:raw_block, meta, :"()", args}, state) do
-    {args_docs, state} =
-      Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-        {doc, state} = raw_section_element_to_algebra(arg, state)
-        {[doc | acc], state}
-      end)
-
-    # Check if arguments span multiple lines
-    min_line = meta[:line] || @min_line
-
-    max_line =
-      args
-      |> Enum.reduce(min_line, fn arg, max ->
-        {_arg_min, arg_max} = traverse_line(arg, {@max_line, @min_line})
-
-        case arg_max do
-          @min_line -> max
-          line -> max(line, max)
-        end
-      end)
-
-    is_multiline = max_line > min_line
-
-    args_doc =
-      case Enum.reverse(args_docs) do
-        [] -> @empty
-        [single] -> single
-        docs when is_multiline -> Enum.reduce(docs, &line(&2, &1))
-        docs -> Enum.reduce(docs, &concat(&2, concat(" ", &1)))
-      end
-
-    if is_multiline && length(args) > 1 do
-      {concat(["(", line(), args_doc, line(), ")"]), state}
-    else
       {concat(["(", args_doc, ")"]), state}
     end
   end
@@ -263,17 +225,6 @@ defmodule Code.Formatter.SequenceLiteral do
     end
   end
 
-  def raw_section_element_to_algebra({:raw_brace, _meta, args}, state) do
-    {args_docs, state} =
-      Enum.reduce(args, {[], state}, fn arg, {acc, state} ->
-        {doc, state} = raw_section_element_to_algebra(arg, state)
-        {[doc | acc], state}
-      end)
-
-    args_doc = args_docs |> Enum.reverse() |> Enum.reduce(&concat(&2, concat(" ", &1)))
-    {concat(["{", args_doc, "}"]), state}
-  end
-
   def raw_section_element_to_algebra({:raw_token, _meta, atom}, state)
       when is_atom(atom) do
     {Atom.to_string(atom) |> string(), state}
@@ -336,11 +287,6 @@ defmodule Code.Formatter.SequenceLiteral do
   ## Line traversal helpers
 
   def traverse_line({:raw_section, meta, args}, {min, max}) do
-    acc = extract_line_from_meta(meta, {min, max})
-    traverse_line(args, acc)
-  end
-
-  def traverse_line({:raw_paren, meta, args}, {min, max}) do
     acc = extract_line_from_meta(meta, {min, max})
     traverse_line(args, acc)
   end
