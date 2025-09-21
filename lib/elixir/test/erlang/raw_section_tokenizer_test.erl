@@ -1,7 +1,7 @@
 %% SPDX-License-Identifier: Apache-2.0
 %% SPDX-FileCopyrightText: 2025 The Elixir Team
 
--module(raw_section_test).
+-module(raw_section_tokenizer_test).
 -include_lib("eunit/include/eunit.hrl").
 
 tokenize(String) ->
